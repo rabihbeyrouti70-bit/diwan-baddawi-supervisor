@@ -894,12 +894,171 @@
       }
     }
 
+    
+    /* AUTH / PIN LOCK SCREEN */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .auth-overlay.unlocked {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 400px;
+      padding: 30px 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .auth-icon {
+      width: 60px;
+      height: 60px;
+      background: #ecfdf5;
+      color: #059669;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 14px;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+    }
+
+    .auth-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .auth-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .pin-input {
+      letter-spacing: 12px;
+      font-size: 24px;
+      text-align: center;
+      font-weight: 800;
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      width: 100%;
+      background: #f8fafc;
+      font-family: inherit;
+    }
+    .pin-input:focus {
+      outline: none;
+      border-color: #059669;
+      background: white;
+    }
+
+    .auth-error {
+      color: #ef4444;
+      font-size: 13px;
+      font-weight: 700;
+      min-height: 20px;
+      margin-bottom: 12px;
+    }
+
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .key-btn {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 20px;
+      font-weight: 800;
+      color: #1e293b;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .key-btn:active {
+      background: #059669;
+      color: white;
+      transform: scale(0.95);
+    }
+
     .print-header, .print-signatures {
       display: none;
     }
   </style>
 </head>
 <body>
+
+  <!-- AUTH / PIN LOCK SCREEN -->
+  <div id="authOverlay" class="auth-overlay">
+    <div class="auth-card">
+      <div class="auth-icon">🔒</div>
+      <h2 class="auth-title">ديوان ماركت – طرابلس والبداوي</h2>
+      <p class="auth-subtitle">منطقة دخول مسؤولي الصالة والإدارة (نظام محمي)</p>
+
+      <div class="form-group" style="text-align: right; margin-bottom: 14px;">
+        <label>👤 اختر اسم المشرف:</label>
+        <select id="authSupervisorSelect" class="form-control" style="font-size: 14px; padding: 10px;">
+          <option value="Ahmad Badrah">أحمد بدرة (Ahmad Badrah)</option>
+          <option value="Issa Warwar">عيسى ورور (Issa Warwar)</option>
+          <option value="Sameh El-Hassan">سامح الحسن (Sameh El-Hassan)</option>
+          <option value="Admin">الإدارة / مدير الفرع (Manager)</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="text-align: right; margin-bottom: 6px;">
+        <label>🔑 أدخل رمز المرور السري (PIN):</label>
+        <input type="password" id="authPinInput" class="pin-input" maxlength="4" placeholder="••••" readonly>
+      </div>
+
+      <div class="keypad-grid">
+        <button type="button" class="key-btn" onclick="pressKey('1')">1</button>
+        <button type="button" class="key-btn" onclick="pressKey('2')">2</button>
+        <button type="button" class="key-btn" onclick="pressKey('3')">3</button>
+        <button type="button" class="key-btn" onclick="pressKey('4')">4</button>
+        <button type="button" class="key-btn" onclick="pressKey('5')">5</button>
+        <button type="button" class="key-btn" onclick="pressKey('6')">6</button>
+        <button type="button" class="key-btn" onclick="pressKey('7')">7</button>
+        <button type="button" class="key-btn" onclick="pressKey('8')">8</button>
+        <button type="button" class="key-btn" onclick="pressKey('9')">9</button>
+        <button type="button" class="key-btn" style="font-size: 14px; color: #ef4444;" onclick="clearPin()">مسح ⌫</button>
+        <button type="button" class="key-btn" onclick="pressKey('0')">0</button>
+        <button type="button" class="key-btn" style="font-size: 14px; color: #059669; font-weight: 800;" onclick="submitPin()">دخول ↵</button>
+      </div>
+
+      <div id="authError" class="auth-error"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="rememberMeCheck" checked style="width: 16px; height: 16px; accent-color: #059669;">
+          <span>تذكر هذا الجهاز</span>
+        </label>
+        <span style="font-size: 11px; color: #94a3b8;">مشفر ومحمي 🛡️</span>
+      </div>
+    </div>
+  </div>
+
 
   <!-- PRINT ONLY HEADER -->
   <div class="print-header">
@@ -941,6 +1100,7 @@
             🖨️ طباعة
           </button>
 
+          <button class="btn btn-outline-white btn-sm" onclick="lockApp()" title="قفل الجلسة (خروج)">🔒 قفل</button>
           <button class="btn btn-outline-white btn-sm" onclick="openSettingsModal()" title="إعدادات الربط السحابي">
             ⚙️
           </button>
@@ -1678,7 +1838,86 @@
     /* ============================================================
        INITIALIZATION
        ============================================================ */
+    
+    /* ============================================================
+       PIN AUTHENTICATION LOGIC (حماية الدخول)
+       ============================================================ */
+    const DEFAULT_PINS = {
+      "Ahmad Badrah": "1122",
+      "Issa Warwar": "3344",
+      "Sameh El-Hassan": "5566",
+      "Admin": "9900"
+    };
+
+    function getSupervisorPins() {
+      const saved = localStorage.getItem('diwan_supervisor_pins');
+      return saved ? JSON.parse(saved) : DEFAULT_PINS;
+    }
+
+    function pressKey(num) {
+      const input = document.getElementById('authPinInput');
+      if (input.value.length < 4) {
+        input.value += num;
+        if (input.value.length === 4) {
+          setTimeout(submitPin, 150);
+        }
+      }
+    }
+
+    function clearPin() {
+      const input = document.getElementById('authPinInput');
+      input.value = input.value.slice(0, -1);
+      document.getElementById('authError').innerText = '';
+    }
+
+    function submitPin() {
+      const sup = document.getElementById('authSupervisorSelect').value;
+      const pin = document.getElementById('authPinInput').value;
+      const pins = getSupervisorPins();
+      const errorBox = document.getElementById('authError');
+
+      if (pins[sup] && pins[sup] === pin) {
+        const remember = document.getElementById('rememberMeCheck').checked;
+        if (remember) {
+          localStorage.setItem('diwan_auth_user', sup);
+        } else {
+          sessionStorage.setItem('diwan_auth_user', sup);
+        }
+
+        currentSupervisor = (sup === 'Admin') ? 'Ahmad Badrah' : sup;
+        document.getElementById('supervisorSelect').value = currentSupervisor;
+        document.getElementById('authOverlay').classList.add('unlocked');
+        document.getElementById('authPinInput').value = '';
+        errorBox.innerText = '';
+        showToast("مرحباً بك: " + currentSupervisor + " 👋");
+      } else {
+        errorBox.innerText = "❌ رمز PIN غير صحيح! يرجى التأكد وإعادة المحاولة.";
+        document.getElementById('authPinInput').value = '';
+      }
+    }
+
+    function checkAuthOnLoad() {
+      const savedUser = localStorage.getItem('diwan_auth_user') || sessionStorage.getItem('diwan_auth_user');
+      if (savedUser) {
+        currentSupervisor = (savedUser === 'Admin') ? 'Ahmad Badrah' : savedUser;
+        document.getElementById('supervisorSelect').value = currentSupervisor;
+        document.getElementById('authOverlay').classList.add('unlocked');
+      } else {
+        document.getElementById('authOverlay').classList.remove('unlocked');
+      }
+    }
+
+    function lockApp() {
+      localStorage.removeItem('diwan_auth_user');
+      sessionStorage.removeItem('diwan_auth_user');
+      document.getElementById('authPinInput').value = '';
+      document.getElementById('authError').innerText = '';
+      document.getElementById('authOverlay').classList.remove('unlocked');
+      showToast("🔒 تم قفل الجلسة بنجاح");
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      checkAuthOnLoad();
       document.getElementById('shiftDateInput').value = currentDate;
       
       initFirebaseIfConfigured();
