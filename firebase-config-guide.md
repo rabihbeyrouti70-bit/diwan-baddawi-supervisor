@@ -1,4 +1,4 @@
-# دليل تفعيل الربط السحابي اللحظي (Firebase) – ديوان ماركت فرع طرابلس
+# دليل تفعيل الربط السحابي اللحظي (Firebase) – ديوان ماركت فرع البداوي
 
 تم بناء هذا النظام ليعمل **بدون أي سيرفر دائم وبدون أي تكاليف** عبر السحابة اللحظية من Google Firebase (الخطة المجانية الدائمة).
 
@@ -18,7 +18,7 @@
 ### الخطوة 1: إنشاء حساب ومشروع مجاني في Firebase
 1. ادخل إلى موقع [Firebase Console](https://console.firebase.google.com/) وسجل الدخول بحساب Google (Gmail).
 2. اضغط على **Add project** أو **إنشاء مشروع**.
-3. اكتب اسم المشروع (مثلاً: `diwan-market-tripoli`)، ثم اضغط **Continue**.
+3. اكتب اسم المشروع (مثلاً: `diwan-baddawi-supervisor`)، ثم اضغط **Continue**.
 4. يمكنك تعطيل Google Analytics (غير مطلوب)، ثم اضغط **Create project**.
 
 ### الخطوة 2: إنشاء قاعدة البيانات اللحظية (Realtime Database)
@@ -37,10 +37,10 @@
 ```json
 {
   "apiKey": "AIzaSy...",
-  "authDomain": "diwan-market-tripoli.firebaseapp.com",
-  "databaseURL": "https://diwan-market-tripoli-default-rtdb.firebaseio.com",
-  "projectId": "diwan-market-tripoli",
-  "storageBucket": "diwan-market-tripoli.appspot.com",
+  "authDomain": "diwan-baddawi-supervisor.firebaseapp.com",
+  "databaseURL": "https://diwan-baddawi-supervisor-default-rtdb.firebaseio.com",
+  "projectId": "diwan-baddawi-supervisor",
+  "storageBucket": "diwan-baddawi-supervisor.appspot.com",
   "messagingSenderId": "...",
   "appId": "..."
 }
