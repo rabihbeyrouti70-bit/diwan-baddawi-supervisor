@@ -899,29 +899,29 @@
     }
 
     
-    /* AUTH / PIN LOCK SCREEN */
-    .auth-overlay {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      z-index: 99999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      transition: opacity 0.25s ease, visibility 0.25s ease;
+    
+    /* ABSOLUTE STRICT LOCK: App container is hidden until authenticated */
+    .app-container {
+      display: none !important;
+    }
+    body.auth-passed .app-container {
+      display: block !important;
     }
 
-    
-    /* STRICT LOCK: Hide app container until authenticated */
-    body:not(.auth-passed) .app-container {
-      display: none !important;
+    .auth-overlay {
+      position: fixed !important;
+      inset: 0 !important;
+      background: #0f172a !important;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+      z-index: 999999 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 20px !important;
     }
 
     .auth-overlay.unlocked {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
+      display: none !important;
     }
 
     .auth-card {
@@ -1039,7 +1039,7 @@
 
       <div class="form-group" style="text-align: right; margin-bottom: 6px;">
         <label>🔑 أدخل رمز المرور السري (PIN):</label>
-        <input type="password" id="authPinInput" class="pin-input" maxlength="4" placeholder="••••" readonly>
+        <input type="password" id="authPinInput" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
       </div>
 
       <div class="keypad-grid">
@@ -1059,12 +1059,8 @@
 
       <div id="authError" class="auth-error"></div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b;">
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-          <input type="checkbox" id="rememberMeCheck" style="width: 16px; height: 16px; accent-color: #059669;">
-          <span>تذكر هذا الجهاز</span>
-        </label>
-        <span style="font-size: 11px; color: #94a3b8;">مشفر ومحمي 🛡️</span>
+      <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 8px;">
+        نظام محمي ومشفر لمسؤولي ماركت الديوان 🛡️
       </div>
     </div>
   </div>
@@ -1850,7 +1846,7 @@
        ============================================================ */
     
     /* ============================================================
-       PIN AUTHENTICATION LOGIC (حماية الدخول الصارمة)
+       PIN AUTHENTICATION LOGIC (حماية الدخول الصارمة - قفل إجباري)
        ============================================================ */
     const DEFAULT_PINS = {
       "Ahmad Badrah": "1122",
@@ -1858,6 +1854,10 @@
       "Sameh El-Hassan": "5566",
       "Admin": "9900"
     };
+
+    // Force clear any old cached logins
+    localStorage.removeItem('diwan_auth_user');
+    sessionStorage.removeItem('diwan_auth_user');
 
     function getSupervisorPins() {
       const saved = localStorage.getItem('diwan_supervisor_pins');
@@ -1869,7 +1869,7 @@
       if (input.value.length < 4) {
         input.value += num;
         if (input.value.length === 4) {
-          setTimeout(submitPin, 150);
+          setTimeout(submitPin, 100);
         }
       }
     }
@@ -1880,7 +1880,7 @@
       document.getElementById('authError').innerText = '';
     }
 
-    // Physical keyboard support (0-9, Backspace, Enter)
+    // Physical keyboard listener
     window.addEventListener('keydown', (e) => {
       const overlay = document.getElementById('authOverlay');
       if (!overlay || overlay.classList.contains('unlocked')) return;
@@ -1901,52 +1901,45 @@
       const errorBox = document.getElementById('authError');
 
       if (pins[sup] && pins[sup] === pin) {
-        const remember = document.getElementById('rememberMeCheck').checked;
-        if (remember) {
-          localStorage.setItem('diwan_auth_user', sup);
-        } else {
-          sessionStorage.setItem('diwan_auth_user', sup);
-        }
-
         currentSupervisor = (sup === 'Admin') ? 'Ahmad Badrah' : sup;
         document.getElementById('supervisorSelect').value = currentSupervisor;
         
-        // Unlock UI and display container
+        // Unlock
         document.body.classList.add('auth-passed');
         document.getElementById('authOverlay').classList.add('unlocked');
         document.getElementById('authPinInput').value = '';
         errorBox.innerText = '';
         
+        // Render checklist
         renderAll();
         showToast("مرحباً بك: " + currentSupervisor + " 👋");
       } else {
-        errorBox.innerText = "❌ رمز PIN غير صحيح! يرجى التأكد وإعادة المحاولة.";
+        errorBox.innerText = "❌ رمز PIN غير صحيح! يرجى إدخال 4 أرقام صحيحة.";
         document.getElementById('authPinInput').value = '';
       }
     }
 
     function checkAuthOnLoad() {
-      // Clear any auto-saved login if needed, or check session
-      const savedUser = sessionStorage.getItem('diwan_auth_user') || localStorage.getItem('diwan_auth_user');
-      if (savedUser) {
-        currentSupervisor = (savedUser === 'Admin') ? 'Ahmad Badrah' : savedUser;
-        document.getElementById('supervisorSelect').value = currentSupervisor;
-        document.body.classList.add('auth-passed');
-        document.getElementById('authOverlay').classList.add('unlocked');
-      } else {
-        document.body.classList.remove('auth-passed');
-        document.getElementById('authOverlay').classList.remove('unlocked');
+      // STRICT: Always lock on reload/open
+      document.body.classList.remove('auth-passed');
+      const overlay = document.getElementById('authOverlay');
+      if (overlay) overlay.classList.remove('unlocked');
+      const pinInp = document.getElementById('authPinInput');
+      if (pinInp) {
+        pinInp.value = '';
+        pinInp.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9]/g, '');
+          if (this.value.length === 4) submitPin();
+        });
       }
     }
 
     function lockApp() {
-      localStorage.removeItem('diwan_auth_user');
-      sessionStorage.removeItem('diwan_auth_user');
       document.getElementById('authPinInput').value = '';
       document.getElementById('authError').innerText = '';
       document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
-      showToast("🔒 تم قفل الجلسة بنجاح");
+      showToast("🔒 تم قفل الجلسة");
     }
 
     window.addEventListener('DOMContentLoaded', () => {
