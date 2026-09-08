@@ -1,0 +1,2297 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ديوان ماركت - نظام متابعة الصالة وتسليم الورديات اللحظي</title>
+  
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Firebase App & Realtime Database SDKs (CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-dark: #047857;
+      --primary-light: #d1fae5;
+      --secondary: #0f172a;
+      --accent: #2563eb;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --info: #0284c7;
+      --info-light: #e0f2fe;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 80px;
+    }
+
+    /* CONTAINER */
+    .app-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* TOP HEADER */
+    .top-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .top-header::after {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: -40px;
+      width: 140px;
+      height: 140px;
+      background: rgba(16, 185, 129, 0.15);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-area h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-area h1 span.en {
+      font-size: 14px;
+      font-weight: 500;
+      color: #94a3b8;
+      display: block;
+      margin-top: 2px;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .brand-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 6px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* BUTTONS */
+    .btn {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: #78350f;
+    }
+    .btn-warning:hover {
+      background: #d97706;
+      color: white;
+    }
+
+    .btn-outline-white {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .btn-outline-white:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    /* REALTIME STATUS BADGE */
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* SHIFT CONTROL CARD */
+    .shift-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .shift-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      background-color: #f8fafc;
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      background-color: white;
+    }
+
+    /* HANDOVER ALERT BANNER */
+    .handover-banner {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 2px solid #f59e0b;
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .handover-banner-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .handover-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #92400e;
+    }
+
+    .handover-badge {
+      background: #f59e0b;
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 9999px;
+    }
+
+    .handover-notes-box {
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 8px;
+      padding: 12px 16px;
+      border-right: 4px solid #f59e0b;
+      font-size: 14px;
+      color: #78350f;
+    }
+
+    .handover-tasks-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .handover-task-chip {
+      background: white;
+      border: 1px solid #fbbf24;
+      color: #92400e;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* STATS & PROGRESS OVERVIEW */
+    .stats-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .progress-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--secondary);
+    }
+
+    .progress-percentage {
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    .progress-track {
+      background: #e2e8f0;
+      height: 12px;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      height: 100%;
+      width: 0%;
+      border-radius: 9999px;
+      transition: width 0.4s ease;
+    }
+
+    .stat-pills {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-pill {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      text-align: center;
+      border: 1px solid transparent;
+    }
+
+    .stat-pill .num {
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    .stat-pill .label {
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .stat-pill.pill-done { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .stat-pill.pill-progress { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+    .stat-pill.pill-handover { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+    .stat-pill.pill-critical { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+    /* FILTERS AND NAVIGATION */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      scrollbar-width: thin;
+    }
+
+    .filter-btn {
+      white-space: nowrap;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1.5px solid var(--border);
+      background: white;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--secondary);
+      color: white;
+      border-color: var(--secondary);
+    }
+
+    /* SECTION ACCORDION */
+    .section-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .section-card:hover {
+      box-shadow: var(--shadow);
+    }
+
+    .section-header {
+      background: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background-color 0.15s;
+    }
+
+    .section-header:hover {
+      background: #f8fafc;
+    }
+
+    .section-header.active {
+      border-bottom-color: var(--border);
+      background: #f8fafc;
+    }
+
+    .section-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--secondary);
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-title-ar {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--secondary);
+    }
+
+    .section-title-en {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+      direction: ltr;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .section-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+    }
+
+    .section-badge.completed {
+      background: #ecfdf5;
+      color: #059669;
+    }
+
+    .section-body {
+      padding: 16px 20px;
+      display: block;
+    }
+
+    .section-body.collapsed {
+      display: none;
+    }
+
+    /* ITEM CARD */
+    .item-row {
+      padding: 14px 0;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .item-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .item-ar {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .item-en {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      direction: ltr;
+      text-align: right;
+    }
+
+    /* STATUS SELECTOR PILLS */
+    .status-group {
+      display: inline-flex;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-pill:hover {
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    /* ACTIVE STATUS STYLES */
+    .status-pill.active-done {
+      background: #10b981 !important;
+      color: white !important;
+      box-shadow: 0 1px 3px rgba(16, 185, 129, 0.4);
+    }
+    .status-pill.active-progress {
+      background: #0284c7 !important;
+      color: white !important;
+      box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);
+    }
+    .status-pill.active-handover {
+      background: #f59e0b !important;
+      color: white !important;
+      box-shadow: 0 1px 3px rgba(245, 158, 11, 0.4);
+    }
+    .status-pill.active-critical {
+      background: #ef4444 !important;
+      color: white !important;
+      box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4);
+    }
+
+    .item-audit {
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .item-note-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: #fafafa;
+    }
+    .item-note-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+    }
+
+    /* REFRIGERATOR TEMPERATURE BOX */
+    .temperatures-container {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+      border: 1px solid #e2e8f0;
+    }
+
+    .temperatures-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .temp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .temp-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .temp-card.alert {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .temp-info h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--secondary);
+    }
+
+    .temp-info span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .temp-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .temp-input {
+      width: 70px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 15px;
+      padding: 6px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    .temp-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .temp-unit {
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* SECTION NOTES TEXTAREA */
+    .section-notes-area {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .section-notes-area label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .section-notes-textarea {
+      width: 100%;
+      min-height: 60px;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      background: #f8fafc;
+      resize: vertical;
+    }
+
+    .section-notes-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+    }
+
+    /* MODALS */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      transform: scale(0.95);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-overlay.open .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--secondary);
+    }
+
+    .close-btn {
+      background: #f1f5f9;
+      border: none;
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* TOAST NOTIFICATIONS */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--secondary);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: var(--shadow-lg);
+      z-index: 2000;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* PRINT STYLES */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+      }
+      .top-header, .header-actions, .filter-bar, .shift-card, .btn, .status-group, .item-note-input, .section-notes-textarea, .modal-overlay, .toast, .no-print {
+        display: none !important;
+      }
+      .app-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      .print-header {
+        display: block !important;
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 14px;
+        margin-bottom: 20px;
+      }
+      .section-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+        margin-bottom: 14px !important;
+      }
+      .section-body {
+        display: block !important;
+      }
+      .print-signatures {
+        display: flex !important;
+        justify-content: space-between;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #333;
+      }
+    }
+
+    .print-header, .print-signatures {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PRINT ONLY HEADER -->
+  <div class="print-header">
+    <h1 style="font-size: 22px; margin-bottom: 4px;">ماركت الديوان – فرع طرابلس</h1>
+    <h2 style="font-size: 16px; color: #444;">تقرير متابعة وفحص الصالة اليومي وتسليم الورديات</h2>
+    <p id="printMeta" style="font-size: 13px; margin-top: 6px; color: #666;"></p>
+  </div>
+
+  <div class="app-container">
+
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="header-content">
+        <div class="brand-area">
+          <h1>
+            🛒 ديوان ماركت – طرابلس
+            <span class="en">Diwan Market – Tripoli Branch</span>
+          </h1>
+          <div class="brand-tag">
+            ⚡ نظام إدارة الصالة وتسليم الورديات اللحظي
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="sync-badge" id="syncStatusBadge">
+            <div class="pulse-dot"></div>
+            <span id="syncStatusText">متزامن لحظياً</span>
+          </div>
+
+          <button class="btn btn-warning" onclick="openHandoverModal()">
+            📋 تسليم الوردية
+          </button>
+
+          <button class="btn btn-outline-white" onclick="openHistoryModal()">
+            📁 سجل الورديات
+          </button>
+
+          <button class="btn btn-outline-white" onclick="window.print()">
+            🖨️ طباعة
+          </button>
+
+          <button class="btn btn-outline-white btn-sm" onclick="openSettingsModal()" title="إعدادات الربط السحابي">
+            ⚙️
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- SHIFT & SUPERVISOR SELECTOR CARD -->
+    <section class="shift-card no-print">
+      <div class="shift-grid">
+        <div class="form-group">
+          <label>👤 المشرف الحالي (مسؤول الصالة):</label>
+          <select id="supervisorSelect" class="form-control" onchange="onSupervisorChange()">
+            <option value="Ahmad Badrah">أحمد بدرة (Ahmad Badrah)</option>
+            <option value="Issa Warwar">عيسى ورور (Issa Warwar)</option>
+            <option value="Sameh El-Hassan">سامح الحسن (Sameh El-Hassan)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>🕒 الوردية الحالية (Shift):</label>
+          <select id="shiftTypeSelect" class="form-control" onchange="onShiftChange()">
+            <option value="morning">وردية صباحية (08:00 ص - 04:00 م)</option>
+            <option value="evening">وردية مسائية (04:00 م - 12:00 م)</option>
+            <option value="night">وردية ليلية (12:00 م - 08:00 ص)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>📅 التاريخ:</label>
+          <input type="date" id="shiftDateInput" class="form-control" onchange="onDateChange()">
+        </div>
+      </div>
+    </section>
+
+    <!-- HANDOVER ALERT BANNER (Shown if there is an active handover) -->
+    <div id="handoverAlertBanner" class="handover-banner" style="display: none;">
+      <div class="handover-banner-header">
+        <div class="handover-title">
+          📥 <span>استلام وردية جديدة من المشرف السابق:</span>
+          <strong id="handoverFromSupervisor">أحمد بدرة</strong>
+          <span class="handover-badge" id="handoverTimestamp">اليوم 03:45 م</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="acknowledgeHandover()">
+          ✅ تأكيد استلام الوردية وبدء العمل
+        </button>
+      </div>
+
+      <div class="handover-notes-box" id="handoverNotesContent">
+        ملاحظات التسليم: لا توجد ملاحظات خاصة.
+      </div>
+
+      <div>
+        <span style="font-size: 13px; font-weight: 700; color: #92400e;">المهام العالقة المحولة لك لإكمالها:</span>
+        <div class="handover-tasks-list" id="handoverPendingChips">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS & PROGRESS -->
+    <section class="stats-card no-print">
+      <div class="progress-header">
+        <span class="progress-title">📊 نسبة الإنجاز العام للوردية</span>
+        <span class="progress-percentage" id="progressPercentage">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+
+      <div class="stat-pills">
+        <div class="stat-pill pill-done">
+          <span class="num" id="statDone">0</span>
+          <span class="label">✅ مكتملة</span>
+        </div>
+        <div class="stat-pill pill-progress">
+          <span class="num" id="statProgress">0</span>
+          <span class="label">🔄 قيد العمل</span>
+        </div>
+        <div class="stat-pill pill-handover">
+          <span class="num" id="statHandover">0</span>
+          <span class="label">⚠️ محولة للوردية</span>
+        </div>
+        <div class="stat-pill pill-critical">
+          <span class="num" id="statCritical">0</span>
+          <span class="label">🚨 أعطال حرجة</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH & FILTER BAR -->
+    <div class="filter-bar no-print">
+      <button class="filter-btn active" onclick="setFilter('all')">عرض الكل (59)</button>
+      <button class="filter-btn" onclick="setFilter('handover')">⚠️ محولة للوردية القادمة</button>
+      <button class="filter-btn" onclick="setFilter('critical')">🚨 أعطال وطوارئ</button>
+      <button class="filter-btn" onclick="setFilter('in_progress')">🔄 قيد العمل</button>
+      <button class="filter-btn" onclick="setFilter('pending')">⏳ لم تبدأ بعد</button>
+      <button class="filter-btn" onclick="setFilter('done')">✅ مكتملة</button>
+    </div>
+
+    <!-- 10 OPERATIONAL SECTIONS -->
+    <main id="sectionsContainer">
+      <!-- Sections rendered by JavaScript -->
+    </main>
+
+    <!-- PRINT SIGNATURES -->
+    <div class="print-signatures">
+      <div style="text-align: center;">
+        <p><strong>توقيع مشرف الوردية المسلّم</strong></p>
+        <p style="margin-top: 35px;">___________________</p>
+      </div>
+      <div style="text-align: center;">
+        <p><strong>توقيع مشرف الوردية المستلم</strong></p>
+        <p style="margin-top: 35px;">___________________</p>
+      </div>
+      <div style="text-align: center;">
+        <p><strong>اعتماد مدير الفرع</strong></p>
+        <p style="margin-top: 35px;">___________________</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: HANDOVER SHIFT -->
+  <div class="modal-overlay" id="handoverModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 إنهاء وتسليم الوردية للمشرف القادم</h3>
+        <button class="close-btn" onclick="closeHandoverModal()">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 12px;">
+          سيتم حفظ حالة الوردية الحالية، وترحيل المهام غير المكتملة إلى المشرف في الوردية التالية ليتابع ما بدأته فوراً.
+        </p>
+        
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 14px; font-size: 14px;">
+          <div><strong>المشرف المسلّم:</strong> <span id="modalSupervisorName">أحمد بدرة</span></div>
+          <div><strong>الوردية:</strong> <span id="modalShiftType">صباحية</span></div>
+          <div><strong>المهام المكتملة:</strong> <span id="modalCompletedCount" style="color: var(--primary); font-weight: 700;">0</span> من 59</div>
+          <div><strong>المهام المتبقية للوردية التالية:</strong> <span id="modalPendingCount" style="color: var(--warning); font-weight: 700;">0</span></div>
+        </div>
+
+        <div class="form-group">
+          <label>📝 ملاحظات وتوصيات للمشرف القادم:</label>
+          <textarea id="handoverModalNotes" class="form-control" style="min-height: 90px;" placeholder="اكتب هنا أي أمور هامة، نقص بضاعة، أو أعطال ثلاجات تحتاج متابعة..."></textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHandoverModal()">إلغاء</button>
+        <button class="btn btn-primary" onclick="submitHandover()">تأكيد تسليم الوردية</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SHIFT ARCHIVE & HISTORY -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📁 سجل الورديات السابقة لماركت الديوان</h3>
+        <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+      </div>
+
+      <div id="historyListContainer" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLOUD SETTINGS -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ إعدادات الربط السحابي (Firebase)</h3>
+        <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+        يعمل النظام حالياً بالتزامن اللحظي عبر المتصفحات. لربط هواتف المشرفين على الإنترنت عبر السحابة المجانية 100% دون أي سيرفر، يمكنك لصق إعدادات Firebase هنا:
+      </p>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label>كود إعداد Firebase (JSON أو Config Object):</label>
+        <textarea id="firebaseConfigInput" class="form-control" style="min-height: 120px; font-family: monospace; font-size: 12px; direction: ltr;" placeholder='{
+  "apiKey": "...",
+  "databaseURL": "https://...",
+  "projectId": "..."
+}'></textarea>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
+        <span id="settingsStatusText" style="font-size: 12px; color: var(--primary); font-weight: 700;"></span>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeSettingsModal()">إغلاق</button>
+          <button class="btn btn-primary" onclick="saveFirebaseConfig()">حفظ وتفعيل</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="appToast">
+    <span id="toastMsg">تم التحديث بنجاح</span>
+  </div>
+
+  <script>
+    /* ============================================================
+       DATA & CONSTANTS
+       ============================================================ */
+    const SECTIONS_DATA = [
+  {
+    "id": "sec_1",
+    "num": 1,
+    "titleEn": "1. Parking",
+    "titleAr": "منطقة الموقف",
+    "itemCount": 1,
+    "items": [
+      {
+        "rawId": "Parking - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      }
+    ],
+    "temps": [],
+    "note": "Parking"
+  },
+  {
+    "id": "sec_2",
+    "num": 2,
+    "titleEn": "2. Entrance",
+    "titleAr": "المدخل",
+    "itemCount": 1,
+    "items": [
+      {
+        "rawId": "Entrance - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      }
+    ],
+    "temps": [],
+    "note": "Entrance"
+  },
+  {
+    "id": "sec_3",
+    "num": 3,
+    "titleEn": "3. Customer Trolleys",
+    "titleAr": "عربات العملاء",
+    "itemCount": 1,
+    "items": [
+      {
+        "rawId": "Customer Trolleys - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      }
+    ],
+    "temps": [],
+    "note": "Customer Trolleys"
+  },
+  {
+    "id": "sec_4",
+    "num": 4,
+    "titleEn": "4. Cash POS",
+    "titleAr": "الكاشير",
+    "itemCount": 3,
+    "items": [
+      {
+        "rawId": "Cash POS - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Cash POS - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "Cash POS - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      }
+    ],
+    "temps": [],
+    "note": "Cash POS"
+  },
+  {
+    "id": "sec_5",
+    "num": 5,
+    "titleEn": "5. La-Farina",
+    "titleAr": "المخبز",
+    "itemCount": 10,
+    "items": [
+      {
+        "rawId": "La-Farina - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "La-Farina - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "La-Farina - Hair Net / غطاء الرأس",
+        "en": "Hair Net",
+        "ar": "غطاء الرأس"
+      },
+      {
+        "rawId": "La-Farina - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      },
+      {
+        "rawId": "La-Farina - Shelf Sorting / ترتيب الرفوف",
+        "en": "Shelf Sorting",
+        "ar": "ترتيب الرفوف"
+      },
+      {
+        "rawId": "La-Farina - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "La-Farina - Refrigerator Cleanliness / نظافة الثلاجة",
+        "en": "Refrigerator Cleanliness",
+        "ar": "نظافة الثلاجة"
+      },
+      {
+        "rawId": "La-Farina - Refrigerator 1 Temperature / حرارة الثلاجة 1",
+        "en": "Refrigerator 1 Temperature",
+        "ar": "حرارة الثلاجة 1"
+      },
+      {
+        "rawId": "La-Farina - Refrigerator 2 Temperature / حرارة الثلاجة 2",
+        "en": "Refrigerator 2 Temperature",
+        "ar": "حرارة الثلاجة 2"
+      },
+      {
+        "rawId": "La-Farina - Refrigerator 3 Temperature / حرارة الثلاجة 3",
+        "en": "Refrigerator 3 Temperature",
+        "ar": "حرارة الثلاجة 3"
+      }
+    ],
+    "temps": [
+      "La-Farina Refrigerator 1",
+      "La-Farina Refrigerator 2",
+      "La-Farina Refrigerator 3"
+    ],
+    "note": "La-Farina"
+  },
+  {
+    "id": "sec_6",
+    "num": 6,
+    "titleEn": "6. Dairy",
+    "titleAr": "قسم الألبان",
+    "itemCount": 11,
+    "items": [
+      {
+        "rawId": "Dairy - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Dairy - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "Dairy - Hair Net / غطاء الرأس",
+        "en": "Hair Net",
+        "ar": "غطاء الرأس"
+      },
+      {
+        "rawId": "Dairy - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      },
+      {
+        "rawId": "Dairy - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "Dairy - Grater Machine / مكنة برش الأجبان",
+        "en": "Grater Machine",
+        "ar": "مكنة برش الأجبان"
+      },
+      {
+        "rawId": "Dairy - Slicer Machine / مكنة تقطيع اللحوم والأجبان",
+        "en": "Slicer Machine",
+        "ar": "مكنة تقطيع اللحوم والأجبان"
+      },
+      {
+        "rawId": "Dairy - Packing Machine / مكنة التغليف",
+        "en": "Packing Machine",
+        "ar": "مكنة التغليف"
+      },
+      {
+        "rawId": "Dairy - Refrigerator Cleanliness / نظافة الثلاجة",
+        "en": "Refrigerator Cleanliness",
+        "ar": "نظافة الثلاجة"
+      },
+      {
+        "rawId": "Dairy - Refrigerator 1 Temperature / حرارة الثلاجة 1",
+        "en": "Refrigerator 1 Temperature",
+        "ar": "حرارة الثلاجة 1"
+      },
+      {
+        "rawId": "Dairy - Refrigerator 2 Temperature / حرارة الثلاجة 2",
+        "en": "Refrigerator 2 Temperature",
+        "ar": "حرارة الثلاجة 2"
+      }
+    ],
+    "temps": [
+      "Dairy Refrigerator 1",
+      "Dairy Refrigerator 2"
+    ],
+    "note": "Dairy"
+  },
+  {
+    "id": "sec_7",
+    "num": 7,
+    "titleEn": "7. Butcher",
+    "titleAr": "قسم اللحوم",
+    "itemCount": 10,
+    "items": [
+      {
+        "rawId": "Butcher - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Butcher - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "Butcher - Hair Net Check / غطاء الرأس",
+        "en": "Hair Net Check",
+        "ar": "غطاء الرأس"
+      },
+      {
+        "rawId": "Butcher - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      },
+      {
+        "rawId": "Butcher - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "Butcher - Meat Grinder Machine / مكنة فرم اللحوم",
+        "en": "Meat Grinder Machine",
+        "ar": "مكنة فرم اللحوم"
+      },
+      {
+        "rawId": "Butcher - Packing Machine / مكنة التغليف",
+        "en": "Packing Machine",
+        "ar": "مكنة التغليف"
+      },
+      {
+        "rawId": "Butcher - Refrigerator Cleanliness / نظافة الثلاجة",
+        "en": "Refrigerator Cleanliness",
+        "ar": "نظافة الثلاجة"
+      },
+      {
+        "rawId": "Butcher - Refrigerator 1 Temperature / حرارة الثلاجة 1",
+        "en": "Refrigerator 1 Temperature",
+        "ar": "حرارة الثلاجة 1"
+      },
+      {
+        "rawId": "Butcher - Refrigerator 2 Temperature / حرارة الثلاجة 2",
+        "en": "Refrigerator 2 Temperature",
+        "ar": "حرارة الثلاجة 2"
+      }
+    ],
+    "temps": [
+      "Butcher Refrigerator 1",
+      "Butcher Refrigerator 2"
+    ],
+    "note": "Butcher"
+  },
+  {
+    "id": "sec_8",
+    "num": 8,
+    "titleEn": "8. Poultry",
+    "titleAr": "قسم الدواجن",
+    "itemCount": 10,
+    "items": [
+      {
+        "rawId": "Poultry - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Poultry - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "Poultry - Hair Net Check / غطاء الرأس",
+        "en": "Hair Net Check",
+        "ar": "غطاء الرأس"
+      },
+      {
+        "rawId": "Poultry - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      },
+      {
+        "rawId": "Poultry - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "Poultry - Meat Grinder Machine / مكنة فرم اللحوم",
+        "en": "Meat Grinder Machine",
+        "ar": "مكنة فرم اللحوم"
+      },
+      {
+        "rawId": "Poultry - Vacuum Packing Machine / مكنة التغليف الفاكيوم",
+        "en": "Vacuum Packing Machine",
+        "ar": "مكنة التغليف الفاكيوم"
+      },
+      {
+        "rawId": "Poultry - Refrigerator Cleanliness / نظافة الثلاجة",
+        "en": "Refrigerator Cleanliness",
+        "ar": "نظافة الثلاجة"
+      },
+      {
+        "rawId": "Poultry - Refrigerator 1 Temperature / حرارة الثلاجة 1",
+        "en": "Refrigerator 1 Temperature",
+        "ar": "حرارة الثلاجة 1"
+      },
+      {
+        "rawId": "Poultry - Refrigerator 2 Temperature / حرارة الثلاجة 2",
+        "en": "Refrigerator 2 Temperature",
+        "ar": "حرارة الثلاجة 2"
+      }
+    ],
+    "temps": [
+      "Poultry Refrigerator 1",
+      "Poultry Refrigerator 2"
+    ],
+    "note": "Poultry"
+  },
+  {
+    "id": "sec_9",
+    "num": 9,
+    "titleEn": "9. Showroom",
+    "titleAr": "صالة العرض",
+    "itemCount": 7,
+    "items": [
+      {
+        "rawId": "Showroom - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Showroom - Staff Uniform / زي الموظفين",
+        "en": "Staff Uniform",
+        "ar": "زي الموظفين"
+      },
+      {
+        "rawId": "Showroom - Tag Name / بطاقة الاسم",
+        "en": "Tag Name",
+        "ar": "بطاقة الاسم"
+      },
+      {
+        "rawId": "Showroom - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "Showroom - Product Arrangement / ترتيب المنتجات",
+        "en": "Product Arrangement",
+        "ar": "ترتيب المنتجات"
+      },
+      {
+        "rawId": "Showroom - FIFO Standards / تطبيق الأقدم فالأحدث",
+        "en": "FIFO Standards",
+        "ar": "تطبيق الأقدم فالأحدث"
+      },
+      {
+        "rawId": "Showroom - Shelf Facing &amp; Cleanliness / واجهة ونظافة الرفوف",
+        "en": "Shelf Facing &amp; Cleanliness",
+        "ar": "واجهة ونظافة الرفوف"
+      }
+    ],
+    "temps": [],
+    "note": "Showroom"
+  },
+  {
+    "id": "sec_10",
+    "num": 10,
+    "titleEn": "10. Daily Store",
+    "titleAr": "المخزن اليومي",
+    "itemCount": 5,
+    "items": [
+      {
+        "rawId": "Daily Store - Cleanliness / النظافة",
+        "en": "Cleanliness",
+        "ar": "النظافة"
+      },
+      {
+        "rawId": "Daily Store - Expiry Date / تاريخ الانتهاء",
+        "en": "Expiry Date",
+        "ar": "تاريخ الانتهاء"
+      },
+      {
+        "rawId": "Daily Store - Product Arrangement / ترتيب المنتجات",
+        "en": "Product Arrangement",
+        "ar": "ترتيب المنتجات"
+      },
+      {
+        "rawId": "Daily Store - FIFO Standards / تطبيق الأقدم فالأحدث",
+        "en": "FIFO Standards",
+        "ar": "تطبيق الأقدم فالأحدث"
+      },
+      {
+        "rawId": "Daily Store - Shelf Facing &amp; Cleanliness / واجهة ونظافة الرفوف",
+        "en": "Shelf Facing &amp; Cleanliness",
+        "ar": "واجهة ونظافة الرفوف"
+      }
+    ],
+    "temps": [],
+    "note": "Daily Store"
+  }
+];
+    const TEMP_CONFIGS = {
+  "La-Farina Refrigerator 1": {
+    "min": 1,
+    "max": 5,
+    "target": "1°C - 5°C",
+    "ar": "حرارة ثلاجة لافارينا 1"
+  },
+  "La-Farina Refrigerator 2": {
+    "min": 1,
+    "max": 5,
+    "target": "1°C - 5°C",
+    "ar": "حرارة ثلاجة لافارينا 2"
+  },
+  "La-Farina Refrigerator 3": {
+    "min": 1,
+    "max": 5,
+    "target": "1°C - 5°C",
+    "ar": "حرارة ثلاجة لافارينا 3"
+  },
+  "Dairy Refrigerator 1": {
+    "min": 0,
+    "max": 4,
+    "target": "0°C - 4°C",
+    "ar": "حرارة ثلاجة الألبان 1"
+  },
+  "Dairy Refrigerator 2": {
+    "min": 0,
+    "max": 4,
+    "target": "0°C - 4°C",
+    "ar": "حرارة ثلاجة الألبان 2"
+  },
+  "Butcher Refrigerator 1": {
+    "min": -1,
+    "max": 3,
+    "target": "-1°C - 3°C",
+    "ar": "حرارة ثلاجة اللحوم 1"
+  },
+  "Butcher Refrigerator 2": {
+    "min": -1,
+    "max": 3,
+    "target": "-1°C - 3°C",
+    "ar": "حرارة ثلاجة اللحوم 2"
+  },
+  "Poultry Refrigerator 1": {
+    "min": -1,
+    "max": 3,
+    "target": "-1°C - 3°C",
+    "ar": "حرارة ثلاجة الدواجن 1"
+  },
+  "Poultry Refrigerator 2": {
+    "min": -1,
+    "max": 3,
+    "target": "-1°C - 3°C",
+    "ar": "حرارة ثلاجة الدواجن 2"
+  }
+};
+
+    const SUPERVISORS = [
+      { id: "Ahmad Badrah", nameAr: "أحمد بدرة", phone: "96170246479" },
+      { id: "Issa Warwar", nameAr: "عيسى ورور", phone: "96181264880" },
+      { id: "Sameh El-Hassan", nameAr: "سامح الحسن", phone: "96170439993" }
+    ];
+
+    const SHIFT_NAMES = {
+      morning: "وردية صباحية",
+      evening: "وردية مسائية",
+      night: "وردية ليلية"
+    };
+
+    // Current State
+    let currentSupervisor = "Ahmad Badrah";
+    let currentShiftType = "morning";
+    let currentDate = new Date().toISOString().split("T")[0];
+    let activeFilter = "all";
+
+    // Operational State: Items, Temperatures, Section Notes, Handover Info
+    let state = {
+      items: {},          // key: rawId -> { status: 'pending'|'done'|'in_progress'|'handover'|'critical', updatedBy, updatedAt, note }
+      temperatures: {},   // key: tempName -> { value: number, updatedBy, updatedAt }
+      sectionNotes: {},   // key: sectionId -> string
+      handover: null      // { fromSupervisor, toSupervisor, handoverNotes, timestamp, acknowledged: false }
+    };
+
+    // Multi-tab BroadcastChannel for zero-config live sync
+    let broadcastChannel = null;
+    try {
+      broadcastChannel = new BroadcastChannel('diwan_market_realtime_channel');
+      broadcastChannel.onmessage = (event) => {
+        if (event.data && event.data.type === 'SYNC_STATE') {
+          if (event.data.date === currentDate && event.data.shiftType === currentShiftType) {
+            state = event.data.state;
+            renderAll();
+            showToast("🔄 تم استلام تحديث جديد من مشرف آخر");
+          }
+        }
+      };
+    } catch (e) {
+      console.warn("BroadcastChannel not supported in this browser", e);
+    }
+
+    // Firebase state
+    let firebaseDb = null;
+    let firebaseRef = null;
+
+    /* ============================================================
+       INITIALIZATION
+       ============================================================ */
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('shiftDateInput').value = currentDate;
+      
+      initFirebaseIfConfigured();
+      loadStateForCurrentShift();
+      renderAll();
+      updatePrintHeader();
+    });
+
+    function getStorageKey() {
+      return 'diwan_shift_' + currentDate + '_' + currentShiftType;
+    }
+
+    function loadStateForCurrentShift() {
+      const saved = localStorage.getItem(getStorageKey());
+      if (saved) {
+        try {
+          state = JSON.parse(saved);
+        } catch (e) {
+          initStateDefaults();
+        }
+      } else {
+        initStateDefaults();
+      }
+    }
+
+    function initStateDefaults() {
+      state = {
+        items: {},
+        temperatures: {},
+        sectionNotes: {},
+        handover: null
+      };
+
+      // Check if previous shift had handover
+      checkAndCarryOverPreviousShift();
+    }
+
+    // Carry over incomplete / handover tasks from previous shift!
+    function checkAndCarryOverPreviousShift() {
+      // Find previous shift
+      let prevShift = 'morning';
+      if (currentShiftType === 'evening') prevShift = 'morning';
+      else if (currentShiftType === 'night') prevShift = 'evening';
+      else prevShift = 'night';
+
+      const prevKey = 'diwan_shift_' + currentDate + '_' + prevShift;
+      const prevData = localStorage.getItem(prevKey);
+      if (prevData) {
+        try {
+          const parsed = JSON.parse(prevData);
+          if (parsed.handover && !parsed.handover.carriedOver) {
+            state.handover = {
+              fromSupervisor: parsed.handover.fromSupervisor,
+              handoverNotes: parsed.handover.handoverNotes,
+              timestamp: parsed.handover.timestamp,
+              acknowledged: false,
+              carriedOverTasks: []
+            };
+
+            // Copy over pending / handover items
+            if (parsed.items) {
+              Object.keys(parsed.items).forEach(id => {
+                const it = parsed.items[id];
+                if (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress') {
+                  state.items[id] = { ...it };
+                  state.handover.carriedOverTasks.push(id);
+                }
+              });
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    function saveState(broadcast = true) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(state));
+
+      // Broadcast to other tabs locally
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_STATE',
+          date: currentDate,
+          shiftType: currentShiftType,
+          state: state
+        });
+      }
+
+      // Sync to Firebase if active
+      if (firebaseRef) {
+        firebaseRef.set(state).catch(err => console.error("Firebase write error:", err));
+      }
+
+      updateStats();
+      updatePrintHeader();
+    }
+
+    /* ============================================================
+       FIREBASE INTEGRATION
+       ============================================================ */
+    function initFirebaseIfConfigured() {
+      const configStr = localStorage.getItem('diwan_firebase_config');
+      if (!configStr) {
+        setSyncBadgeStatus('local');
+        return;
+      }
+
+      try {
+        const config = JSON.parse(configStr);
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        firebaseDb = firebase.database();
+        listenToFirebaseShift();
+        setSyncBadgeStatus('cloud');
+      } catch (e) {
+        console.error("Firebase initialization failed:", e);
+        setSyncBadgeStatus('local');
+      }
+    }
+
+    function listenToFirebaseShift() {
+      if (!firebaseDb) return;
+      const path = 'shifts/' + currentDate + '/' + currentShiftType;
+      firebaseRef = firebaseDb.ref(path);
+
+      firebaseRef.on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          state = val;
+          renderAll();
+          showToast("☁️ تم استلام تحديثات سحابية فورية");
+        }
+      });
+    }
+
+    function setSyncBadgeStatus(type) {
+      const badge = document.getElementById('syncStatusBadge');
+      const text = document.getElementById('syncStatusText');
+      if (type === 'cloud') {
+        text.innerText = "متزامن سحابياً ☁️";
+      } else {
+        text.innerText = "تزامن محلي نشط 🟢";
+      }
+    }
+
+    /* ============================================================
+       UI RENDERING
+       ============================================================ */
+    function renderAll() {
+      renderSections();
+      renderHandoverBanner();
+      updateStats();
+      updatePrintHeader();
+    }
+
+    function renderHandoverBanner() {
+      const banner = document.getElementById('handoverAlertBanner');
+      if (state.handover && !state.handover.acknowledged) {
+        banner.style.display = 'flex';
+        document.getElementById('handoverFromSupervisor').innerText = state.handover.fromSupervisor;
+        document.getElementById('handoverTimestamp').innerText = state.handover.timestamp || '';
+        document.getElementById('handoverNotesContent').innerText = state.handover.handoverNotes || 'لا توجد ملاحظات إضافية.';
+
+        // Render chips for pending tasks
+        const chipsContainer = document.getElementById('handoverPendingChips');
+        chipsContainer.innerHTML = '';
+        
+        let pendingCount = 0;
+        Object.keys(state.items).forEach(id => {
+          const it = state.items[id];
+          if (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress') {
+            pendingCount++;
+            const chip = document.createElement('div');
+            chip.className = 'handover-task-chip';
+            chip.innerHTML = '⚠️ ' + id;
+            chipsContainer.appendChild(chip);
+          }
+        });
+
+        if (pendingCount === 0) {
+          chipsContainer.innerHTML = '<span style="font-size: 12px; color: #065f46;">لا توجد مهام معلقة مرحلة. كل شيء كان مكتملاً!</span>';
+        }
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function acknowledgeHandover() {
+      if (state.handover) {
+        state.handover.acknowledged = true;
+        state.handover.acknowledgedBy = currentSupervisor;
+        state.handover.acknowledgedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        saveState();
+        renderHandoverBanner();
+        showToast("✅ تم تأكيد استلام الوردية وبدء العمل بنجاح");
+      }
+    }
+
+    function renderSections() {
+      const container = document.getElementById('sectionsContainer');
+      container.innerHTML = '';
+
+      SECTIONS_DATA.forEach((sec, idx) => {
+        // Filter items according to activeFilter
+        const matchingItems = sec.items.filter(item => {
+          const itemState = state.items[item.rawId] || { status: 'pending' };
+          if (activeFilter === 'all') return true;
+          if (activeFilter === 'done' && itemState.status === 'done') return true;
+          if (activeFilter === 'in_progress' && itemState.status === 'in_progress') return true;
+          if (activeFilter === 'handover' && itemState.status === 'handover') return true;
+          if (activeFilter === 'critical' && itemState.status === 'critical') return true;
+          if (activeFilter === 'pending' && (!itemState.status || itemState.status === 'pending')) return true;
+          return false;
+        });
+
+        // Calculate completion for section
+        let secDone = 0;
+        sec.items.forEach(it => {
+          if (state.items[it.rawId] && state.items[it.rawId].status === 'done') secDone++;
+        });
+
+        const isFullyDone = secDone === sec.items.length && sec.items.length > 0;
+
+        const card = document.createElement('div');
+        card.className = 'section-card';
+        card.id = 'section_' + sec.id;
+
+        // If filter is active and no items match, hide section card unless temperatures or notes exist
+        const hasTemps = sec.temps && sec.temps.length > 0;
+        if (activeFilter !== 'all' && matchingItems.length === 0 && !hasTemps) {
+          return;
+        }
+
+        // Section Header
+        const header = document.createElement('div');
+        header.className = 'section-header active';
+        header.innerHTML = `
+          <div class="section-title-group">
+            <div class="section-num">${sec.num}</div>
+            <div>
+              <span class="section-title-ar">${sec.titleAr}</span>
+              <span class="section-title-en">${sec.titleEn}</span>
+            </div>
+          </div>
+          <div class="section-meta">
+            <span class="section-badge ${isFullyDone ? 'completed' : ''}">
+              ${secDone} / ${sec.items.length} ${isFullyDone ? 'مكتمل ✅' : ''}
+            </span>
+          </div>
+        `;
+
+        // Section Body
+        const body = document.createElement('div');
+        body.className = 'section-body';
+
+        // Check Items
+        matchingItems.forEach(item => {
+          const itemState = state.items[item.rawId] || { status: 'pending' };
+          const row = document.createElement('div');
+          row.className = 'item-row';
+          row.id = 'row_' + encodeURIComponent(item.rawId);
+
+          const lastUpdated = itemState.updatedBy ? 
+            `آخر تعديل بواسطة: ${itemState.updatedBy} (${itemState.updatedAt || ''})` : 'لم يبدأ بعد';
+
+          row.innerHTML = `
+            <div class="item-main">
+              <div class="item-titles">
+                <span class="item-ar">${item.ar || item.en}</span>
+                <span class="item-en">${item.en}</span>
+              </div>
+              <div class="status-group">
+                <button type="button" class="status-pill ${itemState.status === 'done' ? 'active-done' : ''}" 
+                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'done')">
+                  ✅ منجز
+                </button>
+                <button type="button" class="status-pill ${itemState.status === 'in_progress' ? 'active-progress' : ''}" 
+                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'in_progress')">
+                  🔄 قيد العمل
+                </button>
+                <button type="button" class="status-pill ${itemState.status === 'handover' ? 'active-handover' : ''}" 
+                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'handover')">
+                  ⚠️ للوردية القادمة
+                </button>
+                <button type="button" class="status-pill ${itemState.status === 'critical' ? 'active-critical' : ''}" 
+                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'critical')">
+                  🚨 خلل طارئ
+                </button>
+              </div>
+            </div>
+            <div class="item-audit">
+              <span>👤 ${lastUpdated}</span>
+              ${itemState.status === 'handover' || itemState.status === 'critical' || itemState.note ? `
+                <input type="text" class="item-note-input" placeholder="ملاحظة خاصة بالبند (مثلاً: سبب الترحيل للوردية التالية)..." 
+                  value="${itemState.note || ''}" 
+                  onchange="setItemNote('${escapeSingleQuotes(item.rawId)}', this.value)">
+              ` : ''}
+            </div>
+          `;
+
+          body.appendChild(row);
+        });
+
+        // Temperatures (if applicable)
+        if (sec.temps && sec.temps.length > 0) {
+          const tempBox = document.createElement('div');
+          tempBox.className = 'temperatures-container';
+          tempBox.innerHTML = `
+            <div class="temperatures-title">
+              🌡️ سجل درجات حرارة الثلاجات (${sec.titleAr})
+            </div>
+            <div class="temp-grid" id="tempGrid_${sec.id}"></div>
+          `;
+
+          const tempGrid = tempBox.querySelector('.temp-grid');
+          sec.temps.forEach(tName => {
+            const conf = TEMP_CONFIGS[tName] || { min: 0, max: 5, target: '0°C - 5°C', ar: tName };
+            const curVal = state.temperatures[tName] ? state.temperatures[tName].value : '';
+            const isAlert = curVal !== '' && (parseFloat(curVal) > conf.max || parseFloat(curVal) < conf.min);
+
+            const tCard = document.createElement('div');
+            tCard.className = 'temp-card' + (isAlert ? ' alert' : '');
+            tCard.innerHTML = `
+              <div class="temp-info">
+                <h4>${conf.ar || tName}</h4>
+                <span>النطاق الآمن: ${conf.target}</span>
+                ${isAlert ? '<div style="color: #ef4444; font-size: 11px; font-weight: 800;">⚠️ خارج النطاق الطبيعي!</div>' : ''}
+              </div>
+              <div class="temp-input-wrapper">
+                <input type="number" step="0.1" class="temp-input" 
+                  placeholder="--" 
+                  value="${curVal}"
+                  onchange="setTemperature('${escapeSingleQuotes(tName)}', this.value)">
+                <span class="temp-unit">°C</span>
+              </div>
+            `;
+            tempGrid.appendChild(tCard);
+          });
+
+          body.appendChild(tempBox);
+        }
+
+        // Section Notes
+        if (sec.note) {
+          const noteBox = document.createElement('div');
+          noteBox.className = 'section-notes-area';
+          const savedNote = state.sectionNotes[sec.id] || '';
+          noteBox.innerHTML = `
+            <label>📝 ملاحظات عامة لقسم ${sec.titleAr}:</label>
+            <textarea class="section-notes-textarea" 
+              placeholder="اكتب أي ملاحظات تخص قسم ${sec.titleAr}..." 
+              onchange="setSectionNote('${sec.id}', this.value)">${savedNote}</textarea>
+          `;
+          body.appendChild(noteBox);
+        }
+
+        card.appendChild(header);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+
+    /* ============================================================
+       STATE UPDATERS
+       ============================================================ */
+    function setItemStatus(rawId, newStatus) {
+      if (!state.items[rawId]) {
+        state.items[rawId] = {};
+      }
+
+      // If clicking same status, toggle back to pending
+      if (state.items[rawId].status === newStatus) {
+        state.items[rawId].status = 'pending';
+      } else {
+        state.items[rawId].status = newStatus;
+      }
+
+      state.items[rawId].updatedBy = currentSupervisor;
+      state.items[rawId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+      saveState();
+      renderAll();
+      showToast("تم تحديث حالة البند: " + newStatus);
+    }
+
+    function setItemNote(rawId, noteText) {
+      if (!state.items[rawId]) state.items[rawId] = { status: 'pending' };
+      state.items[rawId].note = noteText;
+      state.items[rawId].updatedBy = currentSupervisor;
+      state.items[rawId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      saveState();
+    }
+
+    function setTemperature(tempName, value) {
+      state.temperatures[tempName] = {
+        value: value,
+        updatedBy: currentSupervisor,
+        updatedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      };
+      saveState();
+      renderAll();
+      showToast("تم تسجيل درجة الحرارة: " + value + "°C");
+    }
+
+    function setSectionNote(secId, note) {
+      state.sectionNotes[secId] = note;
+      saveState();
+      showToast("تم حفظ ملاحظة القسم");
+    }
+
+    /* ============================================================
+       STATS & FILTERS
+       ============================================================ */
+    function updateStats() {
+      let total = 59;
+      let done = 0;
+      let progress = 0;
+      let handover = 0;
+      let critical = 0;
+
+      Object.keys(state.items).forEach(id => {
+        const s = state.items[id].status;
+        if (s === 'done') done++;
+        else if (s === 'in_progress') progress++;
+        else if (s === 'handover') handover++;
+        else if (s === 'critical') critical++;
+      });
+
+      document.getElementById('statDone').innerText = done;
+      document.getElementById('statProgress').innerText = progress;
+      document.getElementById('statHandover').innerText = handover;
+      document.getElementById('statCritical').innerText = critical;
+
+      const pct = Math.round((done / total) * 100);
+      document.getElementById('progressPercentage').innerText = pct + '%';
+      document.getElementById('progressBar').style.width = pct + '%';
+    }
+
+    function setFilter(filterType) {
+      activeFilter = filterType;
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderSections();
+    }
+
+    function onSupervisorChange() {
+      currentSupervisor = document.getElementById('supervisorSelect').value;
+      showToast("المشرف النشط: " + currentSupervisor);
+    }
+
+    function onShiftChange() {
+      currentShiftType = document.getElementById('shiftTypeSelect').value;
+      loadStateForCurrentShift();
+      if (firebaseDb) listenToFirebaseShift();
+      renderAll();
+      showToast("تم الانتقال إلى: " + SHIFT_NAMES[currentShiftType]);
+    }
+
+    function onDateChange() {
+      currentDate = document.getElementById('shiftDateInput').value;
+      loadStateForCurrentShift();
+      if (firebaseDb) listenToFirebaseShift();
+      renderAll();
+      showToast("تم تغيير التاريخ إلى: " + currentDate);
+    }
+
+    function updatePrintHeader() {
+      const meta = document.getElementById('printMeta');
+      if (meta) {
+        meta.innerText = `التاريخ: ${currentDate} | الوردية: ${SHIFT_NAMES[currentShiftType]} | المشرف المسؤول: ${currentSupervisor}`;
+      }
+    }
+
+    /* ============================================================
+       HANDOVER WORKFLOW (تسليم واستلام الوردية)
+       ============================================================ */
+    function openHandoverModal() {
+      document.getElementById('modalSupervisorName').innerText = currentSupervisor;
+      document.getElementById('modalShiftType').innerText = SHIFT_NAMES[currentShiftType];
+      
+      let done = 0;
+      let pending = 0;
+      Object.keys(state.items).forEach(id => {
+        if (state.items[id].status === 'done') done++;
+        else pending++;
+      });
+
+      document.getElementById('modalCompletedCount').innerText = done;
+      document.getElementById('modalPendingCount').innerText = 59 - done;
+
+      document.getElementById('handoverModal').classList.add('open');
+    }
+
+    function closeHandoverModal() {
+      document.getElementById('handoverModal').classList.remove('open');
+    }
+
+    function submitHandover() {
+      const notes = document.getElementById('handoverModalNotes').value;
+      const now = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+      state.handover = {
+        fromSupervisor: currentSupervisor,
+        handoverNotes: notes,
+        timestamp: 'اليوم ' + now,
+        acknowledged: false
+      };
+
+      // Save to archive list
+      saveToArchive();
+
+      saveState();
+      closeHandoverModal();
+      showToast("✅ تم تسليم الوردية وحفظ السجل للمشرف القادم!");
+      renderHandoverBanner();
+    }
+
+    function saveToArchive() {
+      const archiveList = JSON.parse(localStorage.getItem('diwan_archive_shifts') || '[]');
+      archiveList.unshift({
+        date: currentDate,
+        shiftType: currentShiftType,
+        shiftName: SHIFT_NAMES[currentShiftType],
+        supervisor: currentSupervisor,
+        timestamp: new Date().toLocaleString('ar-EG'),
+        handoverNotes: state.handover.handoverNotes,
+        doneCount: document.getElementById('statDone').innerText,
+        handoverCount: document.getElementById('statHandover').innerText,
+        criticalCount: document.getElementById('statCritical').innerText
+      });
+      localStorage.setItem('diwan_archive_shifts', JSON.stringify(archiveList.slice(0, 30)));
+    }
+
+    /* ============================================================
+       HISTORY MODAL
+       ============================================================ */
+    function openHistoryModal() {
+      const container = document.getElementById('historyListContainer');
+      const archiveList = JSON.parse(localStorage.getItem('diwan_archive_shifts') || '[]');
+
+      if (archiveList.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 20px;">لا توجد ورديات سابقة مسجلة في الأرشيف بعد.</div>';
+      } else {
+        container.innerHTML = archiveList.map(a => `
+          <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700;">
+              <span>${a.date} - ${a.shiftName}</span>
+              <span style="color: var(--primary);">👤 ${a.supervisor}</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              إنجاز: ${a.doneCount}/59 مكتملة | محولة: ${a.handoverCount} | طارئة: ${a.criticalCount}
+            </div>
+            ${a.handoverNotes ? `<div style="font-size: 13px; color: #78350f; background: #fef3c7; padding: 6px 10px; border-radius: 6px; margin-top: 6px;">${a.handoverNotes}</div>` : ''}
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('historyModal').classList.add('open');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.remove('open');
+    }
+
+    /* ============================================================
+       SETTINGS MODAL
+       ============================================================ */
+    function openSettingsModal() {
+      const savedConfig = localStorage.getItem('diwan_firebase_config') || '';
+      document.getElementById('firebaseConfigInput').value = savedConfig;
+      document.getElementById('settingsModal').classList.add('open');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function saveFirebaseConfig() {
+      const val = document.getElementById('firebaseConfigInput').value.trim();
+      if (!val) {
+        localStorage.removeItem('diwan_firebase_config');
+        setSyncBadgeStatus('local');
+        closeSettingsModal();
+        showToast("تم تفعيل وضع التزامن المحلي (بدون سحابة)");
+        return;
+      }
+
+      try {
+        JSON.parse(val);
+        localStorage.setItem('diwan_firebase_config', val);
+        initFirebaseIfConfigured();
+        closeSettingsModal();
+        showToast("✅ تم حفظ إعدادات Firebase وتفعيل الربط السحابي!");
+      } catch (e) {
+        alert("تنسيق JSON غير صالح. يرجى التأكد من نسخ كود الإعدادات بشكل صحيح.");
+      }
+    }
+
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+    function showToast(msg) {
+      const toast = document.getElementById('appToast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function escapeSingleQuotes(str) {
+      return (str || '').replace(/'/g, "\\'");
+    }
+  </script>
+</body>
+</html>
