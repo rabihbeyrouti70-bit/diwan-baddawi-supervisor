@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <title>ديوان ماركت - نظام متابعة الصالة وتسليم الورديات اللحظي</title>
   
   <!-- Google Fonts: Cairo -->
@@ -908,6 +912,12 @@
       transition: opacity 0.25s ease, visibility 0.25s ease;
     }
 
+    
+    /* STRICT LOCK: Hide app container until authenticated */
+    body:not(.auth-passed) .app-container {
+      display: none !important;
+    }
+
     .auth-overlay.unlocked {
       opacity: 0;
       visibility: hidden;
@@ -1051,7 +1061,7 @@
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b;">
         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-          <input type="checkbox" id="rememberMeCheck" checked style="width: 16px; height: 16px; accent-color: #059669;">
+          <input type="checkbox" id="rememberMeCheck" style="width: 16px; height: 16px; accent-color: #059669;">
           <span>تذكر هذا الجهاز</span>
         </label>
         <span style="font-size: 11px; color: #94a3b8;">مشفر ومحمي 🛡️</span>
@@ -1840,7 +1850,7 @@
        ============================================================ */
     
     /* ============================================================
-       PIN AUTHENTICATION LOGIC (حماية الدخول)
+       PIN AUTHENTICATION LOGIC (حماية الدخول الصارمة)
        ============================================================ */
     const DEFAULT_PINS = {
       "Ahmad Badrah": "1122",
@@ -1870,6 +1880,20 @@
       document.getElementById('authError').innerText = '';
     }
 
+    // Physical keyboard support (0-9, Backspace, Enter)
+    window.addEventListener('keydown', (e) => {
+      const overlay = document.getElementById('authOverlay');
+      if (!overlay || overlay.classList.contains('unlocked')) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        pressKey(e.key);
+      } else if (e.key === 'Backspace') {
+        clearPin();
+      } else if (e.key === 'Enter') {
+        submitPin();
+      }
+    });
+
     function submitPin() {
       const sup = document.getElementById('authSupervisorSelect').value;
       const pin = document.getElementById('authPinInput').value;
@@ -1886,9 +1910,14 @@
 
         currentSupervisor = (sup === 'Admin') ? 'Ahmad Badrah' : sup;
         document.getElementById('supervisorSelect').value = currentSupervisor;
+        
+        // Unlock UI and display container
+        document.body.classList.add('auth-passed');
         document.getElementById('authOverlay').classList.add('unlocked');
         document.getElementById('authPinInput').value = '';
         errorBox.innerText = '';
+        
+        renderAll();
         showToast("مرحباً بك: " + currentSupervisor + " 👋");
       } else {
         errorBox.innerText = "❌ رمز PIN غير صحيح! يرجى التأكد وإعادة المحاولة.";
@@ -1897,12 +1926,15 @@
     }
 
     function checkAuthOnLoad() {
-      const savedUser = localStorage.getItem('diwan_auth_user') || sessionStorage.getItem('diwan_auth_user');
+      // Clear any auto-saved login if needed, or check session
+      const savedUser = sessionStorage.getItem('diwan_auth_user') || localStorage.getItem('diwan_auth_user');
       if (savedUser) {
         currentSupervisor = (savedUser === 'Admin') ? 'Ahmad Badrah' : savedUser;
         document.getElementById('supervisorSelect').value = currentSupervisor;
+        document.body.classList.add('auth-passed');
         document.getElementById('authOverlay').classList.add('unlocked');
       } else {
+        document.body.classList.remove('auth-passed');
         document.getElementById('authOverlay').classList.remove('unlocked');
       }
     }
@@ -1912,6 +1944,7 @@
       sessionStorage.removeItem('diwan_auth_user');
       document.getElementById('authPinInput').value = '';
       document.getElementById('authError').innerText = '';
+      document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
       showToast("🔒 تم قفل الجلسة بنجاح");
     }
