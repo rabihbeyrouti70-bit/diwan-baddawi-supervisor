@@ -896,6 +896,29 @@
     }
 
     /* REFRIGERATOR TEMPERATURE BOX */
+    .btn-range-edit {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #334155;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      touch-action: manipulation;
+      transition: all 0.15s ease;
+    }
+    .btn-range-edit:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+      color: var(--secondary);
+    }
+    .btn-range-edit:active {
+      transform: scale(0.96);
+    }
     .temperatures-container {
       background: #f8fafc;
       border-radius: 10px;
@@ -1846,7 +1869,7 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div id="securityVersionTag" style="text-align: center; margin: 0 auto 12px auto; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; color: #10b981; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>🔒</span>
-        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.1)</span>
+        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.2)</span>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
@@ -2175,6 +2198,66 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL: CONFIGURE REFRIGERATOR TEMPERATURE RANGE -->
+  <div class="modal-overlay" id="tempRangeModal" role="dialog" aria-modal="true" aria-labelledby="tempRangeModalTitle">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">🌡️</span>
+          <div>
+            <h3 class="modal-title" id="tempRangeModalTitle">تحديد النطاق الآمن للثلاجة</h3>
+            <span id="tempRangeModalSubtitle" style="font-size: 12px; color: var(--text-muted); display: block;"></span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeTempRangeModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <input type="hidden" id="editTempTargetName" value="">
+
+        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+          <p style="font-size: 13px; color: var(--text); margin: 0; line-height: 1.5;">
+            يمكن للمشرف تحديد درجات الحرارة الدنيا والقصوى المسموح بها لهذه الثلاجة. سيقوم النظام بتنبيه المشرف فوراً باللون الأحمر ⚠️ إذا سجلت قراءة خارج هذا النطاق المعتمد.
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label for="inputTempMin" style="font-weight: 700; font-size: 13px; color: var(--secondary); margin-bottom: 6px; display: block;">
+              الحد الأدنى (°C):
+            </label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="number" step="0.5" id="inputTempMin" class="form-control" style="font-size: 16px; font-weight: 800; text-align: center;" placeholder="-1">
+              <span style="position: absolute; left: 12px; font-size: 13px; font-weight: 700; color: var(--text-muted); pointer-events: none;">°C</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputTempMax" style="font-weight: 700; font-size: 13px; color: var(--secondary); margin-bottom: 6px; display: block;">
+              الحد الأقصى (°C):
+            </label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="number" step="0.5" id="inputTempMax" class="form-control" style="font-size: 16px; font-weight: 800; text-align: center;" placeholder="4">
+              <span style="position: absolute; left: 12px; font-size: 13px; font-weight: 700; color: var(--text-muted); pointer-events: none;">°C</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="tempRangeError" style="color: #dc2626; font-size: 13px; font-weight: 700; margin-bottom: 12px; min-height: 18px;"></div>
+
+        <div style="border-top: 1px solid var(--border); padding-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-outline-white btn-sm" style="color: #64748b; font-size: 11px;" onclick="resetTempRangeToDefault()">
+            🔄 استعادة الافتراضي
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeTempRangeModal()">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="saveCustomTempRange()">💾 حفظ النطاق</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: HANDOVER SHIFT -->
@@ -3098,6 +3181,12 @@
             state = event.data.state;
             renderAll();
             showToast("🔄 تم استلام تحديث جديد من مشرف آخر");
+          }
+        } else if (event.data.type === 'SYNC_TEMP_RANGES') {
+          if (event.data.branchId === currentBranchId) {
+            safeSetItem('diwan_temp_ranges_' + currentBranchId, JSON.stringify(event.data.ranges));
+            renderSections();
+            showToast("🌡️ تم تحديث نطاقات درجات الحرارة");
           }
         } else if (event.data.type === 'SYNC_SUPERVISORS') {
           localStorage.setItem('diwan_supervisors_data', JSON.stringify(event.data.supervisors));
@@ -4472,6 +4561,7 @@
         listenToFirebaseShift();
         listenToFirebaseSupervisors();
         listenToFirebaseBranchShifts();
+        listenToFirebaseTempRanges();
         listenToFirebaseBranches();
         setSyncBadgeStatus('cloud');
       } catch (e) {
@@ -4692,17 +4782,26 @@
 
           const tempGrid = tempBox.querySelector('.temp-grid');
           sec.temps.forEach(tName => {
-            const conf = TEMP_CONFIGS[tName] || { min: 0, max: 5, target: '0°C - 5°C', ar: tName };
+            const conf = getTempConfig(tName);
             const curVal = state.temperatures[tName] ? state.temperatures[tName].value : '';
-            const isAlert = curVal !== '' && (parseFloat(curVal) > conf.max || parseFloat(curVal) < conf.min);
+            const numVal = parseFloat(curVal);
+            const isAlert = curVal !== '' && !isNaN(numVal) && (numVal > conf.max || numVal < conf.min);
 
             const tCard = document.createElement('div');
             tCard.className = 'temp-card' + (isAlert ? ' alert' : '');
             tCard.innerHTML = `
               <div class="temp-info">
-                <h4>${conf.ar || tName}</h4>
-                <span>النطاق الآمن: ${conf.target}</span>
-                ${isAlert ? '<div style="color: #ef4444; font-size: 11px; font-weight: 800;">⚠️ خارج النطاق الطبيعي!</div>' : ''}
+                <h4>${escapeHtml(conf.ar || tName)}</h4>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px;">
+                  <span style="font-size: 11.5px; color: var(--text-muted);">
+                    النطاق الآمن: <strong style="color: ${conf.isCustom ? 'var(--primary)' : 'var(--secondary)'};">${conf.min}°C إلى ${conf.max}°C</strong>
+                    ${conf.isCustom ? '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800;">مخصص</span>' : ''}
+                  </span>
+                  <button type="button" class="btn-range-edit" onclick="openTempRangeModal('${escapeSingleQuotes(tName)}')" title="تعديل النطاق الآمن لهذه الثلاجة">
+                    ⚙️ تحديد النطاق
+                  </button>
+                </div>
+                ${isAlert ? `<div style="color: #ef4444; font-size: 11px; font-weight: 800; margin-top: 4px;">⚠️ خارج النطاق الآمن المحدد (${conf.min}°C - ${conf.max}°C)!</div>` : ''}
               </div>
               <div class="temp-input-wrapper">
                 <input type="number" step="0.1" class="temp-input" 
@@ -4837,6 +4936,136 @@
       state.items[rawId].updatedBy = currentSupervisor;
       state.items[rawId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
       saveState();
+    }
+
+    /* ============================================================
+       CUSTOM REFRIGERATOR TEMPERATURE RANGES (SUPERVISOR DEFINED)
+       ============================================================ */
+    function getBranchTempRanges(branchId) {
+      const bId = branchId || currentBranchId;
+      const key = 'diwan_temp_ranges_' + bId;
+      const saved = safeGetItem(key);
+      if (saved) {
+        const parsed = safeJsonParse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+      return {};
+    }
+
+    function saveBranchTempRanges(branchId, ranges, broadcast = true) {
+      const bId = branchId || currentBranchId;
+      const key = 'diwan_temp_ranges_' + bId;
+      safeSetItem(key, JSON.stringify(ranges));
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_TEMP_RANGES',
+          branchId: bId,
+          ranges: ranges
+        });
+      }
+      if (firebaseDb) {
+        firebaseDb.ref('branches/' + bId + '/config/tempRanges').set(ranges).catch(e => console.warn("Firebase tempRanges write failed:", e));
+      }
+    }
+
+    function getTempConfig(tName) {
+      const defaultConf = TEMP_CONFIGS[tName] || { min: 0, max: 5, target: '0°C - 5°C', ar: tName };
+      const customRanges = getBranchTempRanges(currentBranchId);
+      if (customRanges && customRanges[tName]) {
+        const custom = customRanges[tName];
+        return {
+          ...defaultConf,
+          min: custom.min,
+          max: custom.max,
+          target: `${custom.min}°C - ${custom.max}°C`,
+          isCustom: true
+        };
+      }
+      return defaultConf;
+    }
+
+    function openTempRangeModal(tName) {
+      const conf = getTempConfig(tName);
+      const b = getBranchById(currentBranchId);
+      document.getElementById('editTempTargetName').value = tName;
+      document.getElementById('tempRangeModalTitle').innerText = 'تحديد نطاق: ' + (conf.ar || tName);
+      document.getElementById('tempRangeModalSubtitle').innerText = 'الفرع الحالي: ' + (b ? b.nameAr : currentBranchId);
+      document.getElementById('inputTempMin').value = conf.min;
+      document.getElementById('inputTempMax').value = conf.max;
+      document.getElementById('tempRangeError').innerText = '';
+      const modal = document.getElementById('tempRangeModal');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.classList.add('modal-open');
+      }
+      const minInp = document.getElementById('inputTempMin');
+      if (minInp) minInp.focus();
+    }
+
+    function closeTempRangeModal() {
+      const modal = document.getElementById('tempRangeModal');
+      if (modal) modal.classList.remove('open');
+      document.body.classList.remove('modal-open');
+      const errBox = document.getElementById('tempRangeError');
+      if (errBox) errBox.innerText = '';
+    }
+
+    function saveCustomTempRange() {
+      const tName = document.getElementById('editTempTargetName').value;
+      const minVal = parseFloat(document.getElementById('inputTempMin').value);
+      const maxVal = parseFloat(document.getElementById('inputTempMax').value);
+      const errBox = document.getElementById('tempRangeError');
+
+      if (isNaN(minVal) || isNaN(maxVal)) {
+        errBox.innerText = 'يرجى إدخال أرقام صحيحة للحدين الأدنى والأقصى.';
+        return;
+      }
+      if (minVal >= maxVal) {
+        errBox.innerText = 'الحد الأدنى يجب أن يكون أقل من الحد الأقصى للحرارة.';
+        return;
+      }
+
+      const ranges = getBranchTempRanges(currentBranchId);
+      ranges[tName] = {
+        min: minVal,
+        max: maxVal,
+        updatedBy: currentSupervisor,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveBranchTempRanges(currentBranchId, ranges);
+      closeTempRangeModal();
+      renderSections();
+      const conf = getTempConfig(tName);
+      showToast(`✅ تم تحديد النطاق الآمن لـ (${conf.ar || tName}): ${minVal}°C إلى ${maxVal}°C`);
+    }
+
+    function resetTempRangeToDefault() {
+      const tName = document.getElementById('editTempTargetName').value;
+      const defaultConf = TEMP_CONFIGS[tName];
+      if (!defaultConf) return;
+
+      if (!confirm(`هل أنت متأكد من استعادة النطاق الافتراضي (${defaultConf.target}) لهذه الثلاجة؟`)) {
+        return;
+      }
+
+      const ranges = getBranchTempRanges(currentBranchId);
+      delete ranges[tName];
+      saveBranchTempRanges(currentBranchId, ranges);
+      closeTempRangeModal();
+      renderSections();
+      showToast(`🔄 تمت استعادة النطاق الافتراضي (${defaultConf.target}) بنجاح`);
+    }
+
+    function listenToFirebaseTempRanges() {
+      if (!firebaseDb) return;
+      firebaseDb.ref('branches/' + currentBranchId + '/config/tempRanges').on('value', snapshot => {
+        const val = snapshot.val();
+        if (val && typeof val === 'object') {
+          safeSetItem('diwan_temp_ranges_' + currentBranchId, JSON.stringify(val));
+          renderSections();
+        }
+      });
     }
 
     function setTemperature(tempName, value) {
@@ -5492,7 +5721,10 @@
       currentBranchId = newBranchId;
       updateBranchUI();
       loadStateForCurrentShift();
-      if (firebaseDb) listenToFirebaseShift();
+      if (firebaseDb) {
+        listenToFirebaseShift();
+        listenToFirebaseTempRanges();
+      }
       renderAll();
       const b = getBranchById(currentBranchId);
       showToast("🏢 تم الانتقال إلى: " + b.nameAr);
