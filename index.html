@@ -1106,16 +1106,20 @@
   <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
       <div class="auth-icon">🔒</div>
-      <h2 class="auth-title">ديوان ماركت – فرع البداوي</h2>
-      <p class="auth-subtitle">منطقة دخول مسؤولي الصالة والإدارة (نظام محمي)</p>
+      <h2 class="auth-title">ديوان ماركت – نظام الصالة الموحد</h2>
+      <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
+
+      <div class="form-group" style="text-align: right; margin-bottom: 12px;">
+        <label>🏢 اختر الفرع:</label>
+        <select id="authBranchSelect" class="form-control" style="font-size: 14px; padding: 10px; font-weight: 800; border-color: var(--primary);" onchange="onAuthBranchChange()">
+          <!-- Populated from getBranchesList() -->
+        </select>
+      </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 14px;">
         <label>👤 اختر اسم المشرف:</label>
         <select id="authSupervisorSelect" class="form-control" style="font-size: 14px; padding: 10px;">
-          <option value="Ahmad Badrah">أحمد بدرة (Ahmad Badrah)</option>
-          <option value="Issa Warwar">عيسى ورور (Issa Warwar)</option>
-          <option value="Sameh El-Hassan">سامح الحسن (Sameh El-Hassan)</option>
-          <option value="Admin">الإدارة / مدير الفرع (Manager)</option>
+          <!-- Populated from getSupervisorsList() filtered by branch -->
         </select>
       </div>
 
@@ -1150,7 +1154,7 @@
 
   <!-- PRINT ONLY HEADER -->
   <div class="print-header">
-    <h1 style="font-size: 22px; margin-bottom: 4px;">ماركت الديوان – فرع البداوي</h1>
+    <h1 id="printBranchTitle" style="font-size: 22px; margin-bottom: 4px;">ماركت الديوان – فرع النويري</h1>
     <h2 style="font-size: 16px; color: #444;">تقرير متابعة وفحص الصالة اليومي وتسليم الورديات</h2>
     <p id="printMeta" style="font-size: 13px; margin-top: 6px; color: #666;"></p>
   </div>
@@ -1162,11 +1166,11 @@
       <div class="header-content">
         <div class="brand-area">
           <h1>
-            🛒 ديوان ماركت – فرع البداوي
-            <span class="en">Diwan Market – Baddawi Branch</span>
+            🛒 ديوان ماركت – <span id="brandBranchTitleAr">فرع النويري</span>
+            <span class="en" id="brandBranchTitleEn">Diwan Market – Noueiery Branch</span>
           </h1>
           <div class="brand-tag">
-            ⚡ نظام إدارة الصالة وتسليم الورديات اللحظي
+            ⚡ نظام إدارة الصالة وتسليم الورديات المركزي الموحد
           </div>
         </div>
 
@@ -1176,7 +1180,19 @@
             <span id="syncStatusText">متزامن لحظياً</span>
           </div>
 
-          <button id="btnManageSupervisors" class="btn btn-primary" onclick="openSupervisorsModal()" style="display: none; background: #2563eb; border-color: #1d4ed8;" title="إدارة مسؤولي الصالة (صلاحية الإدارة فقط)">
+          <!-- ADMIN QUICK BRANCH SWITCHER -->
+          <div id="adminBranchSwitcher" style="display: none; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 8px;">
+            <span style="font-size: 12px; color: white; font-weight: 700;">🏢 الفرع:</span>
+            <select id="headerBranchSelect" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto; width: auto; font-weight: 800; background: white; color: var(--secondary);" onchange="onAdminSwitchBranch(this.value)">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <button id="btnHqOverview" class="btn btn-outline-white btn-sm" onclick="openHqOverviewModal()" style="display: none;" title="لوحة المتابعة المركزية لكافة الفروع">
+            🏢 ملخص الفروع
+          </button>
+
+          <button id="btnManageSupervisors" class="btn btn-primary btn-sm" onclick="openSupervisorsModal()" style="display: none; background: #2563eb; border-color: #1d4ed8;" title="إدارة مسؤولي الصالة (صلاحية الإدارة فقط)">
             👥 إدارة المشرفين
           </button>
 
@@ -1204,14 +1220,17 @@
     <section class="shift-card no-print">
       <div class="shift-grid">
         <div class="form-group">
-          <label>👤 المشرف المسؤول المسجل (هوية ثابتة):</label>
+          <label>👤 المشرف والفرع الحالي المسجل:</label>
           <div class="active-supervisor-card">
             <div class="sup-info">
               <span class="sup-icon">🛡️</span>
-              <span id="activeSupervisorDisplay" class="sup-name">أحمد بدرة</span>
+              <div>
+                <span id="activeSupervisorDisplay" class="sup-name">أحمد بدرة</span>
+                <span id="activeBranchDisplay" style="font-size: 11px; color: var(--text-muted); display: block;">فرع النويري</span>
+              </div>
             </div>
             <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
-              🔒 تبديل / خروج
+              🔒 خروج / تبديل
             </button>
           </div>
         </div>
@@ -1426,6 +1445,18 @@
             <input type="text" id="inputSupervisorName" class="form-control" placeholder="مثال: رامي خضر (Rami Kheder)">
           </div>
 
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>الفرع التابع له المشرف:</label>
+            <select id="inputSupervisorBranch" class="form-control">
+              <option value="all">جميع الفروع (صلاحية عامة) 🌐</option>
+              <option value="noueiery">فرع النويري</option>
+              <option value="khaldeh">فرع خلدة</option>
+              <option value="tariq_jdideh">فرع طريق الجديدة</option>
+              <option value="hamra">فرع الحمرا</option>
+              <option value="baddawi">فرع البداوي</option>
+            </select>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
             <div class="form-group">
               <label id="labelSupervisorPin">رمز PIN (4 أرقام):</label>
@@ -1448,6 +1479,28 @@
         <button id="btnShowAddSupervisor" class="btn btn-primary" style="width: 100%;" onclick="showAddSupervisorForm()">
           ➕ إضافة مسؤول صالة جديد
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HQ MULTI-BRANCH OVERVIEW -->
+  <div class="modal-overlay" id="hqOverviewModal">
+    <div class="modal-card" style="max-width: 780px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🏢 لوحة المتابعة المركزية لكافة الفروع (HQ Dashboard)</h3>
+        <button class="close-btn" onclick="closeHqOverviewModal()">&times;</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+        نظرة لحظية شاملة على سير العمل ونسب الإنجاز وحالة الثلاجات عبر جميع فروع ديوان ماركت اليوم:
+      </p>
+
+      <div id="hqBranchesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <!-- Populated dynamically with each branch status card -->
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHqOverviewModal()">إغلاق</button>
       </div>
     </div>
   </div>
@@ -1971,7 +2024,7 @@
       broadcastChannel.onmessage = (event) => {
         if (!event.data) return;
         if (event.data.type === 'SYNC_STATE') {
-          if (event.data.date === currentDate && event.data.shiftType === currentShiftType) {
+          if (event.data.branchId === currentBranchId && event.data.date === currentDate && event.data.shiftType === currentShiftType) {
             state = event.data.state;
             renderAll();
             showToast("🔄 تم استلام تحديث جديد من مشرف آخر");
@@ -2001,12 +2054,41 @@
     /* ============================================================
        PIN AUTHENTICATION LOGIC (تشفير SHA-256 وقفل إجباري + حماية Brute-force)
        ============================================================ */
-    // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة
+    /* ============================================================
+       MULTI-BRANCH ARCHITECTURE CONFIGURATION
+       ============================================================ */
+    const DEFAULT_BRANCHES = [
+      { id: 'noueiery', nameAr: 'فرع النويري', nameEn: 'Noueiery Branch', location: 'بيروت - النويري' },
+      { id: 'khaldeh', nameAr: 'فرع خلدة', nameEn: 'Khaldeh Branch', location: 'خلدة - الطريق العام' },
+      { id: 'tariq_jdideh', nameAr: 'فرع طريق الجديدة', nameEn: 'Tariq El Jdideh Branch', location: 'بيروت - طريق الجديدة' },
+      { id: 'hamra', nameAr: 'فرع الحمرا', nameEn: 'Hamra Branch', location: 'بيروت - الحمرا' },
+      { id: 'baddawi', nameAr: 'فرع البداوي', nameEn: 'Baddawi Branch', location: 'الشمال - البداوي' }
+    ];
+
+    let currentBranchId = 'noueiery';
+
+    function getBranchesList() {
+      const saved = localStorage.getItem('diwan_branches_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+      }
+      return DEFAULT_BRANCHES;
+    }
+
+    function getBranchById(id) {
+      const list = getBranchesList();
+      return list.find(b => b.id === id) || list[0];
+    }
+
+    // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة وتخصيص الفروع
     const DEFAULT_SUPERVISORS = [
-      { id: 'sup_ahmad', name: 'أحمد بدرة (Ahmad Badrah)', role: 'supervisor', pinHash: 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a' },
-      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
-      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' },
-      { id: 'admin', name: 'الإدارة / مدير الفرع (Manager)', role: 'admin', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' }
+      { id: 'sup_ahmad', name: 'أحمد بدرة (Ahmad Badrah)', role: 'supervisor', branchId: 'all', pinHash: 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a' },
+      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'all', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
+      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'all', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' },
+      { id: 'admin', name: 'الإدارة / مدير الفروع (General Manager)', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' }
     ];
 
     let currentUserRole = 'supervisor';
@@ -2040,13 +2122,32 @@
       }
     }
 
+    function populateAuthBranchSelect() {
+      const branchSelect = document.getElementById('authBranchSelect');
+      if (!branchSelect) return;
+      const branches = getBranchesList();
+      branchSelect.innerHTML = branches.map(b => `<option value="${b.id}">${b.nameAr} (${b.location})</option>`).join('');
+      branchSelect.value = currentBranchId;
+    }
+
+    function onAuthBranchChange() {
+      const branchSelect = document.getElementById('authBranchSelect');
+      if (branchSelect) {
+        currentBranchId = branchSelect.value;
+      }
+      populateAuthSupervisorSelect();
+    }
+
     function populateAuthSupervisorSelect() {
       const select = document.getElementById('authSupervisorSelect');
       if (!select) return;
       const list = getSupervisorsList();
+      
+      // Filter supervisors who belong to this branch OR have 'all' access
+      const filtered = list.filter(s => s.branchId === 'all' || !s.branchId || s.branchId === currentBranchId || s.role === 'admin');
       const currentVal = select.value;
-      select.innerHTML = list.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-      if (currentVal && list.some(s => s.id === currentVal)) {
+      select.innerHTML = filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      if (currentVal && filtered.some(s => s.id === currentVal)) {
         select.value = currentVal;
       }
     }
@@ -2233,12 +2334,29 @@
         failedAttempts = 0;
         currentSupervisor = sup.name;
         currentUserRole = sup.role || 'supervisor';
+
+        const branchSelect = document.getElementById('authBranchSelect');
+        if (branchSelect) currentBranchId = branchSelect.value;
         
-        // Show/hide admin management button
+        // Update header admin controls
         const btnManage = document.getElementById('btnManageSupervisors');
-        if (btnManage) {
-          btnManage.style.display = (currentUserRole === 'admin') ? 'inline-flex' : 'none';
+        const btnHq = document.getElementById('btnHqOverview');
+        const adminSwitcher = document.getElementById('adminBranchSwitcher');
+
+        if (currentUserRole === 'admin') {
+          if (btnManage) btnManage.style.display = 'inline-flex';
+          if (btnHq) btnHq.style.display = 'inline-flex';
+          if (adminSwitcher) {
+            adminSwitcher.style.display = 'flex';
+            populateHeaderBranchSelect();
+          }
+        } else {
+          if (btnManage) btnManage.style.display = 'none';
+          if (btnHq) btnHq.style.display = 'none';
+          if (adminSwitcher) adminSwitcher.style.display = 'none';
         }
+
+        updateBranchUI();
 
         // Update display badge and print metadata
         const activeDisplay = document.getElementById('activeSupervisorDisplay');
@@ -2250,9 +2368,11 @@
         document.getElementById('authPinInput').value = '';
         errorBox.innerText = '';
         
-        // Render checklist
+        // Load shift state for this branch & render
+        loadStateForCurrentShift();
+        if (firebaseDb) listenToFirebaseShift();
         renderAll();
-        showToast("مرحباً بك: " + currentSupervisor + " 👋");
+        showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + getBranchById(currentBranchId).nameAr + ")");
       } else {
         failedAttempts++;
         document.getElementById('authPinInput').value = '';
@@ -2271,6 +2391,7 @@
       const overlay = document.getElementById('authOverlay');
       if (overlay) overlay.classList.remove('unlocked');
       
+      populateAuthBranchSelect();
       populateAuthSupervisorSelect();
 
       const pinInp = document.getElementById('authPinInput');
@@ -2288,13 +2409,19 @@
       if (lockoutRemaining <= 0) {
         document.getElementById('authError').innerText = '';
       }
-      // Hide admin button
+      // Hide admin controls
       const btnManage = document.getElementById('btnManageSupervisors');
+      const btnHq = document.getElementById('btnHqOverview');
+      const adminSwitcher = document.getElementById('adminBranchSwitcher');
       if (btnManage) btnManage.style.display = 'none';
+      if (btnHq) btnHq.style.display = 'none';
+      if (adminSwitcher) adminSwitcher.style.display = 'none';
+
       currentUserRole = 'supervisor';
 
       document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
+      populateAuthBranchSelect();
       populateAuthSupervisorSelect();
       showToast("🔒 تم قفل الجلسة");
     }
@@ -2310,7 +2437,7 @@
     });
 
     function getStorageKey() {
-      return 'diwan_shift_' + currentDate + '_' + currentShiftType;
+      return 'diwan_shift_' + currentBranchId + '_' + currentDate + '_' + currentShiftType;
     }
 
     function loadStateForCurrentShift() {
@@ -2358,7 +2485,7 @@
         prevDate = d.toISOString().split('T')[0];
       }
 
-      const prevKey = 'diwan_shift_' + prevDate + '_' + prevShift;
+      const prevKey = 'diwan_shift_' + currentBranchId + '_' + prevDate + '_' + prevShift;
       const prevData = localStorage.getItem(prevKey);
       if (prevData) {
         try {
@@ -2392,10 +2519,11 @@
     function saveState(broadcast = true) {
       localStorage.setItem(getStorageKey(), JSON.stringify(state));
 
-      // Broadcast to other tabs locally
+      // Broadcast to other tabs locally (matching active branch)
       if (broadcast && broadcastChannel) {
         broadcastChannel.postMessage({
           type: 'SYNC_STATE',
+          branchId: currentBranchId,
           date: currentDate,
           shiftType: currentShiftType,
           state: state
@@ -2441,7 +2569,7 @@
       if (firebaseRef) {
         try { firebaseRef.off(); } catch (e) {}
       }
-      const path = 'shifts/' + currentDate + '/' + currentShiftType;
+      const path = 'branches/' + currentBranchId + '/shifts/' + currentDate + '/' + currentShiftType;
       firebaseRef = firebaseDb.ref(path);
 
       firebaseRef.on('value', (snapshot) => {
@@ -2858,9 +2986,10 @@
     }
 
     function updatePrintHeader() {
+      const b = getBranchById(currentBranchId);
       const meta = document.getElementById('printMeta');
       if (meta) {
-        meta.innerText = `التاريخ: ${currentDate} | الوردية: ${SHIFT_NAMES[currentShiftType]} | المشرف المسؤول: ${currentSupervisor}`;
+        meta.innerText = `الفرع: ${b.nameAr} | التاريخ: ${currentDate} | الوردية: ${SHIFT_NAMES[currentShiftType]} | المشرف المسؤول: ${currentSupervisor}`;
       }
     }
 
@@ -2912,8 +3041,12 @@
     }
 
     function saveToArchive() {
-      const archiveList = JSON.parse(localStorage.getItem('diwan_archive_shifts') || '[]');
+      const b = getBranchById(currentBranchId);
+      const key = 'diwan_archive_shifts_' + currentBranchId;
+      const archiveList = JSON.parse(localStorage.getItem(key) || '[]');
       archiveList.unshift({
+        branchId: currentBranchId,
+        branchName: b.nameAr,
         date: currentDate,
         shiftType: currentShiftType,
         shiftName: SHIFT_NAMES[currentShiftType],
@@ -2924,15 +3057,17 @@
         handoverCount: document.getElementById('statHandover').innerText,
         criticalCount: document.getElementById('statCritical').innerText
       });
-      localStorage.setItem('diwan_archive_shifts', JSON.stringify(archiveList.slice(0, 30)));
+      localStorage.setItem(key, JSON.stringify(archiveList.slice(0, 30)));
     }
 
     /* ============================================================
        HISTORY MODAL
        ============================================================ */
     function openHistoryModal() {
+      const b = getBranchById(currentBranchId);
       const container = document.getElementById('historyListContainer');
-      const archiveList = JSON.parse(localStorage.getItem('diwan_archive_shifts') || '[]');
+      const key = 'diwan_archive_shifts_' + currentBranchId;
+      const archiveList = JSON.parse(localStorage.getItem(key) || '[]');
 
       if (archiveList.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 20px;">لا توجد ورديات سابقة مسجلة في الأرشيف بعد.</div>';
@@ -3132,10 +3267,12 @@
 
         const hash = await computeHash(pin);
         const newId = 'sup_' + Date.now();
+        const branchId = document.getElementById('inputSupervisorBranch') ? document.getElementById('inputSupervisorBranch').value : 'all';
         list.push({
           id: newId,
           name: name,
           role: 'supervisor',
+          branchId: branchId,
           pinHash: hash
         });
 
@@ -3188,6 +3325,122 @@
       saveSupervisorsList(list);
       renderSupervisorsList();
       showToast("🗑️ تم حذف المشرف من النظام");
+    }
+
+    /* ============================================================
+       MULTI-BRANCH CONTROLS & HQ DASHBOARD (ADMIN)
+       ============================================================ */
+    function populateHeaderBranchSelect() {
+      const sel = document.getElementById('headerBranchSelect');
+      if (!sel) return;
+      const branches = getBranchesList();
+      sel.innerHTML = branches.map(b => `<option value="${b.id}">${b.nameAr}</option>`).join('');
+      sel.value = currentBranchId;
+    }
+
+    function onAdminSwitchBranch(newBranchId) {
+      currentBranchId = newBranchId;
+      updateBranchUI();
+      loadStateForCurrentShift();
+      if (firebaseDb) listenToFirebaseShift();
+      renderAll();
+      const b = getBranchById(currentBranchId);
+      showToast("🏢 تم الانتقال إلى: " + b.nameAr);
+    }
+
+    function updateBranchUI() {
+      const b = getBranchById(currentBranchId);
+      const titleAr = document.getElementById('brandBranchTitleAr');
+      const titleEn = document.getElementById('brandBranchTitleEn');
+      const activeBranchDisplay = document.getElementById('activeBranchDisplay');
+      const printBranchTitle = document.getElementById('printBranchTitle');
+      const headerSelect = document.getElementById('headerBranchSelect');
+
+      if (titleAr) titleAr.innerText = b.nameAr;
+      if (titleEn) titleEn.innerText = 'Diwan Market – ' + b.nameEn;
+      if (activeBranchDisplay) activeBranchDisplay.innerText = b.nameAr;
+      if (printBranchTitle) printBranchTitle.innerText = 'ديوان ماركت – ' + b.nameAr;
+      if (headerSelect) headerSelect.value = currentBranchId;
+      document.title = 'ديوان ماركت – ' + b.nameAr + ' | نظام متابعة الصالة';
+    }
+
+    function openHqOverviewModal() {
+      if (currentUserRole !== 'admin') return;
+      renderHqBranchesGrid();
+      document.getElementById('hqOverviewModal').classList.add('open');
+    }
+
+    function closeHqOverviewModal() {
+      document.getElementById('hqOverviewModal').classList.remove('open');
+    }
+
+    function renderHqBranchesGrid() {
+      const grid = document.getElementById('hqBranchesGrid');
+      const branches = getBranchesList();
+
+      grid.innerHTML = branches.map(b => {
+        const key = 'diwan_shift_' + b.id + '_' + currentDate + '_' + currentShiftType;
+        const savedData = localStorage.getItem(key);
+        let done = 0;
+        let progress = 0;
+        let handover = 0;
+        let critical = 0;
+        let supervisor = 'لم يُسجل مشرف';
+        let hasData = false;
+
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            if (parsed.items) {
+              hasData = true;
+              Object.keys(parsed.items).forEach(id => {
+                const s = parsed.items[id].status;
+                if (s === 'done') done++;
+                else if (s === 'in_progress') progress++;
+                else if (s === 'handover') handover++;
+                else if (s === 'critical') critical++;
+                if (parsed.items[id].updatedBy) supervisor = parsed.items[id].updatedBy;
+              });
+            }
+          } catch(e) {}
+        }
+
+        const pct = Math.round((done / 59) * 100);
+        const isCurrent = b.id === currentBranchId;
+
+        return `
+          <div style="background: white; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 12px; padding: 14px; position: relative; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${b.nameAr}</h4>
+                <span style="font-size: 11px; color: var(--text-muted);">📍 ${b.location}</span>
+              </div>
+              ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
+            </div>
+
+            <div style="margin: 10px 0;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                <span>نسبة الإنجاز اليوم:</span>
+                <span style="color: ${pct > 70 ? 'var(--primary)' : (pct > 30 ? 'var(--warning)' : '#64748b')};">${hasData ? pct + '%' : 'لم يبدأ بعد ⏳'}</span>
+              </div>
+              <div style="background: #e2e8f0; height: 8px; border-radius: 999px; overflow: hidden;">
+                <div style="background: var(--primary); height: 100%; width: ${pct}%;"></div>
+              </div>
+            </div>
+
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
+              <span>✅ ${done} مكتمل</span>
+              <span>🔄 ${progress} قيد العمل</span>
+              <span>⚠️ ${handover} مؤجل</span>
+              <span style="color: ${critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${critical > 0 ? '800' : 'normal'};">🚨 ${critical} عطل</span>
+            </div>
+
+            <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
+              ${isCurrent ? 'أنت تتصفح هذا الفرع الآن' : 'الانتقال ومتابعة هذا الفرع ➔'}
+            </button>
+          </div>
+        `;
+      }).join('');
     }
   </script>
 </body>
