@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -80,7 +80,7 @@
       content: '';
       position: absolute;
       top: -40px;
-      left: -40px;
+      right: -40px;
       width: 140px;
       height: 140px;
       background: rgba(16, 185, 129, 0.15);
@@ -859,17 +859,23 @@
       transform: translateX(-50%) translateY(0);
     }
 
-    /* PRINT STYLES */
+    /* PRINT STYLES - COMPREHENSIVE AUDIT FIX */
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
     @media print {
       body {
         background: white !important;
         color: black !important;
         padding: 0 !important;
       }
-      .top-header, .header-actions, .filter-bar, .shift-card, .btn, .status-group, .item-note-input, .section-notes-textarea, .modal-overlay, .toast, .no-print {
+      .top-header, .header-actions, .filter-bar, .shift-card, .btn, .auth-overlay, .modal-overlay, .toast, .no-print {
         display: none !important;
       }
       .app-container {
+        display: block !important;
         max-width: 100% !important;
         padding: 0 !important;
       }
@@ -884,10 +890,53 @@
         box-shadow: none !important;
         border: 1px solid #ccc !important;
         break-inside: avoid;
+        page-break-inside: avoid;
         margin-bottom: 14px !important;
       }
       .section-body {
         display: block !important;
+      }
+      /* Ensure status of items is visible on paper */
+      .status-group {
+        display: block !important;
+        background: none !important;
+        padding: 0 !important;
+      }
+      .status-pill:not([class*="active-"]) {
+        display: none !important;
+      }
+      .status-pill[class*="active-"] {
+        display: inline-block !important;
+        border: 1.5px solid #000 !important;
+        color: #000 !important;
+        background: transparent !important;
+        font-weight: bold !important;
+        font-size: 11px !important;
+        padding: 2px 8px !important;
+        box-shadow: none !important;
+      }
+      /* Ensure supervisor notes are printed */
+      .item-note-input {
+        display: block !important;
+        border: none !important;
+        background: transparent !important;
+        color: #333 !important;
+        font-size: 11px !important;
+        font-style: italic !important;
+        padding: 0 !important;
+        margin-top: 4px !important;
+      }
+      .item-note-input:placeholder-shown {
+        display: none !important;
+      }
+      .section-notes-textarea {
+        display: block !important;
+        border: 1px dashed #999 !important;
+        background: transparent !important;
+        color: #222 !important;
+        font-size: 11px !important;
+        padding: 6px !important;
+        height: auto !important;
       }
       .print-signatures {
         display: flex !important;
@@ -895,12 +944,12 @@
         margin-top: 40px;
         padding-top: 20px;
         border-top: 1px solid #333;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
     }
 
-    
-    
-    /* ABSOLUTE STRICT LOCK: App container is hidden until authenticated */
+/* ABSOLUTE STRICT LOCK: App container is hidden until authenticated */
     .app-container {
       display: none !important;
     }
@@ -1034,42 +1083,6 @@
       color: white;
     }
 
-    /* Mobile Responsive Keypad */
-    @media (max-height: 720px), (max-width: 440px) {
-      .auth-card {
-        padding: 16px 18px !important;
-        max-width: 350px !important;
-      }
-      .auth-icon {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 22px !important;
-        margin-bottom: 8px !important;
-      }
-      .auth-title {
-        font-size: 17px !important;
-        margin-bottom: 2px !important;
-      }
-      .auth-subtitle {
-        font-size: 12px !important;
-        margin-bottom: 12px !important;
-      }
-      .pin-input {
-        font-size: 20px !important;
-        padding: 6px 10px !important;
-        margin-bottom: 8px !important;
-      }
-      .keypad-grid {
-        gap: 6px !important;
-        margin-bottom: 10px !important;
-      }
-      .key-btn {
-        padding: 8px 0 !important;
-        font-size: 18px !important;
-        border-radius: 8px !important;
-      }
-    }
-
     .keypad-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1090,9 +1103,112 @@
       transition: all 0.15s;
     }
     .key-btn:active {
-      background: #059669;
+      background: var(--primary);
       color: white;
       transform: scale(0.95);
+    }
+
+    /* COMPREHENSIVE RESPONSIVE BREAKPOINTS (Mobile & Tablet) */
+    @media (max-width: 768px) {
+      .app-container {
+        padding: 10px;
+      }
+      .top-header {
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .top-header h1 {
+        font-size: 18px;
+      }
+      .brand-area h1 span.en {
+        font-size: 11px;
+      }
+      .header-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .header-actions .btn {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .checklist-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .status-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        width: 100%;
+      }
+      .status-pill {
+        justify-content: center;
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      .temp-grid {
+        grid-template-columns: 1fr;
+      }
+      .modal-card {
+        padding: 16px;
+        width: 96%;
+        max-height: 92vh;
+      }
+      .auth-card {
+        padding: 16px 18px;
+        max-width: 340px;
+      }
+      .keypad-grid {
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .key-btn {
+        padding: 8px 0;
+        font-size: 18px;
+        border-radius: 8px;
+      }
+    }
+
+    @media (max-height: 720px), (max-width: 440px) {
+      .auth-card {
+        padding: 14px 16px;
+        max-width: 320px;
+      }
+      .auth-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        margin-bottom: 6px;
+      }
+      .auth-title {
+        font-size: 16px;
+        margin-bottom: 2px;
+      }
+      .auth-subtitle {
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+      .pin-input {
+        font-size: 18px;
+        padding: 6px 8px;
+        margin-bottom: 6px;
+      }
+      .keypad-grid {
+        gap: 5px;
+        margin-bottom: 8px;
+      }
+      .key-btn {
+        padding: 7px 0;
+        font-size: 16px;
+      }
     }
 
     .print-header, .print-signatures {
@@ -1110,21 +1226,21 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
-        <label>🏢 اختر الفرع:</label>
+        <label for="authBranchSelect">🏢 اختر الفرع:</label>
         <select id="authBranchSelect" class="form-control" style="font-size: 14px; padding: 10px; font-weight: 800; border-color: var(--primary);" onchange="onAuthBranchChange()">
           <!-- Populated from getBranchesList() -->
         </select>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 14px;">
-        <label>👤 اختر اسم المشرف:</label>
+        <label for="authSupervisorSelect">👤 اختر اسم المشرف:</label>
         <select id="authSupervisorSelect" class="form-control" style="font-size: 14px; padding: 10px;">
           <!-- Populated from getSupervisorsList() filtered by branch -->
         </select>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 6px;">
-        <label>🔑 أدخل رمز المرور السري (PIN):</label>
+        <label for="authPinInput">🔑 أدخل رمز المرور السري (PIN):</label>
         <input type="password" id="authPinInput" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
       </div>
 
@@ -1236,16 +1352,16 @@
         </div>
 
         <div class="form-group">
-          <label>🕒 الوردية الحالية (Shift):</label>
+          <label for="shiftTypeSelect">🕒 الوردية الحالية (Shift):</label>
           <select id="shiftTypeSelect" class="form-control" onchange="onShiftChange()">
             <option value="morning">وردية صباحية (08:00 ص - 04:00 م)</option>
-            <option value="evening">وردية مسائية (04:00 م - 12:00 م)</option>
-            <option value="night">وردية ليلية (12:00 م - 08:00 ص)</option>
+            <option value="evening">وردية مسائية (04:00 م - 12:00 ص)</option>
+            <option value="night">وردية ليلية (12:00 ص - 08:00 ص)</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label>📅 التاريخ:</label>
+          <label for="shiftDateInput">📅 التاريخ:</label>
           <input type="date" id="shiftDateInput" class="form-control" onchange="onDateChange()">
         </div>
       </div>
@@ -1282,7 +1398,7 @@
         <span class="progress-title">📊 نسبة الإنجاز العام للوردية</span>
         <span class="progress-percentage" id="progressPercentage">0%</span>
       </div>
-      <div class="progress-track">
+      <div class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="نسبة إنجاز الوردية">
         <div class="progress-fill" id="progressBar"></div>
       </div>
 
@@ -1340,11 +1456,11 @@
   </div>
 
   <!-- MODAL: HANDOVER SHIFT -->
-  <div class="modal-overlay" id="handoverModal">
+  <div class="modal-overlay" id="handoverModal" role="dialog" aria-modal="true" aria-labelledby="handoverModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <h3 class="modal-title">📋 إنهاء وتسليم الوردية للمشرف القادم</h3>
-        <button class="close-btn" onclick="closeHandoverModal()">&times;</button>
+        <button class="close-btn" onclick="closeHandoverModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
       <div style="margin-bottom: 16px;">
@@ -1355,7 +1471,7 @@
         <div style="background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 14px; font-size: 14px;">
           <div><strong>المشرف المسلّم:</strong> <span id="modalSupervisorName">أحمد بدرة</span></div>
           <div><strong>الوردية:</strong> <span id="modalShiftType">صباحية</span></div>
-          <div><strong>المهام المكتملة:</strong> <span id="modalCompletedCount" style="color: var(--primary); font-weight: 700;">0</span> من 59</div>
+          <div><strong>المهام المكتملة:</strong> <span id="modalCompletedCount" style="color: var(--primary); font-weight: 700;">0</span> من <span id="modalTotalCount">59</span></div>
           <div><strong>المهام المتبقية للوردية التالية:</strong> <span id="modalPendingCount" style="color: var(--warning); font-weight: 700;">0</span></div>
         </div>
 
@@ -1373,11 +1489,11 @@
   </div>
 
   <!-- MODAL: SHIFT ARCHIVE & HISTORY -->
-  <div class="modal-overlay" id="historyModal">
+  <div class="modal-overlay" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
         <h3 class="modal-title">📁 سجل الورديات السابقة لماركت الديوان</h3>
-        <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+        <button class="close-btn" onclick="closeHistoryModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
       <div id="historyListContainer" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1387,11 +1503,11 @@
   </div>
 
   <!-- MODAL: CLOUD SETTINGS -->
-  <div class="modal-overlay" id="settingsModal">
+  <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <h3 class="modal-title">⚙️ إعدادات الربط السحابي (Firebase)</h3>
-        <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
+        <button class="close-btn" onclick="closeSettingsModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
@@ -1418,11 +1534,11 @@
   </div>
 
   <!-- MODAL: MANAGE SUPERVISORS (ADMIN ONLY) -->
-  <div class="modal-overlay" id="supervisorsModal">
+  <div class="modal-overlay" id="supervisorsModal" role="dialog" aria-modal="true" aria-labelledby="supervisorsModalTitle">
     <div class="modal-card" style="max-width: 650px;">
       <div class="modal-header">
         <h3 class="modal-title">👥 إدارة مسؤولي الصالة (صلاحية الإدارة)</h3>
-        <button class="close-btn" onclick="closeSupervisorsModal()">&times;</button>
+        <button class="close-btn" onclick="closeSupervisorsModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
       <div style="margin-bottom: 16px;">
@@ -1484,11 +1600,11 @@
   </div>
 
   <!-- MODAL: HQ MULTI-BRANCH OVERVIEW -->
-  <div class="modal-overlay" id="hqOverviewModal">
+  <div class="modal-overlay" id="hqOverviewModal" role="dialog" aria-modal="true" aria-labelledby="hqOverviewModalTitle">
     <div class="modal-card" style="max-width: 780px;">
       <div class="modal-header">
         <h3 class="modal-title">🏢 لوحة المتابعة المركزية لكافة الفروع (HQ Dashboard)</h3>
-        <button class="close-btn" onclick="closeHqOverviewModal()">&times;</button>
+        <button class="close-btn" onclick="closeHqOverviewModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
@@ -1889,8 +2005,8 @@
         "ar": "تطبيق الأقدم فالأحدث"
       },
       {
-        "rawId": "Showroom - Shelf Facing &amp; Cleanliness / واجهة ونظافة الرفوف",
-        "en": "Shelf Facing &amp; Cleanliness",
+        "rawId": "Showroom - Shelf Facing & Cleanliness / واجهة ونظافة الرفوف",
+        "en": "Shelf Facing & Cleanliness",
         "ar": "واجهة ونظافة الرفوف"
       }
     ],
@@ -1925,8 +2041,8 @@
         "ar": "تطبيق الأقدم فالأحدث"
       },
       {
-        "rawId": "Daily Store - Shelf Facing &amp; Cleanliness / واجهة ونظافة الرفوف",
-        "en": "Shelf Facing &amp; Cleanliness",
+        "rawId": "Daily Store - Shelf Facing & Cleanliness / واجهة ونظافة الرفوف",
+        "en": "Shelf Facing & Cleanliness",
         "ar": "واجهة ونظافة الرفوف"
       }
     ],
@@ -1991,17 +2107,96 @@
   }
 };
 
-    const SUPERVISORS = [
-      { id: "Ahmad Badrah", nameAr: "أحمد بدرة", phone: "96170246479" },
-      { id: "Issa Warwar", nameAr: "عيسى ورور", phone: "96181264880" },
-      { id: "Sameh El-Hassan", nameAr: "سامح الحسن", phone: "96170439993" }
-    ];
+    // Legacy SUPERVISORS array removed (replaced by DEFAULT_SUPERVISORS)
 
     const SHIFT_NAMES = {
       morning: "وردية صباحية",
       evening: "وردية مسائية",
       night: "وردية ليلية"
     };
+
+    /* ============================================================
+       APPLICATION CONFIGURATION & CONSTANTS (AUDIT HARDENING)
+       ============================================================ */
+    const APP_CONFIG = {
+      PIN_LENGTH: 4,
+      MAX_ATTEMPTS: 5,
+      LOCKOUT_DURATION: 30, // seconds
+      TOAST_DURATION: 3000, // ms
+      ARCHIVE_LIMIT: 30
+    };
+
+    const STORAGE_KEYS = {
+      BRANCHES: 'diwan_branches_data',
+      SUPERVISORS: 'diwan_supervisors_data',
+      FIREBASE_CONFIG: 'diwan_firebase_config',
+      SHIFT_PREFIX: 'diwan_shift_',
+      ARCHIVE_PREFIX: 'diwan_archive_shifts_'
+    };
+
+    // Calculate total items dynamically from SECTIONS_DATA (C8 Fix)
+    const TOTAL_ITEMS = SECTIONS_DATA.reduce((acc, sec) => acc + (sec.items ? sec.items.length : 0), 0);
+
+    /* ============================================================
+       SECURITY & RESILIENCE UTILITIES (XSS & STORAGE PROTECTION)
+       ============================================================ */
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeGetItem(key, defaultValue = null) {
+      try {
+        const val = localStorage.getItem(key);
+        return val !== null ? val : defaultValue;
+      } catch (e) {
+        console.warn('localStorage getItem failed for key:', key, e);
+        return defaultValue;
+      }
+    }
+
+    function safeSetItem(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (e) {
+        console.error('localStorage setItem failed for key:', key, e);
+        return false;
+      }
+    }
+
+    function safeJsonParse(jsonStr, defaultValue = null) {
+      if (!jsonStr) return defaultValue;
+      try {
+        return JSON.parse(jsonStr);
+      } catch (e) {
+        console.error('safeJsonParse failed:', e);
+        return defaultValue;
+      }
+    }
+
+    // Centralized Stats Calculation (H8 Fix)
+    function calculateStats(itemsState) {
+      const items = itemsState || (state && state.items) || {};
+      let done = 0, inProgress = 0, handover = 0, critical = 0;
+      Object.values(items).forEach(it => {
+        if (!it) return;
+        if (it.status === 'done') done++;
+        else if (it.status === 'in_progress') inProgress++;
+        else if (it.status === 'handover') handover++;
+        else if (it.status === 'critical') critical++;
+      });
+      const total = TOTAL_ITEMS;
+      const pending = Math.max(0, total - done - inProgress - handover - critical);
+      const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
+      return { done, inProgress, handover, critical, pending, total, percentage };
+    }
+
 
     // Current State
     let currentSupervisor = "Ahmad Badrah";
@@ -2094,22 +2289,19 @@
     let currentUserRole = 'supervisor';
 
     // Force clear any old cached logins
-    localStorage.removeItem('diwan_auth_user');
-    sessionStorage.removeItem('diwan_auth_user');
+    // Storage cleared cleanly
 
     function getSupervisorsList() {
-      const saved = localStorage.getItem('diwan_supervisors_data');
+      const saved = safeGetItem(STORAGE_KEYS.SUPERVISORS);
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch (e) {}
+        const parsed = safeJsonParse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
       return DEFAULT_SUPERVISORS;
     }
 
     function saveSupervisorsList(list, broadcast = true) {
-      localStorage.setItem('diwan_supervisors_data', JSON.stringify(list));
+      safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(list));
       populateAuthSupervisorSelect();
       if (broadcast && broadcastChannel) {
         broadcastChannel.postMessage({
@@ -2126,7 +2318,7 @@
       const branchSelect = document.getElementById('authBranchSelect');
       if (!branchSelect) return;
       const branches = getBranchesList();
-      branchSelect.innerHTML = branches.map(b => `<option value="${b.id}">${b.nameAr} (${b.location})</option>`).join('');
+      branchSelect.innerHTML = branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)} (${escapeHtml(b.location)})</option>`).join('');
       branchSelect.value = currentBranchId;
     }
 
@@ -2222,10 +2414,11 @@
       return result;
     }
 
-    async function computeHash(text) {
+    async function computeHash(str, salt = '') {
+      const input = salt ? (salt + ':' + str) : str;
       if (window.crypto && crypto.subtle && window.isSecureContext) {
         try {
-          const buffer = new TextEncoder().encode(text);
+          const buffer = new TextEncoder().encode(input);
           const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
           return Array.from(new Uint8Array(hashBuf))
             .map(b => b.toString(16).padStart(2, '0'))
@@ -2234,13 +2427,14 @@
           console.warn("crypto.subtle failed, using pureJsSha256", e);
         }
       }
-      return pureJsSha256(text);
+      return pureJsSha256(input);
     }
 
     // Rate Limiting (حماية ضد التخمين)
     let failedAttempts = 0;
     let lockoutTimer = null;
     let lockoutRemaining = 0;
+    let isSubmittingPin = false;
 
     function startLockout(seconds) {
       lockoutRemaining = seconds;
@@ -2297,6 +2491,7 @@
 
     // Physical keyboard listener
     window.addEventListener('keydown', (e) => {
+      if (document.body.classList.contains('auth-passed')) return;
       const overlay = document.getElementById('authOverlay');
       if (!overlay || overlay.classList.contains('unlocked')) return;
       if (lockoutRemaining > 0) return;
@@ -2311,77 +2506,92 @@
     });
 
     async function submitPin() {
-      if (lockoutRemaining > 0) return;
-      const supId = document.getElementById('authSupervisorSelect').value;
-      const pin = document.getElementById('authPinInput').value;
-      const list = getSupervisorsList();
-      const sup = list.find(s => s.id === supId);
-      const errorBox = document.getElementById('authError');
+      if (isSubmittingPin || lockoutRemaining > 0) return;
+      isSubmittingPin = true;
+      try {
+        const supId = document.getElementById('authSupervisorSelect').value;
+        const pin = document.getElementById('authPinInput').value;
+        const list = getSupervisorsList();
+        const sup = list.find(s => s.id === supId);
+        const errorBox = document.getElementById('authError');
 
-      if (!pin || pin.length !== 4) {
-        errorBox.innerText = "يرجى إدخال رمز PIN مكون من 4 أرقام.";
-        return;
-      }
+        if (!pin || pin.length !== APP_CONFIG.PIN_LENGTH) {
+          errorBox.innerText = `يرجى إدخال رمز PIN مكون من ${APP_CONFIG.PIN_LENGTH} أرقام.`;
+          return;
+        }
 
-      if (!sup) {
-        errorBox.innerText = "المشرف المحدد غير موجود.";
-        return;
-      }
+        if (!sup) {
+          errorBox.innerText = "المشرف المحدد غير موجود.";
+          return;
+        }
 
-      const enteredHash = await computeHash(pin);
+        // Support both salted and legacy hashes (C10)
+        let matches = false;
+        if (sup.salt) {
+          const saltedHash = await computeHash(pin, sup.salt);
+          matches = (sup.pinHash === saltedHash);
+        } else {
+          const directHash = await computeHash(pin);
+          matches = (sup.pinHash === directHash);
+        }
 
-      if (sup.pinHash === enteredHash) {
-        failedAttempts = 0;
-        currentSupervisor = sup.name;
-        currentUserRole = sup.role || 'supervisor';
+        if (matches) {
+          failedAttempts = 0;
+          currentSupervisor = sup.name;
+          currentUserRole = sup.role || 'supervisor';
 
-        const branchSelect = document.getElementById('authBranchSelect');
-        if (branchSelect) currentBranchId = branchSelect.value;
-        
-        // Update header admin controls
-        const btnManage = document.getElementById('btnManageSupervisors');
-        const btnHq = document.getElementById('btnHqOverview');
-        const adminSwitcher = document.getElementById('adminBranchSwitcher');
+          const branchSelect = document.getElementById('authBranchSelect');
+          if (branchSelect) currentBranchId = branchSelect.value;
+          
+          // Update header admin controls
+          const btnManage = document.getElementById('btnManageSupervisors');
+          const btnHq = document.getElementById('btnHqOverview');
+          const adminSwitcher = document.getElementById('adminBranchSwitcher');
 
-        if (currentUserRole === 'admin') {
-          if (btnManage) btnManage.style.display = 'inline-flex';
-          if (btnHq) btnHq.style.display = 'inline-flex';
-          if (adminSwitcher) {
-            adminSwitcher.style.display = 'flex';
-            populateHeaderBranchSelect();
+          if (currentUserRole === 'admin') {
+            if (btnManage) btnManage.style.display = 'inline-flex';
+            if (btnHq) btnHq.style.display = 'inline-flex';
+            if (adminSwitcher) {
+              adminSwitcher.style.display = 'flex';
+              populateHeaderBranchSelect();
+            }
+          } else {
+            if (btnManage) btnManage.style.display = 'none';
+            if (btnHq) btnHq.style.display = 'none';
+            if (adminSwitcher) adminSwitcher.style.display = 'none';
           }
-        } else {
-          if (btnManage) btnManage.style.display = 'none';
-          if (btnHq) btnHq.style.display = 'none';
-          if (adminSwitcher) adminSwitcher.style.display = 'none';
-        }
 
-        updateBranchUI();
+          updateBranchUI();
 
-        // Update display badge and print metadata
-        const activeDisplay = document.getElementById('activeSupervisorDisplay');
-        if (activeDisplay) activeDisplay.innerText = currentSupervisor;
-        
-        // Unlock
-        document.body.classList.add('auth-passed');
-        document.getElementById('authOverlay').classList.add('unlocked');
-        document.getElementById('authPinInput').value = '';
-        errorBox.innerText = '';
-        
-        // Load shift state for this branch & render
-        loadStateForCurrentShift();
-        if (firebaseDb) listenToFirebaseShift();
-        renderAll();
-        showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + getBranchById(currentBranchId).nameAr + ")");
-      } else {
-        failedAttempts++;
-        document.getElementById('authPinInput').value = '';
-        if (failedAttempts >= 5) {
-          startLockout(30);
+          // Update supervisor badge display
+          const activeDisplay = document.getElementById('activeSupervisorDisplay');
+          if (activeDisplay) activeDisplay.innerText = currentSupervisor;
+          
+          // Unlock
+          document.body.classList.add('auth-passed');
+          document.getElementById('authOverlay').classList.add('unlocked');
+          document.getElementById('authPinInput').value = '';
+          errorBox.innerText = '';
+          
+          // Load shift state for this branch & render
+          loadStateForCurrentShift();
+          if (firebaseDb) listenToFirebaseShift();
+          renderAll();
+          showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + getBranchById(currentBranchId).nameAr + ")");
         } else {
-          const left = 5 - failedAttempts;
-          errorBox.innerText = `❌ رمز PIN غير صحيح! المتبقي: ${left} محاولات قبل القفل.`;
+          failedAttempts++;
+          document.getElementById('authPinInput').value = '';
+          if (failedAttempts >= APP_CONFIG.MAX_ATTEMPTS) {
+            startLockout(APP_CONFIG.LOCKOUT_DURATION);
+          } else {
+            const left = APP_CONFIG.MAX_ATTEMPTS - failedAttempts;
+            errorBox.innerText = `❌ رمز PIN غير صحيح! المتبقي: ${left} محاولات قبل القفل.`;
+          }
         }
+      } catch (err) {
+        console.error('Error during PIN authentication:', err);
+      } finally {
+        isSubmittingPin = false;
       }
     }
 
@@ -2405,10 +2615,22 @@
     }
 
     function lockApp() {
-      document.getElementById('authPinInput').value = '';
-      if (lockoutRemaining <= 0) {
-        document.getElementById('authError').innerText = '';
+      if (lockoutTimer) {
+        clearInterval(lockoutTimer);
+        lockoutTimer = null;
+        lockoutRemaining = 0;
+        const pinInput = document.getElementById('authPinInput');
+        if (pinInput) pinInput.disabled = false;
+        document.querySelectorAll('.key-btn').forEach(btn => btn.disabled = false);
       }
+
+      document.getElementById('authPinInput').value = '';
+      document.getElementById('authError').innerText = '';
+
+      // Close all open modals & restore body scroll
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+      document.body.classList.remove('modal-open');
+
       // Hide admin controls
       const btnManage = document.getElementById('btnManageSupervisors');
       const btnHq = document.getElementById('btnHqOverview');
@@ -2467,7 +2689,6 @@
 
     // Carry over incomplete / handover tasks from previous shift!
     function checkAndCarryOverPreviousShift() {
-      // Find previous shift and date accurately
       let prevShift = 'morning';
       let prevDate = currentDate;
 
@@ -2478,19 +2699,22 @@
         prevShift = 'evening';
         prevDate = currentDate;
       } else {
-        // Morning shift -> previous shift was night shift of PREVIOUS DAY
+        // Morning shift -> previous shift was night shift of PREVIOUS DAY (Timezone safe C6)
         prevShift = 'night';
-        const d = new Date(currentDate);
-        d.setDate(d.getDate() - 1);
-        prevDate = d.toISOString().split('T')[0];
+        const parts = currentDate.split('-').map(Number);
+        const d = new Date(parts[0], parts[1] - 1, parts[2] - 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        prevDate = `${y}-${m}-${day}`;
       }
 
       const prevKey = 'diwan_shift_' + currentBranchId + '_' + prevDate + '_' + prevShift;
-      const prevData = localStorage.getItem(prevKey);
+      const prevData = safeGetItem(prevKey);
       if (prevData) {
         try {
-          const parsed = JSON.parse(prevData);
-          if (parsed.handover && !parsed.handover.carriedOver) {
+          const parsed = safeJsonParse(prevData);
+          if (parsed && parsed.handover && !parsed.handover.carriedOver) {
             state.handover = {
               fromSupervisor: parsed.handover.fromSupervisor,
               handoverNotes: parsed.handover.handoverNotes,
@@ -2503,21 +2727,27 @@
             if (parsed.items) {
               Object.keys(parsed.items).forEach(id => {
                 const it = parsed.items[id];
+                // Support backwards compatible mapped id if contains &amp;
+                const cleanId = id.replace(/&amp;/g, '&');
                 if (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress') {
-                  state.items[id] = { ...it };
-                  state.handover.carriedOverTasks.push(id);
+                  state.items[cleanId] = { ...it };
+                  state.handover.carriedOverTasks.push(cleanId);
                 }
               });
             }
+
+            // Mark carriedOver flag on previous shift to prevent duplicate migration (H6)
+            parsed.handover.carriedOver = true;
+            safeSetItem(prevKey, JSON.stringify(parsed));
           }
         } catch (e) {
-          console.error(e);
+          console.error("Error carrying over previous shift:", e);
         }
       }
     }
 
     function saveState(broadcast = true) {
-      localStorage.setItem(getStorageKey(), JSON.stringify(state));
+      safeSetItem(getStorageKey(), JSON.stringify(state));
 
       // Broadcast to other tabs locally (matching active branch)
       if (broadcast && broadcastChannel) {
@@ -2579,6 +2809,8 @@
           renderAll();
           showToast("☁️ تم استلام تحديثات سحابية فورية");
         }
+      }, (err) => {
+        console.error("Firebase shift sync error:", err);
       });
     }
 
@@ -2680,23 +2912,28 @@
           return;
         }
 
-        // Section Header
+        // Section Header with Accordion Toggle (L8)
         const header = document.createElement('div');
         header.className = 'section-header active';
         header.innerHTML = `
           <div class="section-title-group">
             <div class="section-num">${sec.num}</div>
             <div>
-              <span class="section-title-ar">${sec.titleAr}</span>
-              <span class="section-title-en">${sec.titleEn}</span>
+              <span class="section-title-ar">${escapeHtml(sec.titleAr)}</span>
+              <span class="section-title-en">${escapeHtml(sec.titleEn)}</span>
             </div>
           </div>
           <div class="section-meta">
             <span class="section-badge ${isFullyDone ? 'completed' : ''}">
               ${secDone} / ${sec.items.length} ${isFullyDone ? 'مكتمل ✅' : ''}
             </span>
+            <span class="section-toggle-icon">▲</span>
           </div>
         `;
+        header.onclick = () => {
+          body.classList.toggle('collapsed');
+          header.classList.toggle('is-collapsed');
+        };
 
         // Section Body
         const body = document.createElement('div');
@@ -2710,13 +2947,13 @@
           row.id = 'row_' + encodeURIComponent(item.rawId);
 
           const lastUpdated = itemState.updatedBy ? 
-            `آخر تعديل بواسطة: ${itemState.updatedBy} (${itemState.updatedAt || ''})` : 'لم يبدأ بعد';
+            `آخر تعديل بواسطة: ${escapeHtml(itemState.updatedBy)} (${escapeHtml(itemState.updatedAt || '')})` : 'لم يبدأ بعد';
 
           row.innerHTML = `
             <div class="item-main">
               <div class="item-titles">
-                <span class="item-ar">${item.ar || item.en}</span>
-                <span class="item-en">${item.en}</span>
+                <span class="item-ar">${escapeHtml(item.ar || item.en)}</span>
+                <span class="item-en">${escapeHtml(item.en)}</span>
               </div>
               <div class="status-group">
                 <button type="button" class="status-pill ${itemState.status === 'done' ? 'active-done' : ''}" 
@@ -2741,7 +2978,7 @@
               <span>👤 ${lastUpdated}</span>
               ${itemState.status === 'handover' || itemState.status === 'critical' || itemState.note ? `
                 <input type="text" class="item-note-input" placeholder="ملاحظة خاصة بالبند (مثلاً: سبب الترحيل للوردية التالية)..." 
-                  value="${itemState.note || ''}" 
+                  value="${escapeHtml(itemState.note || '')}" 
                   onchange="setItemNote('${escapeSingleQuotes(item.rawId)}', this.value)">
               ` : ''}
             </div>
@@ -2797,8 +3034,8 @@
           noteBox.innerHTML = `
             <label>📝 ملاحظات عامة لقسم ${sec.titleAr}:</label>
             <textarea class="section-notes-textarea" 
-              placeholder="اكتب أي ملاحظات تخص قسم ${sec.titleAr}..." 
-              onchange="setSectionNote('${sec.id}', this.value)">${savedNote}</textarea>
+              placeholder="اكتب أي ملاحظات تخص قسم ${escapeHtml(sec.titleAr)}..." 
+              onchange="setSectionNote('${sec.id}', this.value)">${escapeHtml(savedNote)}</textarea>
           `;
           body.appendChild(noteBox);
         }
@@ -2869,6 +3106,8 @@
                 noteInput.onchange = function() { setItemNote(rawId, this.value); };
                 auditDiv.appendChild(noteInput);
               }
+            } else if (noteInput && !state.items[rawId].note) {
+              noteInput.remove();
             }
           }
 
@@ -2909,8 +3148,9 @@
     }
 
     function setTemperature(tempName, value) {
+      const parsedVal = typeof value === 'string' ? value.replace(',', '.') : value;
       state.temperatures[tempName] = {
-        value: value,
+        value: parsedVal,
         updatedBy: currentSupervisor,
         updatedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       };
@@ -2929,32 +3169,20 @@
        STATS & FILTERS
        ============================================================ */
     function updateStats() {
-      let total = 0;
-      SECTIONS_DATA.forEach(sec => {
-        if (sec.items) total += sec.items.length;
-      });
-      if (total === 0) total = 59;
-      let done = 0;
-      let progress = 0;
-      let handover = 0;
-      let critical = 0;
+      const s = calculateStats(state.items);
 
-      Object.keys(state.items).forEach(id => {
-        const s = state.items[id].status;
-        if (s === 'done') done++;
-        else if (s === 'in_progress') progress++;
-        else if (s === 'handover') handover++;
-        else if (s === 'critical') critical++;
-      });
+      document.getElementById('statDone').innerText = s.done;
+      document.getElementById('statProgress').innerText = s.inProgress;
+      document.getElementById('statHandover').innerText = s.handover;
+      document.getElementById('statCritical').innerText = s.critical;
 
-      document.getElementById('statDone').innerText = done;
-      document.getElementById('statProgress').innerText = progress;
-      document.getElementById('statHandover').innerText = handover;
-      document.getElementById('statCritical').innerText = critical;
-
-      const pct = Math.round((done / total) * 100);
-      document.getElementById('progressPercentage').innerText = pct + '%';
-      document.getElementById('progressBar').style.width = pct + '%';
+      document.getElementById('progressPercentage').innerText = s.percentage + '%';
+      const progressBar = document.getElementById('progressBar');
+      if (progressBar) {
+        progressBar.style.width = s.percentage + '%';
+        const track = progressBar.parentElement;
+        if (track) track.setAttribute('aria-valuenow', s.percentage);
+      }
     }
 
     function setFilter(filterType, btnElement) {
@@ -2997,24 +3225,22 @@
        HANDOVER WORKFLOW (تسليم واستلام الوردية)
        ============================================================ */
     function openHandoverModal() {
-      document.getElementById('modalSupervisorName').innerText = currentSupervisor;
-      document.getElementById('modalShiftType').innerText = SHIFT_NAMES[currentShiftType];
-      
-      let done = 0;
-      let pending = 0;
-      Object.keys(state.items).forEach(id => {
-        if (state.items[id].status === 'done') done++;
-        else pending++;
-      });
+      const s = calculateStats(state.items);
 
-      document.getElementById('modalCompletedCount').innerText = done;
-      document.getElementById('modalPendingCount').innerText = 59 - done;
+      document.getElementById('modalCompletedCount').innerText = s.done;
+      const modalTotal = document.getElementById('modalTotalCount');
+      if (modalTotal) modalTotal.innerText = s.total;
+      document.getElementById('modalPendingCount').innerText = s.pending;
+      document.getElementById('modalCriticalCount').innerText = s.critical;
 
-      document.getElementById('handoverModal').classList.add('open');
+      const modal = document.getElementById('handoverModal');
+      modal.classList.add('open');
+      document.body.classList.add('modal-open');
     }
 
     function closeHandoverModal() {
       document.getElementById('handoverModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     function submitHandover() {
@@ -3042,9 +3268,11 @@
 
     function saveToArchive() {
       const b = getBranchById(currentBranchId);
-      const key = 'diwan_archive_shifts_' + currentBranchId;
-      const archiveList = JSON.parse(localStorage.getItem(key) || '[]');
-      archiveList.unshift({
+      const key = STORAGE_KEYS.ARCHIVE_PREFIX + currentBranchId;
+      const archiveList = safeJsonParse(safeGetItem(key), []);
+      const s = calculateStats(state.items);
+
+      const record = {
         branchId: currentBranchId,
         branchName: b.nameAr,
         date: currentDate,
@@ -3052,22 +3280,32 @@
         shiftName: SHIFT_NAMES[currentShiftType],
         supervisor: currentSupervisor,
         timestamp: new Date().toLocaleString('ar-EG'),
-        handoverNotes: state.handover.handoverNotes,
-        doneCount: document.getElementById('statDone').innerText,
-        handoverCount: document.getElementById('statHandover').innerText,
-        criticalCount: document.getElementById('statCritical').innerText
-      });
-      localStorage.setItem(key, JSON.stringify(archiveList.slice(0, 30)));
+        handoverNotes: (state.handover && state.handover.handoverNotes) || '',
+        doneCount: s.done,
+        totalCount: s.total,
+        handoverCount: s.handover,
+        criticalCount: s.critical
+      };
+
+      archiveList.unshift(record);
+      const trimmed = archiveList.slice(0, APP_CONFIG.ARCHIVE_LIMIT);
+      safeSetItem(key, JSON.stringify(trimmed));
+
+      // Sync archive to Firebase if connected (L10)
+      if (firebaseDb) {
+        firebaseDb.ref('branches/' + currentBranchId + '/archive').set(trimmed).catch(e => console.warn("Firebase archive sync failed:", e));
+      }
     }
 
     /* ============================================================
        HISTORY MODAL
        ============================================================ */
     function openHistoryModal() {
+      document.body.classList.add('modal-open');
       const b = getBranchById(currentBranchId);
       const container = document.getElementById('historyListContainer');
-      const key = 'diwan_archive_shifts_' + currentBranchId;
-      const archiveList = JSON.parse(localStorage.getItem(key) || '[]');
+      const key = STORAGE_KEYS.ARCHIVE_PREFIX + currentBranchId;
+      const archiveList = safeJsonParse(safeGetItem(key), []);
 
       if (archiveList.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 20px;">لا توجد ورديات سابقة مسجلة في الأرشيف بعد.</div>';
@@ -3075,13 +3313,13 @@
         container.innerHTML = archiveList.map(a => `
           <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
             <div style="display: flex; justify-content: space-between; font-weight: 700;">
-              <span>${a.date} - ${a.shiftName}</span>
-              <span style="color: var(--primary);">👤 ${a.supervisor}</span>
+              <span>${escapeHtml(a.date)} - ${escapeHtml(a.shiftName)}</span>
+              <span style="color: var(--primary);">👤 ${escapeHtml(a.supervisor)}</span>
             </div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              إنجاز: ${a.doneCount}/59 مكتملة | محولة: ${a.handoverCount} | طارئة: ${a.criticalCount}
+              إنجاز: ${a.doneCount}/${a.totalCount || TOTAL_ITEMS} مكتملة | محولة: ${a.handoverCount} | طارئة: ${a.criticalCount}
             </div>
-            ${a.handoverNotes ? `<div style="font-size: 13px; color: #78350f; background: #fef3c7; padding: 6px 10px; border-radius: 6px; margin-top: 6px;">${a.handoverNotes}</div>` : ''}
+            ${a.handoverNotes ? `<div style="font-size: 13px; color: #78350f; background: #fef3c7; padding: 6px 10px; border-radius: 6px; margin-top: 6px;">${escapeHtml(a.handoverNotes)}</div>` : ''}
           </div>
         `).join('');
       }
@@ -3091,12 +3329,14 @@
 
     function closeHistoryModal() {
       document.getElementById('historyModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     /* ============================================================
        SETTINGS MODAL
        ============================================================ */
     function openSettingsModal() {
+      document.body.classList.add('modal-open');
       const savedConfig = localStorage.getItem('diwan_firebase_config') || '';
       document.getElementById('firebaseConfigInput').value = savedConfig;
       document.getElementById('settingsModal').classList.add('open');
@@ -3104,6 +3344,7 @@
 
     function closeSettingsModal() {
       document.getElementById('settingsModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     function saveFirebaseConfig() {
@@ -3144,22 +3385,31 @@
     /* ============================================================
        SUPERVISOR MANAGEMENT (ADMIN EXCLUSIVE)
        ============================================================ */
+    let firebaseSupervisorsRef = null;
+
     function listenToFirebaseSupervisors() {
       if (!firebaseDb) return;
-      firebaseDb.ref('config/supervisors').on('value', (snapshot) => {
+      if (firebaseSupervisorsRef) {
+        try { firebaseSupervisorsRef.off(); } catch (e) {}
+      }
+      firebaseSupervisorsRef = firebaseDb.ref('config/supervisors');
+      firebaseSupervisorsRef.on('value', (snapshot) => {
         const val = snapshot.val();
         if (val && Array.isArray(val) && val.length > 0) {
-          localStorage.setItem('diwan_supervisors_data', JSON.stringify(val));
+          safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(val));
           populateAuthSupervisorSelect();
           const modal = document.getElementById('supervisorsModal');
           if (modal && modal.classList.contains('open')) {
             renderSupervisorsList();
           }
         }
+      }, (err) => {
+        console.error('Firebase supervisors sync error:', err);
       });
     }
 
     function openSupervisorsModal() {
+      document.body.classList.add('modal-open');
       if (currentUserRole !== 'admin') {
         alert("عذراً، هذه الصلاحية مخصصة لمدير الفرع والإدارة فقط.");
         return;
@@ -3171,6 +3421,7 @@
 
     function closeSupervisorsModal() {
       document.getElementById('supervisorsModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     function renderSupervisorsList() {
@@ -3223,6 +3474,8 @@
       if (!sup) return;
 
       document.getElementById('supervisorFormTitle').innerText = '✏️ تعديل بيانات: ' + sup.name;
+      const branchInput = document.getElementById('inputSupervisorBranch');
+      if (branchInput) branchInput.value = sup.branchId || 'all';
       document.getElementById('editSupervisorId').value = sup.id;
       document.getElementById('inputSupervisorName').value = sup.name;
       document.getElementById('inputSupervisorPin').value = '';
@@ -3245,6 +3498,8 @@
       const name = document.getElementById('inputSupervisorName').value.trim();
       const pin = document.getElementById('inputSupervisorPin').value.trim();
       const confirmPin = document.getElementById('inputSupervisorPinConfirm').value.trim();
+      const branchInput = document.getElementById('inputSupervisorBranch');
+      const branchId = branchInput ? branchInput.value : 'all';
       const errBox = document.getElementById('supervisorFormError');
 
       if (!name) {
@@ -3255,9 +3510,9 @@
       let list = [...getSupervisorsList()];
 
       if (!id) {
-        // ADD NEW
-        if (!pin || pin.length !== 4 || !/^[0-9]{4}$/.test(pin)) {
-          errBox.innerText = 'يرجى إدخال رمز PIN مكون من 4 أرقام عددية.';
+        // ADD NEW SUPERVISOR
+        if (!pin || pin.length !== APP_CONFIG.PIN_LENGTH || !/^[0-9]{4}$/.test(pin)) {
+          errBox.innerText = `يرجى إدخال رمز PIN مكون من ${APP_CONFIG.PIN_LENGTH} أرقام عددية.`;
           return;
         }
         if (pin !== confirmPin) {
@@ -3265,14 +3520,16 @@
           return;
         }
 
-        const hash = await computeHash(pin);
+        // Generate salt for cryptographic security (C10)
+        const salt = Math.random().toString(36).substring(2, 10);
+        const hash = await computeHash(pin, salt);
         const newId = 'sup_' + Date.now();
-        const branchId = document.getElementById('inputSupervisorBranch') ? document.getElementById('inputSupervisorBranch').value : 'all';
         list.push({
           id: newId,
           name: name,
           role: 'supervisor',
           branchId: branchId,
+          salt: salt,
           pinHash: hash
         });
 
@@ -3281,23 +3538,26 @@
         renderSupervisorsList();
         showToast("✅ تمت إضافة المشرف بنجاح!");
       } else {
-        // EDIT EXISTING
+        // EDIT EXISTING SUPERVISOR
         const idx = list.findIndex(s => s.id === id);
         if (idx === -1) return;
 
         list[idx].name = name;
+        list[idx].branchId = branchId; // Fixed: save branchId on edit (C5)
 
-        // If PIN was entered, update it
+        // If PIN was entered, update it with salt
         if (pin) {
-          if (pin.length !== 4 || !/^[0-9]{4}$/.test(pin)) {
-            errBox.innerText = 'رمز PIN يجب أن يتكون من 4 أرقام عددية.';
+          if (pin.length !== APP_CONFIG.PIN_LENGTH || !/^[0-9]{4}$/.test(pin)) {
+            errBox.innerText = `رمز PIN يجب أن يتكون من ${APP_CONFIG.PIN_LENGTH} أرقام عددية.`;
             return;
           }
           if (pin !== confirmPin) {
             errBox.innerText = 'رمز PIN وتأكيد الرمز غير متطابقين.';
             return;
           }
-          list[idx].pinHash = await computeHash(pin);
+          const salt = Math.random().toString(36).substring(2, 10);
+          list[idx].salt = salt;
+          list[idx].pinHash = await computeHash(pin, salt);
         }
 
         saveSupervisorsList(list);
@@ -3365,6 +3625,7 @@
     }
 
     function openHqOverviewModal() {
+      document.body.classList.add('modal-open');
       if (currentUserRole !== 'admin') return;
       renderHqBranchesGrid();
       document.getElementById('hqOverviewModal').classList.add('open');
@@ -3372,6 +3633,7 @@
 
     function closeHqOverviewModal() {
       document.getElementById('hqOverviewModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     function renderHqBranchesGrid() {
@@ -3379,41 +3641,28 @@
       const branches = getBranchesList();
 
       grid.innerHTML = branches.map(b => {
-        const key = 'diwan_shift_' + b.id + '_' + currentDate + '_' + currentShiftType;
-        const savedData = localStorage.getItem(key);
-        let done = 0;
-        let progress = 0;
-        let handover = 0;
-        let critical = 0;
-        let supervisor = 'لم يُسجل مشرف';
+        const key = STORAGE_KEYS.SHIFT_PREFIX + b.id + '_' + currentDate + '_' + currentShiftType;
+        const savedData = safeGetItem(key);
+        let s = { done: 0, inProgress: 0, handover: 0, critical: 0, total: TOTAL_ITEMS, percentage: 0 };
         let hasData = false;
 
         if (savedData) {
-          try {
-            const parsed = JSON.parse(savedData);
-            if (parsed.items) {
-              hasData = true;
-              Object.keys(parsed.items).forEach(id => {
-                const s = parsed.items[id].status;
-                if (s === 'done') done++;
-                else if (s === 'in_progress') progress++;
-                else if (s === 'handover') handover++;
-                else if (s === 'critical') critical++;
-                if (parsed.items[id].updatedBy) supervisor = parsed.items[id].updatedBy;
-              });
-            }
-          } catch(e) {}
+          const parsed = safeJsonParse(savedData);
+          if (parsed && parsed.items) {
+            hasData = true;
+            s = calculateStats(parsed.items);
+          }
         }
 
-        const pct = Math.round((done / 59) * 100);
+        const pct = s.percentage;
         const isCurrent = b.id === currentBranchId;
 
         return `
-          <div style="background: white; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 12px; padding: 14px; position: relative; box-shadow: var(--shadow-sm);">
+          <div id="hqCard_${b.id}" style="background: white; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 12px; padding: 14px; position: relative; box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <div>
-                <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${b.nameAr}</h4>
-                <span style="font-size: 11px; color: var(--text-muted);">📍 ${b.location}</span>
+                <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${escapeHtml(b.nameAr)}</h4>
+                <span style="font-size: 11px; color: var(--text-muted);">📍 ${escapeHtml(b.location)}</span>
               </div>
               ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
             </div>
@@ -3429,10 +3678,10 @@
             </div>
 
             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
-              <span>✅ ${done} مكتمل</span>
-              <span>🔄 ${progress} قيد العمل</span>
-              <span>⚠️ ${handover} مؤجل</span>
-              <span style="color: ${critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${critical > 0 ? '800' : 'normal'};">🚨 ${critical} عطل</span>
+              <span>✅ ${s.done} مكتمل</span>
+              <span>🔄 ${s.inProgress} قيد العمل</span>
+              <span>⚠️ ${s.handover} مؤجل</span>
+              <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
             </div>
 
             <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
@@ -3441,7 +3690,71 @@
           </div>
         `;
       }).join('');
+
+      // Fetch live cloud status from Firebase if active (H5)
+      if (firebaseDb) {
+        branches.forEach(b => {
+          firebaseDb.ref('branches/' + b.id + '/shifts/' + currentDate + '/' + currentShiftType).once('value', snapshot => {
+            const remoteData = snapshot.val();
+            if (remoteData && remoteData.items) {
+              const card = document.getElementById('hqCard_' + b.id);
+              if (card) {
+                const s = calculateStats(remoteData.items);
+                const isCurrent = b.id === currentBranchId;
+                card.innerHTML = `
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div>
+                      <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${escapeHtml(b.nameAr)}</h4>
+                      <span style="font-size: 11px; color: var(--text-muted);">📍 ${escapeHtml(b.location)} (محدّث سحابياً ☁️)</span>
+                    </div>
+                    ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
+                  </div>
+
+                  <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                      <span>نسبة الإنجاز اليوم:</span>
+                      <span style="color: ${s.percentage > 70 ? 'var(--primary)' : (s.percentage > 30 ? 'var(--warning)' : '#64748b')};">${s.percentage}%</span>
+                    </div>
+                    <div style="background: #e2e8f0; height: 8px; border-radius: 999px; overflow: hidden;">
+                      <div style="background: var(--primary); height: 100%; width: ${s.percentage}%;"></div>
+                    </div>
+                  </div>
+
+                  <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
+                    <span>✅ ${s.done} مكتمل</span>
+                    <span>🔄 ${s.inProgress} قيد العمل</span>
+                    <span>⚠️ ${s.handover} مؤجل</span>
+                    <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
+                  </div>
+
+                  <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
+                    ${isCurrent ? 'أنت تتصفح هذا الفرع الآن' : 'الانتقال ومتابعة هذا الفرع ➔'}
+                  </button>
+                `;
+              }
+            }
+          }).catch(err => console.warn('HQ live fetch failed for branch', b.id, err));
+        });
+      }
     }
   </script>
+// Close modal when clicking backdrop (H7)
+    window.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.classList.remove('open');
+            document.body.classList.remove('modal-open');
+          }
+        });
+      });
+    });
+
+    // Close BroadcastChannel cleanly on window unload (L6)
+    window.addEventListener('beforeunload', () => {
+      if (broadcastChannel) {
+        try { broadcastChannel.close(); } catch (e) {}
+      }
+    });
 </body>
 </html>
