@@ -1537,7 +1537,15 @@
           </div>
 
           <div class="form-group" style="margin-bottom: 10px;">
-            <label>الفرع التابع له المشرف:</label>
+            <label for="inputSupervisorRole">الرتبة / الدور الصلاحي:</label>
+            <select id="inputSupervisorRole" class="form-control" style="font-weight: 700;">
+              <option value="supervisor">👤 مسؤول صالة (Floor Supervisor)</option>
+              <option value="branch_manager">🏢 مدير فرع (Branch Manager)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="inputSupervisorBranch">الفرع التابع له المشرف:</label>
             <select id="inputSupervisorBranch" class="form-control">
               <option value="all">جميع الفروع (صلاحية عامة) 🌐</option>
               <option value="noueiery">فرع النويري</option>
@@ -2626,10 +2634,20 @@
 
     // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة وتخصيص الفروع
     const DEFAULT_SUPERVISORS = [
+      // General Manager (المدير العام - PIN: 9900)
+      { id: 'admin', name: 'المدير العام / الإدارة العامة (General Manager)', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' },
+
+      // Branch Managers (مديرو الفروع المستقلون)
+      { id: 'mgr_noueiery', name: 'مدير فرع النويري', role: 'branch_manager', branchId: 'noueiery', pinHash: 'fe675fe7aaee830b6fed09b64e034f84dcbdaeb429d9cccd4ebb90e15af8dd71' },
+      { id: 'mgr_khaldeh', name: 'مدير فرع خلدة', role: 'branch_manager', branchId: 'khaldeh', pinHash: '6c94e35ccc352d4e9ef0b99562cff995a5741ce8de8ad11b568892934daee366' },
+      { id: 'mgr_tariq', name: 'مدير فرع طريق الجديدة', role: 'branch_manager', branchId: 'tariq_jdideh', pinHash: '7a24738c1004bcc250f2e527aeab5e3b1891d00a5146a54b2e8c20df84a8c09d' },
+      { id: 'mgr_hamra', name: 'مدير فرع الحمرا', role: 'branch_manager', branchId: 'hamra', pinHash: 'd49030599e25e8522a2eac92f91f6e7bff2e56c9af06f879671a5166242d9a32' },
+      { id: 'mgr_baddawi', name: 'مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
+
+      // Floor Supervisors (مسؤولو الصالة الافتراضيون)
       { id: 'sup_ahmad', name: 'أحمد بدرة (Ahmad Badrah)', role: 'supervisor', branchId: 'all', pinHash: 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a' },
       { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'all', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
-      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'all', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' },
-      { id: 'admin', name: 'الإدارة / مدير الفروع (General Manager)', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' }
+      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'all', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
     ];
 
     let currentUserRole = 'supervisor';
@@ -2641,7 +2659,20 @@
       const saved = safeGetItem(STORAGE_KEYS.SUPERVISORS);
       if (saved) {
         const parsed = safeJsonParse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Auto-migrate: ensure all default branch managers exist in list
+          let needsUpdate = false;
+          DEFAULT_SUPERVISORS.forEach(ds => {
+            if (!parsed.some(p => p.id === ds.id)) {
+              parsed.push(ds);
+              needsUpdate = true;
+            }
+          });
+          if (needsUpdate) {
+            safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(parsed));
+          }
+          return parsed;
+        }
       }
       return DEFAULT_SUPERVISORS;
     }
@@ -2683,8 +2714,21 @@
       
       // Filter supervisors who belong to this branch OR have 'all' access
       const filtered = list.filter(s => s.branchId === 'all' || !s.branchId || s.branchId === currentBranchId || s.role === 'admin');
+
+      // Sort: Branch Manager first, then Floor Supervisors, then General Manager
+      filtered.sort((a, b) => {
+        const order = { 'branch_manager': 1, 'supervisor': 2, 'admin': 3 };
+        return (order[a.role] || 2) - (order[b.role] || 2);
+      });
+
       const currentVal = select.value;
-      select.innerHTML = filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      select.innerHTML = filtered.map(s => {
+        let prefix = '👤 ';
+        if (s.role === 'admin') prefix = '👑 ';
+        else if (s.role === 'branch_manager') prefix = '🏢 ';
+        return `<option value="${escapeHtml(s.id)}">${prefix}${escapeHtml(s.name)}</option>`;
+      }).join('');
+
       if (currentVal && filtered.some(s => s.id === currentVal)) {
         select.value = currentVal;
       }
@@ -2895,18 +2939,27 @@
           const adminSwitcher = document.getElementById('adminBranchSwitcher');
 
           if (currentUserRole === 'admin') {
+            // General Manager: Full Access
             if (btnManage) btnManage.style.display = 'inline-flex';
-            const btnShifts = document.getElementById('btnManageShifts');
             if (btnShifts) btnShifts.style.display = 'inline-flex';
-            const btnBranches = document.getElementById('btnManageBranches');
             if (btnBranches) btnBranches.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
               populateHeaderBranchSelect();
             }
+          } else if (currentUserRole === 'branch_manager') {
+            // Branch Manager: Access to shifts & supervisors of their branch
+            if (btnManage) btnManage.style.display = 'inline-flex';
+            if (btnShifts) btnShifts.style.display = 'inline-flex';
+            if (btnBranches) btnBranches.style.display = 'none';
+            if (btnHq) btnHq.style.display = 'none';
+            if (adminSwitcher) adminSwitcher.style.display = 'none';
           } else {
+            // Floor Supervisor: Operational only
             if (btnManage) btnManage.style.display = 'none';
+            if (btnShifts) btnShifts.style.display = 'none';
+            if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
           }
@@ -3152,9 +3205,15 @@
        SHIFTS MODAL CONTROLS (ADMIN)
        ============================================================ */
     function openShiftsModal() {
-      if (currentUserRole !== 'admin') {
-        alert("عذراً، هذه الصلاحية مخصصة للإدارة فقط.");
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة ومديري الفروع فقط.");
         return;
+      }
+      populateShiftsBranchFilter();
+      const filter = document.getElementById('shiftsBranchFilter');
+      if (filter) {
+        filter.value = currentBranchId;
+        filter.disabled = (currentUserRole === 'branch_manager');
       }
       populateShiftsBranchFilter();
       renderBranchShiftsList();
@@ -4051,8 +4110,8 @@
 
     function openSupervisorsModal() {
       document.body.classList.add('modal-open');
-      if (currentUserRole !== 'admin') {
-        alert("عذراً، هذه الصلاحية مخصصة لمدير الفرع والإدارة فقط.");
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة ومديري الفروع فقط.");
         return;
       }
       cancelSupervisorForm();
@@ -4067,39 +4126,60 @@
 
     function renderSupervisorsList() {
       const container = document.getElementById('supervisorsListContainer');
-      const list = getSupervisorsList();
+      let list = getSupervisorsList();
 
-      container.innerHTML = list.map(s => `
-        <div style="display: flex; justify-content: space-between; align-items: center; background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;">
-          <div>
-            <div style="font-weight: 800; font-size: 14px; color: var(--secondary); display: flex; align-items: center; gap: 8px;">
-              <span>${s.name}</span>
-              ${s.role === 'admin' ? 
-                '<span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">مدير الفرع</span>' : 
-                '<span style="background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">مسؤول صالة</span>'}
+      // If branch_manager, only show users belonging to this branch
+      if (currentUserRole === 'branch_manager') {
+        list = list.filter(s => s.branchId === currentBranchId || s.id === 'admin');
+      }
+
+      container.innerHTML = list.map(s => {
+        const isAdmin = (s.role === 'admin');
+        const isBranchMgr = (s.role === 'branch_manager');
+        const branchName = s.branchId === 'all' ? 'جميع الفروع 🌐' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
+
+        let roleBadge = '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">👤 مسؤول صالة</span>';
+        if (isAdmin) {
+          roleBadge = '<span style="background: #fdf4ff; color: #a855f7; border: 1px solid #d8b4fe; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">👑 مدير عام</span>';
+        } else if (isBranchMgr) {
+          roleBadge = '<span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">🏢 مدير فرع</span>';
+        }
+
+        // Branch manager cannot edit or delete general manager or other branch managers
+        const canEdit = (currentUserRole === 'admin') || (!isAdmin && !isBranchMgr);
+        const canDelete = !isAdmin && (currentUserRole === 'admin' || !isBranchMgr);
+
+        return `
+          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
+                ${roleBadge}
+                <span style="background: #f1f5f9; color: var(--text-muted); font-size: 11px; padding: 2px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
+              </div>
             </div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              رمز الدخول: •••• (مشفر ومحمي)
+            <div style="display: flex; gap: 6px;">
+              ${canEdit ? `
+                <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px;" onclick="openEditSupervisorForm('${escapeHtml(s.id)}')">
+                  ✏️ تعديل
+                </button>
+              ` : ''}
+              ${canDelete ? `
+                <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="deleteSupervisor('${escapeHtml(s.id)}')">
+                  🗑️ حذف
+                </button>
+              ` : ''}
             </div>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-outline-white btn-sm" style="color: var(--primary-dark); border-color: var(--border);" onclick="openEditSupervisorForm('${s.id}')">
-              ✏️ تعديل
-            </button>
-            ${s.role !== 'admin' ? `
-              <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; background: #fff5f5;" onclick="deleteSupervisor('${s.id}')">
-                🗑️ حذف
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function showAddSupervisorForm() {
       document.getElementById('supervisorFormTitle').innerText = '➕ إضافة مسؤول صالة جديد';
       document.getElementById('editSupervisorId').value = '';
       document.getElementById('inputSupervisorName').value = '';
+      if (document.getElementById('inputSupervisorRole')) document.getElementById('inputSupervisorRole').value = 'supervisor';
       document.getElementById('inputSupervisorPin').value = '';
       document.getElementById('inputSupervisorPinConfirm').value = '';
       document.getElementById('labelSupervisorPin').innerText = 'رمز PIN (4 أرقام):';
@@ -4117,6 +4197,8 @@
       document.getElementById('supervisorFormTitle').innerText = '✏️ تعديل بيانات: ' + sup.name;
       const branchInput = document.getElementById('inputSupervisorBranch');
       if (branchInput) branchInput.value = sup.branchId || 'all';
+      const roleInput = document.getElementById('inputSupervisorRole');
+      if (roleInput) roleInput.value = sup.role || 'supervisor';
       document.getElementById('editSupervisorId').value = sup.id;
       document.getElementById('inputSupervisorName').value = sup.name;
       document.getElementById('inputSupervisorPin').value = '';
@@ -4141,6 +4223,8 @@
       const confirmPin = document.getElementById('inputSupervisorPinConfirm').value.trim();
       const branchInput = document.getElementById('inputSupervisorBranch');
       const branchId = branchInput ? branchInput.value : 'all';
+      const roleInput = document.getElementById('inputSupervisorRole');
+      const role = (roleInput && roleInput.value) ? roleInput.value : 'supervisor';
       const errBox = document.getElementById('supervisorFormError');
 
       if (!name) {
@@ -4168,7 +4252,7 @@
         list.push({
           id: newId,
           name: name,
-          role: 'supervisor',
+          role: role,
           branchId: branchId,
           salt: salt,
           pinHash: hash
@@ -4184,7 +4268,8 @@
         if (idx === -1) return;
 
         list[idx].name = name;
-        list[idx].branchId = branchId; // Fixed: save branchId on edit (C5)
+        list[idx].branchId = branchId;
+        if (role) list[idx].role = role; // Fixed: save branchId on edit (C5)
 
         // If PIN was entered, update it with salt
         if (pin) {
