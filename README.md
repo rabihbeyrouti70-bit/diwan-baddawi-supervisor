@@ -84,4 +84,4 @@
 ### 🚀 تشغيل النظام عبر GitHub Pages
 
 الموقع منشور ويعمل مباشرة على الرابط:
-👉 **https://rabihbeyrouti70-bit.github.io/diwan-baddawi-supervisor/**
+👉 **https://rabihbeyrouti70-bit.github.io/diwan-supervisor/**
