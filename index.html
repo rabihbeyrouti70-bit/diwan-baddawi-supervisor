@@ -1846,7 +1846,7 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div id="securityVersionTag" style="text-align: center; margin: 0 auto 12px auto; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; color: #10b981; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>🔒</span>
-        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.0)</span>
+        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.1)</span>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
@@ -2150,6 +2150,14 @@
       <!-- Sections rendered by JavaScript -->
     </main>
 
+    <!-- BOTTOM HANDOVER CALL TO ACTION -->
+    <div class="no-print" style="margin: 28px auto 20px auto; max-width: 600px; text-align: center; padding: 0 16px;">
+      <button type="button" class="btn btn-warning" style="width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 800; border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: manipulation;" onclick="openHandoverModal()">
+        <span>📋</span>
+        <span>إنهاء وتسليم الوردية للمشرف القادم</span>
+      </button>
+    </div>
+
     
     <!-- PRINT SIGNATURES -->
     <div class="print-signatures">
@@ -2175,7 +2183,7 @@
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
-          <h3 class="modal-title">إنهاء وتسليم الوردية للمشرف القادم</h3>
+          <h3 class="modal-title" id="handoverModalTitle">إنهاء وتسليم الوردية للمشرف القادم</h3>
         </div>
         <button class="close-btn" onclick="closeHandoverModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
@@ -2185,22 +2193,38 @@
           سيتم حفظ حالة الوردية الحالية، وترحيل المهام غير المكتملة إلى المشرف في الوردية التالية ليتابع ما بدأته فوراً.
         </p>
         
-        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 14px; font-size: 14px;">
-          <div><strong>المشرف المسلّم:</strong> <span id="modalSupervisorName">أحمد بدرة</span></div>
-          <div><strong>الوردية:</strong> <span id="modalShiftType">صباحية</span></div>
-          <div><strong>المهام المكتملة:</strong> <span id="modalCompletedCount" style="color: var(--primary); font-weight: 700;">0</span> من <span id="modalTotalCount">59</span></div>
-          <div><strong>المهام المتبقية للوردية التالية:</strong> <span id="modalPendingCount" style="color: var(--warning); font-weight: 700;">0</span></div>
+        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; font-size: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">👤 المشرف المسلّم:</span>
+            <strong id="modalSupervisorName" style="color: var(--secondary); font-size: 15px;">-</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">🕒 الوردية الحالية:</span>
+            <strong id="modalShiftType" style="color: var(--secondary);">-</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">✅ المهام المكتملة:</span>
+            <span style="color: var(--primary); font-weight: 800;"><span id="modalCompletedCount">0</span> من <span id="modalTotalCount">0</span></span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">⚠️ المهام المتبقية للوردية التالية:</span>
+            <strong id="modalPendingCount" style="color: var(--warning); font-size: 15px;">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">🚨 الأعطال والمهام الحرجة:</span>
+            <strong id="modalCriticalCount" style="color: var(--danger); font-size: 15px;">0</strong>
+          </div>
         </div>
 
         <div class="form-group">
-          <label>📝 ملاحظات وتوصيات للمشرف القادم:</label>
+          <label for="handoverModalNotes">📝 ملاحظات وتوصيات للمشرف القادم:</label>
           <textarea id="handoverModalNotes" class="form-control" style="min-height: 90px;" placeholder="اكتب هنا أي أمور هامة، نقص بضاعة، أو أعطال ثلاجات تحتاج متابعة..."></textarea>
         </div>
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
-        <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHandoverModal()">إلغاء</button>
-        <button class="btn btn-primary" onclick="submitHandover()">تأكيد تسليم الوردية</button>
+        <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHandoverModal()">إلغاء</button>
+        <button type="button" class="btn btn-primary" onclick="submitHandover()">تأكيد تسليم الوردية</button>
       </div>
     </div>
   </div>
@@ -4498,30 +4522,36 @@
 
     function renderHandoverBanner() {
       const banner = document.getElementById('handoverAlertBanner');
+      if (!banner) return;
       if (state.handover && !state.handover.acknowledged) {
-        banner.style.display = 'flex';
-        document.getElementById('handoverFromSupervisor').innerText = state.handover.fromSupervisor;
-        document.getElementById('handoverTimestamp').innerText = state.handover.timestamp || '';
-        document.getElementById('handoverNotesContent').innerText = state.handover.handoverNotes || 'لا توجد ملاحظات إضافية.';
+        banner.style.display = 'block';
+        const fromSup = document.getElementById('handoverFromSupervisor');
+        if (fromSup) fromSup.innerText = state.handover.fromSupervisor;
+        const timeEl = document.getElementById('handoverTimestamp');
+        if (timeEl) timeEl.innerText = state.handover.timestamp || '';
+        const notesEl = document.getElementById('handoverNotesContent');
+        if (notesEl) notesEl.innerText = state.handover.handoverNotes || 'لا توجد ملاحظات إضافية.';
 
         // Render chips for pending tasks
         const chipsContainer = document.getElementById('handoverPendingChips');
-        chipsContainer.innerHTML = '';
-        
-        let pendingCount = 0;
-        Object.keys(state.items).forEach(id => {
-          const it = state.items[id];
-          if (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress') {
-            pendingCount++;
-            const chip = document.createElement('div');
-            chip.className = 'handover-task-chip';
-            chip.innerHTML = '⚠️ ' + id;
-            chipsContainer.appendChild(chip);
-          }
-        });
+        if (chipsContainer) {
+          chipsContainer.innerHTML = '';
+          let pendingCount = 0;
+          Object.keys(state.items).forEach(id => {
+            const it = state.items[id];
+            if (it && (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress')) {
+              pendingCount++;
+              const chip = document.createElement('div');
+              chip.className = 'handover-task-chip';
+              const title = getItemTitle(id);
+              chip.innerHTML = (it.status === 'critical' ? '🚨 ' : '⚠️ ') + escapeHtml(title);
+              chipsContainer.appendChild(chip);
+            }
+          });
 
-        if (pendingCount === 0) {
-          chipsContainer.innerHTML = '<span style="font-size: 12px; color: #065f46;">لا توجد مهام معلقة مرحلة. كل شيء كان مكتملاً!</span>';
+          if (pendingCount === 0) {
+            chipsContainer.innerHTML = '<span style="font-size: 12px; color: #065f46;">لا توجد مهام معلقة مرحلة. كل شيء كان مكتملاً!</span>';
+          }
         }
       } else {
         banner.style.display = 'none';
@@ -4886,22 +4916,55 @@
     /* ============================================================
        HANDOVER WORKFLOW (تسليم واستلام الوردية)
        ============================================================ */
+    function getItemTitle(rawId) {
+      if (!rawId) return '';
+      for (const sec of SECTIONS_DATA) {
+        if (sec.items) {
+          const it = sec.items.find(i => i.rawId === rawId);
+          if (it) {
+            return `${sec.titleAr} (${it.ar || it.en})`;
+          }
+        }
+      }
+      return rawId;
+    }
+
     function openHandoverModal() {
       const s = calculateStats(state.items);
 
-      document.getElementById('modalCompletedCount').innerText = s.done;
-      const modalTotal = document.getElementById('modalTotalCount');
-      if (modalTotal) modalTotal.innerText = s.total;
-      document.getElementById('modalPendingCount').innerText = s.pending;
-      document.getElementById('modalCriticalCount').innerText = s.critical;
+      const supSpan = document.getElementById('modalSupervisorName');
+      if (supSpan) supSpan.innerText = currentSupervisor;
+
+      const shiftSpan = document.getElementById('modalShiftType');
+      if (shiftSpan) shiftSpan.innerText = getShiftName(currentBranchId, currentShiftType);
+
+      const compSpan = document.getElementById('modalCompletedCount');
+      if (compSpan) compSpan.innerText = s.done;
+
+      const totalSpan = document.getElementById('modalTotalCount');
+      if (totalSpan) totalSpan.innerText = s.total;
+
+      const pendingSpan = document.getElementById('modalPendingCount');
+      if (pendingSpan) pendingSpan.innerText = (s.pending + s.inProgress + s.handover);
+
+      const critSpan = document.getElementById('modalCriticalCount');
+      if (critSpan) critSpan.innerText = s.critical;
+
+      const notesArea = document.getElementById('handoverModalNotes');
+      if (notesArea) {
+        notesArea.value = (state.handover && state.handover.handoverNotes) ? state.handover.handoverNotes : '';
+      }
 
       const modal = document.getElementById('handoverModal');
-      modal.classList.add('open');
-      document.body.classList.add('modal-open');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.classList.add('modal-open');
+      }
     }
 
     function closeHandoverModal() {
-      document.getElementById('handoverModal').classList.remove('open');
+      const modal = document.getElementById('handoverModal');
+      if (modal) modal.classList.remove('open');
       document.body.classList.remove('modal-open');
     }
 
@@ -4909,14 +4972,17 @@
       if (!confirm("هل أنت متأكد من إنهاء وتسليم ورديتك الحالية؟\nسيتم حفظ وتجميد السجل وترحيل المهام المعلقة للمشرف التالي.")) {
         return;
       }
-      const notes = document.getElementById('handoverModalNotes').value;
+      const notesArea = document.getElementById('handoverModalNotes');
+      const notes = notesArea ? notesArea.value.trim() : '';
       const now = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
       state.handover = {
         fromSupervisor: currentSupervisor,
         handoverNotes: notes,
         timestamp: 'اليوم ' + now,
-        acknowledged: false
+        submittedAt: new Date().toISOString(),
+        acknowledged: false,
+        carriedOver: false
       };
 
       // Save to archive list
@@ -4926,6 +4992,12 @@
       closeHandoverModal();
       showToast("✅ تم تسليم الوردية وحفظ السجل للمشرف القادم!");
       renderHandoverBanner();
+
+      setTimeout(() => {
+        if (confirm("✅ تم تسليم الوردية وحفظ السجل بنجاح!\n\nهل ترغب في قفل الشاشة الآن ليتمكن مشرف الوردية القادمة من تسجيل دخوله؟")) {
+          lockApp();
+        }
+      }, 400);
     }
 
     function saveToArchive() {
@@ -4936,7 +5008,7 @@
 
       const record = {
         branchId: currentBranchId,
-        branchName: b.nameAr,
+        branchName: b ? b.nameAr : currentBranchId,
         date: currentDate,
         shiftType: currentShiftType,
         shiftName: getShiftName(currentBranchId, currentShiftType),
