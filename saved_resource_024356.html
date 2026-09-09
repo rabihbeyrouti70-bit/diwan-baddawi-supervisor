@@ -809,7 +809,7 @@
       bottom: 0;
       background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(4px);
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 1000;
@@ -820,6 +820,7 @@
     }
 
     .modal-overlay.open {
+      display: flex !important;
       opacity: 1;
       pointer-events: auto;
     }
@@ -884,12 +885,13 @@
       box-shadow: var(--shadow-lg);
       z-index: 2000;
       transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      display: flex;
+      display: none;
       align-items: center;
       gap: 10px;
     }
 
     .toast.show {
+      display: flex;
       transform: translateX(-50%) translateY(0);
     }
 
@@ -1491,14 +1493,6 @@
     </main>
 
     
-    <!-- APP FOOTER -->
-    <footer class="app-footer no-print" style="margin-top: 40px; padding: 24px 16px; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px;">
-      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px;">
-        <img src="diwan.PNG" alt="شعار ديوان ماركت" style="height: 28px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
-        <strong style="color: var(--secondary); font-size: 14px;">شبكة فروع ديوان ماركت – لبنان</strong>
-      </div>
-      <div>نظام إدارة الصالة وفحص الأقسام وتسليم الورديات اللحظي &copy; 2026 – جميع الحقوق محفوظة</div>
-    </footer>
     <!-- PRINT SIGNATURES -->
     <div class="print-signatures">
       <div style="text-align: center;">
@@ -4716,8 +4710,7 @@
         });
       }
     }
-  </script>
-// Close modal when clicking backdrop (H7)
+    // Close modal when clicking backdrop (H7)
     window.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.modal-overlay').forEach(modal => {
         modal.addEventListener('click', (e) => {
@@ -4735,5 +4728,6 @@
         try { broadcastChannel.close(); } catch (e) {}
       }
     });
+  </script>
 </body>
 </html>
