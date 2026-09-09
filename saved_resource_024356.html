@@ -1263,8 +1263,7 @@
       <h2 class="auth-title">ديوان ماركت – نظام الصالة الموحد</h2>
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #a7f3d0; margin-bottom: 12px; text-align: center;">
-        💡 <strong>رموز الدخول:</strong> الإدارة العامة (9900) • النويري (1001) • خلدة (2002) • ط.الجديدة (3003) • الحمرا (4004) • البداوي (5005)
-      </div>
+        💡 <strong>رموز الدخول:</strong> الإدارة العامة: علي عبد العال (9900) • النويري (1001) • خلدة (2002) • ط.الجديدة (3003) • الحمرا (4004) • البداوي: أحمد بدرة (5005)</div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
         <label for="authBranchSelect">🏢 اختر الفرع:</label>
@@ -1397,7 +1396,7 @@
             <div class="sup-info">
               <span class="sup-icon">🛡️</span>
               <div>
-                <span id="activeSupervisorDisplay" class="sup-name">أحمد بدرة</span>
+                <span id="activeSupervisorDisplay" class="sup-name">علي عبد العال</span>
                 <span id="activeBranchDisplay" style="font-size: 11px; color: var(--text-muted); display: block;">فرع النويري</span>
               </div>
             </div>
@@ -2391,7 +2390,7 @@
 
 
     // Current State
-    let currentSupervisor = "Ahmad Badrah";
+    let currentSupervisor = "علي عبد العال";
     let currentShiftType = "morning";
     let currentDate = new Date().toISOString().split("T")[0];
     let activeFilter = "all";
@@ -2712,18 +2711,17 @@
 
     // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة وتخصيص الفروع
     const DEFAULT_SUPERVISORS = [
-      // General Manager (المدير العام - PIN: 9900)
-      { id: 'admin', name: 'المدير العام / الإدارة العامة (General Manager)', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' },
+      // General Manager (علي عبد العال - المدير العام لكل الفروع - PIN: 9900)
+      { id: 'admin', name: 'علي عبد العال (Ali Abd El-Aal) - المدير العام', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' },
 
       // Branch Managers (مديرو الفروع المستقلون)
       { id: 'mgr_noueiery', name: 'مدير فرع النويري', role: 'branch_manager', branchId: 'noueiery', pinHash: 'fe675fe7aaee830b6fed09b64e034f84dcbdaeb429d9cccd4ebb90e15af8dd71' },
       { id: 'mgr_khaldeh', name: 'مدير فرع خلدة', role: 'branch_manager', branchId: 'khaldeh', pinHash: '6c94e35ccc352d4e9ef0b99562cff995a5741ce8de8ad11b568892934daee366' },
       { id: 'mgr_tariq', name: 'مدير فرع طريق الجديدة', role: 'branch_manager', branchId: 'tariq_jdideh', pinHash: '7a24738c1004bcc250f2e527aeab5e3b1891d00a5146a54b2e8c20df84a8c09d' },
       { id: 'mgr_hamra', name: 'مدير فرع الحمرا', role: 'branch_manager', branchId: 'hamra', pinHash: 'd49030599e25e8522a2eac92f91f6e7bff2e56c9af06f879671a5166242d9a32' },
-      { id: 'mgr_baddawi', name: 'مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
+      { id: 'mgr_baddawi', name: 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
 
       // Floor Supervisors (مسؤولو الصالة الافتراضيون)
-      { id: 'sup_ahmad', name: 'أحمد بدرة (Ahmad Badrah)', role: 'supervisor', branchId: 'all', pinHash: 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a' },
       { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'all', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
       { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'all', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
     ];
@@ -2738,14 +2736,27 @@
       if (saved) {
         const parsed = safeJsonParse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Auto-migrate: ensure all default branch managers exist in list
+          // Auto-migrate: ensure default users & names are up-to-date
           let needsUpdate = false;
           DEFAULT_SUPERVISORS.forEach(ds => {
-            if (!parsed.some(p => p.id === ds.id)) {
+            const existing = parsed.find(p => p.id === ds.id);
+            if (!existing) {
               parsed.push(ds);
+              needsUpdate = true;
+            } else if (ds.id === 'admin' && !existing.name.includes('علي عبد العال')) {
+              existing.name = ds.name;
+              needsUpdate = true;
+            } else if (ds.id === 'mgr_baddawi' && !existing.name.includes('أحمد بدرة')) {
+              existing.name = ds.name;
               needsUpdate = true;
             }
           });
+          // Remove redundant legacy sup_ahmad since Ahmad is now mgr_baddawi
+          const legacyAhmadIdx = parsed.findIndex(p => p.id === 'sup_ahmad');
+          if (legacyAhmadIdx !== -1) {
+            parsed.splice(legacyAhmadIdx, 1);
+            needsUpdate = true;
+          }
           if (needsUpdate) {
             safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(parsed));
           }
@@ -3008,17 +3019,24 @@
         // 2. SMART PIN RESOLUTION: If not matched with selected option, search ALL users!
         if (!matchedUser) {
           const directHash = await computeHash(pin);
-          for (const s of list) {
-            if (s.salt) {
-              const sHash = await computeHash(pin, s.salt);
-              if (s.pinHash === sHash) {
-                matchedUser = s;
-                break;
-              }
-            } else {
-              if (s.pinHash === directHash) {
-                matchedUser = s;
-                break;
+          // Legacy PIN 1122 for Ahmad Badrah alias support
+          const HASH_1122 = 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a';
+          if (directHash === HASH_1122) {
+            matchedUser = list.find(s => s.id === 'mgr_baddawi');
+          }
+          if (!matchedUser) {
+            for (const s of list) {
+              if (s.salt) {
+                const sHash = await computeHash(pin, s.salt);
+                if (s.pinHash === sHash) {
+                  matchedUser = s;
+                  break;
+                }
+              } else {
+                if (s.pinHash === directHash) {
+                  matchedUser = s;
+                  break;
+                }
               }
             }
           }
@@ -4210,14 +4228,27 @@
       firebaseSupervisorsRef.on('value', (snapshot) => {
         let val = snapshot.val();
         if (val && Array.isArray(val) && val.length > 0) {
-          // Auto-merge missing branch managers into Firebase data
+          // Auto-merge & update default users and names in Firebase data
           let needsUpdate = false;
           DEFAULT_SUPERVISORS.forEach(ds => {
-            if (!val.some(p => p.id === ds.id)) {
+            const existing = val.find(p => p.id === ds.id);
+            if (!existing) {
               val.push(ds);
+              needsUpdate = true;
+            } else if (ds.id === 'admin' && !existing.name.includes('علي عبد العال')) {
+              existing.name = ds.name;
+              needsUpdate = true;
+            } else if (ds.id === 'mgr_baddawi' && !existing.name.includes('أحمد بدرة')) {
+              existing.name = ds.name;
               needsUpdate = true;
             }
           });
+          // Remove redundant legacy sup_ahmad
+          const legacyAhmadIdx = val.findIndex(p => p.id === 'sup_ahmad');
+          if (legacyAhmadIdx !== -1) {
+            val.splice(legacyAhmadIdx, 1);
+            needsUpdate = true;
+          }
           safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(val));
           if (needsUpdate && firebaseDb) {
             firebaseDb.ref('config/supervisors').set(val).catch(e => console.warn(e));
