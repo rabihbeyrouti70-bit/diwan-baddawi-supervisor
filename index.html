@@ -1224,6 +1224,9 @@
       <div class="auth-icon">🔒</div>
       <h2 class="auth-title">ديوان ماركت – نظام الصالة الموحد</h2>
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #a7f3d0; margin-bottom: 12px; text-align: center;">
+        💡 <strong>رموز الدخول:</strong> الإدارة العامة (9900) • النويري (1001) • خلدة (2002) • ط.الجديدة (3003) • الحمرا (4004) • البداوي (5005)
+      </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
         <label for="authBranchSelect">🏢 اختر الفرع:</label>
@@ -2899,10 +2902,10 @@
       if (isSubmittingPin || lockoutRemaining > 0) return;
       isSubmittingPin = true;
       try {
-        const supId = document.getElementById('authSupervisorSelect').value;
+        const supSelect = document.getElementById('authSupervisorSelect');
+        const branchSelect = document.getElementById('authBranchSelect');
         const pin = document.getElementById('authPinInput').value;
         const list = getSupervisorsList();
-        const sup = list.find(s => s.id === supId);
         const errorBox = document.getElementById('authError');
 
         if (!pin || pin.length !== APP_CONFIG.PIN_LENGTH) {
@@ -2910,31 +2913,65 @@
           return;
         }
 
-        if (!sup) {
-          errorBox.innerText = "المشرف المحدد غير موجود.";
-          return;
+        const selectedSupId = supSelect ? supSelect.value : '';
+        const selectedSup = list.find(s => s.id === selectedSupId);
+
+        // 1. First test currently selected supervisor
+        let matchedUser = null;
+        if (selectedSup) {
+          let matches = false;
+          if (selectedSup.salt) {
+            const saltedHash = await computeHash(pin, selectedSup.salt);
+            matches = (selectedSup.pinHash === saltedHash);
+          } else {
+            const directHash = await computeHash(pin);
+            matches = (selectedSup.pinHash === directHash);
+          }
+          if (matches) matchedUser = selectedSup;
         }
 
-        // Support both salted and legacy hashes (C10)
-        let matches = false;
-        if (sup.salt) {
-          const saltedHash = await computeHash(pin, sup.salt);
-          matches = (sup.pinHash === saltedHash);
-        } else {
+        // 2. SMART PIN RESOLUTION: If not matched with selected option, search ALL users!
+        if (!matchedUser) {
           const directHash = await computeHash(pin);
-          matches = (sup.pinHash === directHash);
+          for (const s of list) {
+            if (s.salt) {
+              const sHash = await computeHash(pin, s.salt);
+              if (s.pinHash === sHash) {
+                matchedUser = s;
+                break;
+              }
+            } else {
+              if (s.pinHash === directHash) {
+                matchedUser = s;
+                break;
+              }
+            }
+          }
         }
 
-        if (matches) {
+        if (matchedUser) {
           failedAttempts = 0;
-          currentSupervisor = sup.name;
-          currentUserRole = sup.role || 'supervisor';
+          currentSupervisor = matchedUser.name;
+          currentUserRole = matchedUser.role || 'supervisor';
 
-          const branchSelect = document.getElementById('authBranchSelect');
-          if (branchSelect) currentBranchId = branchSelect.value;
-          
+          // Automatically switch branch if user belongs to a specific branch
+          if (matchedUser.branchId && matchedUser.branchId !== 'all') {
+            currentBranchId = matchedUser.branchId;
+            if (branchSelect) branchSelect.value = currentBranchId;
+          } else if (branchSelect) {
+            currentBranchId = branchSelect.value;
+          }
+
+          // Sync selection in dropdown
+          if (supSelect) {
+            populateAuthSupervisorSelect();
+            supSelect.value = matchedUser.id;
+          }
+
           // Update header admin controls
           const btnManage = document.getElementById('btnManageSupervisors');
+          const btnShifts = document.getElementById('btnManageShifts');
+          const btnBranches = document.getElementById('btnManageBranches');
           const btnHq = document.getElementById('btnHqOverview');
           const adminSwitcher = document.getElementById('adminBranchSwitcher');
 
@@ -2980,7 +3017,9 @@
           loadStateForCurrentShift();
           if (firebaseDb) listenToFirebaseShift();
           renderAll();
-          showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + getBranchById(currentBranchId).nameAr + ")");
+
+          const b = getBranchById(currentBranchId);
+          showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + (b ? b.nameAr : '') + ")");
         } else {
           failedAttempts++;
           document.getElementById('authPinInput').value = '';
@@ -4094,9 +4133,20 @@
       }
       firebaseSupervisorsRef = firebaseDb.ref('config/supervisors');
       firebaseSupervisorsRef.on('value', (snapshot) => {
-        const val = snapshot.val();
+        let val = snapshot.val();
         if (val && Array.isArray(val) && val.length > 0) {
+          // Auto-merge missing branch managers into Firebase data
+          let needsUpdate = false;
+          DEFAULT_SUPERVISORS.forEach(ds => {
+            if (!val.some(p => p.id === ds.id)) {
+              val.push(ds);
+              needsUpdate = true;
+            }
+          });
           safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(val));
+          if (needsUpdate && firebaseDb) {
+            firebaseDb.ref('config/supervisors').set(val).catch(e => console.warn(e));
+          }
           populateAuthSupervisorSelect();
           const modal = document.getElementById('supervisorsModal');
           if (modal && modal.classList.contains('open')) {
