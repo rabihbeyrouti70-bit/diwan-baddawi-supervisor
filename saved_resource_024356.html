@@ -1846,7 +1846,7 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div id="securityVersionTag" style="text-align: center; margin: 0 auto 12px auto; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; color: #10b981; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>🔒</span>
-        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v2.8)</span>
+        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v2.9)</span>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
@@ -3406,8 +3406,8 @@
       { id: 'mgr_baddawi', name: 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
 
       // Floor Supervisors (مسؤولو الصالة الافتراضيون)
-      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'all', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
-      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'all', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
+      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'baddawi', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
+      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'baddawi', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
     ];
 
     let currentUserRole = 'supervisor';
@@ -3482,6 +3482,16 @@
             }
           });
 
+          // Strict branch association: Floor supervisors belong ONLY to their specific branch, never 'all'
+          parsed.forEach(p => {
+            if (p.id !== 'admin' && p.role !== 'admin') {
+              if (!p.branchId || p.branchId === 'all') {
+                p.branchId = 'baddawi';
+                needsUpdate = true;
+              }
+            }
+          });
+
           if (needsUpdate) {
             safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(parsed));
           }
@@ -3530,8 +3540,14 @@
       if (!select) return;
       const list = getSupervisorsList();
       
-      // Filter supervisors who belong to this branch OR have 'all' access
-      const filtered = list.filter(s => s.branchId === 'all' || !s.branchId || s.branchId === currentBranchId || s.role === 'admin');
+      // Strict branch isolation:
+      // 1. General Manager (admin) appears in all branches
+      // 2. All other supervisors & branch managers appear ONLY in their exact branch
+      const filtered = list.filter(s => {
+        if (s.id === 'admin' || s.role === 'admin') return true;
+        const sBranch = s.branchId || 'baddawi';
+        return sBranch === currentBranchId;
+      });
 
       // Sort: General Manager first, then Branch Manager, then Floor Supervisors
       filtered.sort((a, b) => {
@@ -3901,6 +3917,12 @@
       
       populateAuthBranchSelect();
       populateAuthSupervisorSelect();
+
+      const branchSelect = document.getElementById('authBranchSelect');
+      if (branchSelect) {
+        branchSelect.addEventListener('change', onAuthBranchChange);
+        branchSelect.addEventListener('input', onAuthBranchChange);
+      }
 
       const supSelect = document.getElementById('authSupervisorSelect');
       if (supSelect) {
@@ -5033,6 +5055,16 @@
               }
               if (!existing.salt && existing.pinHash !== ds.pinHash) {
                 existing.pinHash = ds.pinHash;
+                needsUpdate = true;
+              }
+            }
+          });
+
+          // Strict branch association in Firebase
+          val.forEach(p => {
+            if (p.id !== 'admin' && p.role !== 'admin') {
+              if (!p.branchId || p.branchId === 'all') {
+                p.branchId = 'baddawi';
                 needsUpdate = true;
               }
             }
