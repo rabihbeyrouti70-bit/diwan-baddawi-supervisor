@@ -1316,6 +1316,10 @@
             🕒 إدارة الورديات
           </button>
 
+          <button id="btnManageBranches" class="btn btn-primary btn-sm" onclick="openBranchesModal()" style="display: none; background: #059669; border-color: #047857;" title="إدارة وإضافة فروع ديوان ماركت (صلاحية الإدارة)">
+            📍 إدارة الفروع
+          </button>
+
           <button class="btn btn-warning" onclick="openHandoverModal()">
             📋 تسليم الوردية
           </button>
@@ -1605,6 +1609,68 @@
 
   <!-- MODAL: HQ MULTI-BRANCH OVERVIEW -->
   <!-- MODAL: BRANCH SHIFTS MANAGEMENT (ADMIN EXCLUSIVE) -->
+  <!-- MODAL: BRANCHES MANAGEMENT (ADMIN EXCLUSIVE) -->
+  <div class="modal-overlay" id="branchesModal" role="dialog" aria-modal="true" aria-labelledby="branchesModalTitle">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="branchesModalTitle">📍 إدارة شبكة الفروع (صلاحية الإدارة)</h3>
+        <button class="close-btn" onclick="closeBranchesModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+        يمكن للمدير العام إضافة فروع جديدة لشبكة ديوان ماركت، وتعديل بياناتها أو حذفها مع المزامنة التلقائية الفورية.
+      </p>
+
+      <!-- Branches List Container -->
+      <div id="branchesListContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; max-height: 300px; overflow-y: auto;">
+        <!-- Dynamically rendered branches -->
+      </div>
+
+      <!-- Add Branch Action Button -->
+      <div style="margin-bottom: 14px;">
+        <button id="btnShowAddBranch" type="button" class="btn btn-outline-white btn-sm" style="color: var(--primary-dark); border-color: var(--primary); width: 100%; justify-content: center; font-weight: 800;" onclick="showAddBranchForm()">
+          + إضافة فرع جديد للمنظومة
+        </button>
+      </div>
+
+      <!-- Branch Form (Add / Edit) -->
+      <div id="branchFormContainer" style="display: none; background: #f0fdf4; border: 1.5px solid var(--primary); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+        <h4 id="branchFormTitle" style="font-size: 14px; font-weight: 800; color: var(--primary-dark); margin-bottom: 10px;">إضافة فرع جديد</h4>
+        <input type="hidden" id="editBranchId">
+
+        <div class="form-group">
+          <label for="inputBranchNameAr">اسم الفرع بالعربية:</label>
+          <input type="text" id="inputBranchNameAr" class="form-control" placeholder="مثال: فرع جونية، فرع صيدا...">
+        </div>
+
+        <div class="form-group">
+          <label for="inputBranchNameEn">اسم الفرع بالإنجليزية:</label>
+          <input type="text" id="inputBranchNameEn" class="form-control" placeholder="مثال: Jounieh Branch...">
+        </div>
+
+        <div class="form-group">
+          <label for="inputBranchLocation">الموقع الجغرافي / المدينة:</label>
+          <input type="text" id="inputBranchLocation" class="form-control" placeholder="مثال: جبل لبنان - ساحل جونية...">
+        </div>
+
+        <div id="branchFormError" style="color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 700;"></div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-outline-white btn-sm" onclick="cancelBranchForm()">إلغاء</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveBranchForm()">حفظ الفرع</button>
+        </div>
+      </div>
+
+      <!-- Reset & Close Footer -->
+      <div style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetBranchesToDefault()">
+          🔄 استعادة الفروع الخمسة الأصلية
+        </button>
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeBranchesModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="shiftsModal" role="dialog" aria-modal="true" aria-labelledby="shiftsModalTitle">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
@@ -2300,6 +2366,7 @@
         } else if (event.data.type === 'SYNC_SUPERVISORS') {
           localStorage.setItem('diwan_supervisors_data', JSON.stringify(event.data.supervisors));
           populateAuthSupervisorSelect();
+      populateSupervisorBranchSelect();
           const modal = document.getElementById('supervisorsModal');
           if (modal && modal.classList.contains('open')) {
             renderSupervisorsList();
@@ -2350,6 +2417,245 @@
       const list = getBranchesList();
       return list.find(b => b.id === id) || list[0];
     }
+
+    function saveBranchesList(list, broadcast = true) {
+      safeSetItem(STORAGE_KEYS.BRANCHES, JSON.stringify(list));
+      populateAuthBranchSelect();
+      populateHeaderBranchSelect();
+      populateShiftsBranchFilter();
+      populateSupervisorBranchSelect();
+
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_BRANCHES',
+          branches: list
+        });
+      }
+      if (firebaseDb) {
+        firebaseDb.ref('config/branches').set(list).catch(err => console.warn("Firebase branches write error:", err));
+      }
+    }
+
+    function populateSupervisorBranchSelect() {
+      const select = document.getElementById('inputSupervisorBranch');
+      if (!select) return;
+      const branches = getBranchesList();
+      const curVal = select.value;
+      select.innerHTML = '<option value="all">جميع الفروع (صلاحية عامة) 🌐</option>' +
+        branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)}</option>`).join('');
+      if (curVal) select.value = curVal;
+    }
+
+    /* ============================================================
+       BRANCHES MODAL CONTROLS (ADMIN)
+       ============================================================ */
+    function openBranchesModal() {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة فقط.");
+        return;
+      }
+      renderBranchesList();
+      cancelBranchForm();
+      document.body.classList.add('modal-open');
+      document.getElementById('branchesModal').classList.add('open');
+    }
+
+    function closeBranchesModal() {
+      document.getElementById('branchesModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+
+    function renderBranchesList() {
+      const branches = getBranchesList();
+      const container = document.getElementById('branchesListContainer');
+
+      if (!branches || branches.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 16px;">لا توجد فروع مسجلة في المنظومة.</div>';
+        return;
+      }
+
+      container.innerHTML = branches.map(b => {
+        const isCurrent = (b.id === currentBranchId);
+        return `
+          <div style="background: white; border: 1.5px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="font-size: 15px; color: var(--secondary);">${escapeHtml(b.nameAr)}</strong>
+                <span style="font-size: 12px; color: var(--text-muted);">(${escapeHtml(b.nameEn)})</span>
+                ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                📍 ${escapeHtml(b.location)}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px;" onclick="openEditBranchForm('${escapeHtml(b.id)}')">
+                ✏️ تعديل
+              </button>
+              ${!isCurrent ? `
+                <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="deleteBranch('${escapeHtml(b.id)}')">
+                  🗑️ حذف
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showAddBranchForm() {
+      document.getElementById('branchFormTitle').innerText = 'إضافة فرع جديد لشبكة ديوان ماركت';
+      document.getElementById('editBranchId').value = '';
+      document.getElementById('inputBranchNameAr').value = '';
+      document.getElementById('inputBranchNameEn').value = '';
+      document.getElementById('inputBranchLocation').value = '';
+      document.getElementById('branchFormError').innerText = '';
+      document.getElementById('branchFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddBranch').style.display = 'none';
+      document.getElementById('inputBranchNameAr').focus();
+    }
+
+    function openEditBranchForm(id) {
+      const branches = getBranchesList();
+      const b = branches.find(item => item.id === id);
+      if (!b) return;
+
+      document.getElementById('branchFormTitle').innerText = '✏️ تعديل بيانات: ' + b.nameAr;
+      document.getElementById('editBranchId').value = b.id;
+      document.getElementById('inputBranchNameAr').value = b.nameAr;
+      document.getElementById('inputBranchNameEn').value = b.nameEn;
+      document.getElementById('inputBranchLocation').value = b.location;
+      document.getElementById('branchFormError').innerText = '';
+      document.getElementById('branchFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddBranch').style.display = 'none';
+      document.getElementById('inputBranchNameAr').focus();
+    }
+
+    function cancelBranchForm() {
+      document.getElementById('branchFormContainer').style.display = 'none';
+      document.getElementById('btnShowAddBranch').style.display = 'block';
+      document.getElementById('branchFormError').innerText = '';
+    }
+
+    function saveBranchForm() {
+      const id = document.getElementById('editBranchId').value;
+      const nameAr = document.getElementById('inputBranchNameAr').value.trim();
+      const nameEn = document.getElementById('inputBranchNameEn').value.trim();
+      const location = document.getElementById('inputBranchLocation').value.trim();
+      const errBox = document.getElementById('branchFormError');
+
+      if (!nameAr) {
+        errBox.innerText = 'يرجى إدخال اسم الفرع بالعربية.';
+        return;
+      }
+      if (!nameEn) {
+        errBox.innerText = 'يرجى إدخال اسم الفرع بالإنجليزية.';
+        return;
+      }
+      if (!location) {
+        errBox.innerText = 'يرجى إدخال موقع الفرع أو المدينة.';
+        return;
+      }
+
+      let list = [...getBranchesList()];
+
+      if (!id) {
+        // ADD NEW BRANCH
+        const newId = 'branch_' + Date.now();
+        list.push({
+          id: newId,
+          nameAr: nameAr,
+          nameEn: nameEn,
+          location: location
+        });
+
+        // Initialize default shifts for the new branch
+        const allShifts = getAllBranchShifts();
+        if (!allShifts[newId]) {
+          allShifts[newId] = [
+            { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+            { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+            { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+          ];
+          saveAllBranchShifts(allShifts);
+        }
+
+        saveBranchesList(list);
+        cancelBranchForm();
+        renderBranchesList();
+        showToast("✅ تمت إضافة الفرع الجديد (" + nameAr + ") بنجاح!");
+      } else {
+        // EDIT EXISTING
+        const idx = list.findIndex(b => b.id === id);
+        if (idx !== -1) {
+          list[idx].nameAr = nameAr;
+          list[idx].nameEn = nameEn;
+          list[idx].location = location;
+
+          saveBranchesList(list);
+          cancelBranchForm();
+          renderBranchesList();
+          if (id === currentBranchId) updateBranchUI();
+          showToast("✅ تم تحديث بيانات الفرع بنجاح!");
+        }
+      }
+    }
+
+    function deleteBranch(id) {
+      const list = getBranchesList();
+      if (list.length <= 1) {
+        alert("لا يمكن حذف هذا الفرع! يجب أن تحتوي المنظومة على فرع واحد على الأقل.");
+        return;
+      }
+      if (id === currentBranchId) {
+        alert("لا يمكن حذف الفرع النشط حالياً! يرجى التبديل لفرع آخر أولاً.");
+        return;
+      }
+
+      const b = list.find(item => item.id === id);
+      if (!confirm("هل أنت متأكد من حذف (" + (b ? b.nameAr : "هذا الفرع") + ") من المنظومة؟")) {
+        return;
+      }
+
+      const updated = list.filter(item => item.id !== id);
+      saveBranchesList(updated);
+      cancelBranchForm();
+      renderBranchesList();
+      showToast("🗑️ تم حذف الفرع بنجاح!");
+    }
+
+    function resetBranchesToDefault() {
+      if (!confirm("هل تريد بالتأكيد استعادة الفروع الخمسة الأصلية؟ سيتم إلغاء أي فروع مخصصة تمت إضافتها.")) {
+        return;
+      }
+      saveBranchesList(DEFAULT_BRANCHES);
+      cancelBranchForm();
+      renderBranchesList();
+      if (!DEFAULT_BRANCHES.some(b => b.id === currentBranchId)) {
+        currentBranchId = DEFAULT_BRANCHES[0].id;
+        updateBranchUI();
+      }
+      showToast("🔄 تم استعادة الفروع الخمسة الأصلية بنجاح!");
+    }
+
+    function listenToFirebaseBranches() {
+      if (!firebaseDb) return;
+      firebaseDb.ref('config/branches').on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val && Array.isArray(val) && val.length > 0) {
+          safeSetItem(STORAGE_KEYS.BRANCHES, JSON.stringify(val));
+          populateAuthBranchSelect();
+          populateHeaderBranchSelect();
+          populateShiftsBranchFilter();
+          populateSupervisorBranchSelect();
+          const modal = document.getElementById('branchesModal');
+          if (modal && modal.classList.contains('open')) {
+            renderBranchesList();
+          }
+        }
+      }, (err) => console.warn('Firebase branches listener error:', err));
+    }
+
 
     // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة وتخصيص الفروع
     const DEFAULT_SUPERVISORS = [
@@ -2625,6 +2931,8 @@
             if (btnManage) btnManage.style.display = 'inline-flex';
             const btnShifts = document.getElementById('btnManageShifts');
             if (btnShifts) btnShifts.style.display = 'inline-flex';
+            const btnBranches = document.getElementById('btnManageBranches');
+            if (btnBranches) btnBranches.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
@@ -2710,10 +3018,12 @@
       // Hide admin controls
       const btnManage = document.getElementById('btnManageSupervisors');
       const btnShifts = document.getElementById('btnManageShifts');
+      const btnBranches = document.getElementById('btnManageBranches');
       const btnHq = document.getElementById('btnHqOverview');
       const adminSwitcher = document.getElementById('adminBranchSwitcher');
       if (btnManage) btnManage.style.display = 'none';
       if (btnShifts) btnShifts.style.display = 'none';
+      if (btnBranches) btnBranches.style.display = 'none';
       if (btnHq) btnHq.style.display = 'none';
       if (adminSwitcher) adminSwitcher.style.display = 'none';
 
@@ -3184,6 +3494,7 @@
         listenToFirebaseShift();
         listenToFirebaseSupervisors();
         listenToFirebaseBranchShifts();
+        listenToFirebaseBranches();
         setSyncBadgeStatus('cloud');
       } catch (e) {
         console.error("Firebase initialization failed:", e);
