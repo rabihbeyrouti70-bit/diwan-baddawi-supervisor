@@ -1646,6 +1646,14 @@
         <button id="btnShowAddSupervisor" class="btn btn-primary" style="width: 100%;" onclick="showAddSupervisorForm()">
           ➕ إضافة مسؤول صالة جديد
         </button>
+
+        <!-- Reset & Close Footer -->
+        <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetSupervisorsToDefault()">
+            🔄 استعادة المشرفين والمديرين الافتراضيين
+          </button>
+          <button type="button" class="btn btn-outline-white btn-sm" onclick="closeSupervisorsModal()">إغلاق</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2736,26 +2744,34 @@
       if (saved) {
         const parsed = safeJsonParse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Auto-migrate: ensure default users & names are up-to-date
           let needsUpdate = false;
-          DEFAULT_SUPERVISORS.forEach(ds => {
-            const existing = parsed.find(p => p.id === ds.id);
-            if (!existing) {
-              parsed.push(ds);
-              needsUpdate = true;
-            } else if (ds.id === 'admin' && !existing.name.includes('علي عبد العال')) {
-              existing.name = ds.name;
-              needsUpdate = true;
-            } else if (ds.id === 'mgr_baddawi' && !existing.name.includes('أحمد بدرة')) {
-              existing.name = ds.name;
-              needsUpdate = true;
-            }
-          });
-          // Remove redundant legacy sup_ahmad since Ahmad is now mgr_baddawi
+          // Sync official names for existing users only (do NOT resurrect deleted users)
+          const adminUser = parsed.find(p => p.id === 'admin');
+          if (adminUser && !adminUser.name.includes('علي عبد العال')) {
+            adminUser.name = 'علي عبد العال (Ali Abd El-Aal) - المدير العام';
+            needsUpdate = true;
+          }
+          const baddawiUser = parsed.find(p => p.id === 'mgr_baddawi');
+          if (baddawiUser && !baddawiUser.name.includes('أحمد بدرة')) {
+            baddawiUser.name = 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي';
+            needsUpdate = true;
+          }
+          // Remove redundant legacy sup_ahmad if still present
           const legacyAhmadIdx = parsed.findIndex(p => p.id === 'sup_ahmad');
           if (legacyAhmadIdx !== -1) {
             parsed.splice(legacyAhmadIdx, 1);
             needsUpdate = true;
+          }
+          // One-time legacy migration ONLY if list has no managers at all (old schema)
+          const hasAnyManager = parsed.some(p => p.id && p.id.startsWith('mgr_'));
+          const isLegacyOnly = !hasAnyManager && parsed.some(p => p.id === 'sup1' || p.id === 'sup2');
+          if (isLegacyOnly) {
+            DEFAULT_SUPERVISORS.forEach(ds => {
+              if (!parsed.some(p => p.id === ds.id)) {
+                parsed.push(ds);
+                needsUpdate = true;
+              }
+            });
           }
           if (needsUpdate) {
             safeSetItem(STORAGE_KEYS.SUPERVISORS, JSON.stringify(parsed));
@@ -4452,21 +4468,37 @@
     function deleteSupervisor(id) {
       let list = getSupervisorsList();
       const sup = list.find(s => s.id === id);
-      if (!sup) return;
-
-      if (sup.role === 'admin') {
-        alert("لا يمكن حذف حساب الإدارة!");
+      if (!sup) {
+        alert("المشرف المحدد غير موجود!");
         return;
       }
 
-      if (!confirm(`هل أنت متأكد من حذف المشرف "${sup.name}" من النظام؟\nلن يتمكن بعد الآن من الدخول للنظام.`)) {
+      if (sup.role === 'admin' || sup.id === 'admin') {
+        alert("لا يمكن حذف حساب المدير العام الرئيسي!");
+        return;
+      }
+
+      if (!confirm(`هل أنت متأكد من حذف "${sup.name}" من النظام نهائياً؟\nلن يتمكن بعد الآن من الدخول للنظام.`)) {
         return;
       }
 
       list = list.filter(s => s.id !== id);
       saveSupervisorsList(list);
       renderSupervisorsList();
-      showToast("🗑️ تم حذف المشرف من النظام");
+      showToast("🗑️ تم حذف (" + sup.name + ") بنجاح!");
+    }
+
+    function resetSupervisorsToDefault() {
+      if (currentUserRole !== 'admin') {
+        alert("هذه الصلاحية مخصصة للمدير العام فقط.");
+        return;
+      }
+      if (!confirm("هل أنت متأكد من استعادة القائمة الافتراضية للمشرفين ومديري الفروع؟\nسيتم استرجاع الحسابات والرموز الأساسية.")) {
+        return;
+      }
+      saveSupervisorsList(DEFAULT_SUPERVISORS);
+      renderSupervisorsList();
+      showToast("🔄 تمت استعادة قائمة المشرفين والمديرين الافتراضية بنجاح!");
     }
 
     /* ============================================================
