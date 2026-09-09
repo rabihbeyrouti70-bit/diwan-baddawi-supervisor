@@ -8,6 +8,8 @@
   <meta http-equiv="Expires" content="0">
 
   <title>ديوان ماركت - نظام متابعة الصالة وتسليم الورديات اللحظي</title>
+  <link rel="icon" type="image/png" href="diwan.PNG">
+  <link rel="apple-touch-icon" href="diwan.PNG">
   
   <!-- Google Fonts: Cairo -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,6 +100,38 @@
       z-index: 1;
     }
 
+    
+    .brand-logo {
+      height: 46px;
+      width: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      flex-shrink: 0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .brand-logo:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+    .auth-logo {
+      height: 52px;
+      width: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      margin-bottom: 12px;
+    }
+    .modal-logo {
+      height: 28px;
+      width: auto;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      vertical-align: middle;
+    }
+    
     .brand-area h1 {
       font-size: 24px;
       font-weight: 800;
@@ -881,10 +915,9 @@
       }
       .print-header {
         display: block !important;
-        text-align: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 14px;
-        margin-bottom: 20px;
+        padding-bottom: 0 !important;
+        margin-bottom: 16px !important;
+        border-bottom: none !important;
       }
       .section-card {
         box-shadow: none !important;
@@ -1117,6 +1150,9 @@
         padding: 14px;
         margin-bottom: 14px;
       }
+      .brand-logo {
+        height: 36px;
+      }
       .top-header h1 {
         font-size: 18px;
       }
@@ -1221,7 +1257,9 @@
   <!-- AUTH / PIN LOCK SCREEN -->
   <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
-      <div class="auth-icon">🔒</div>
+      <div style="text-align: center;">
+        <img src="diwan.PNG" alt="شعار ديوان ماركت" class="auth-logo">
+      </div>
       <h2 class="auth-title">ديوان ماركت – نظام الصالة الموحد</h2>
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #a7f3d0; margin-bottom: 12px; text-align: center;">
@@ -1273,9 +1311,16 @@
 
   <!-- PRINT ONLY HEADER -->
   <div class="print-header">
-    <h1 id="printBranchTitle" style="font-size: 22px; margin-bottom: 4px;">ماركت الديوان – فرع النويري</h1>
-    <h2 style="font-size: 16px; color: #444;">تقرير متابعة وفحص الصالة اليومي وتسليم الورديات</h2>
-    <p id="printMeta" style="font-size: 13px; margin-top: 6px; color: #666;"></p>
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 16px;">
+      <div style="text-align: right;">
+        <h1 id="printBranchTitle" style="font-size: 22px; margin: 0 0 4px 0; color: #000;">ديوان ماركت – فرع النويري</h1>
+        <h2 style="font-size: 15px; color: #333; margin: 0;">تقرير متابعة وفحص الصالة اليومي وتسليم الورديات</h2>
+        <p id="printMeta" style="font-size: 12px; margin: 6px 0 0 0; color: #555;"></p>
+      </div>
+      <div style="text-align: left;">
+        <img src="diwan.PNG" alt="شعار ديوان ماركت" style="height: 52px; border-radius: 4px; display: block;">
+      </div>
+    </div>
   </div>
 
   <div class="app-container">
@@ -1283,13 +1328,16 @@
     <!-- TOP HEADER -->
     <header class="top-header">
       <div class="header-content">
-        <div class="brand-area">
-          <h1>
-            🛒 ديوان ماركت – <span id="brandBranchTitleAr">فرع النويري</span>
-            <span class="en" id="brandBranchTitleEn">Diwan Market – Noueiery Branch</span>
-          </h1>
-          <div class="brand-tag">
-            ⚡ نظام إدارة الصالة وتسليم الورديات المركزي الموحد
+        <div class="brand-area" style="display: flex; align-items: center; gap: 14px;">
+          <img src="diwan.PNG" alt="شعار ديوان ماركت" class="brand-logo">
+          <div>
+            <h1>
+              ديوان ماركت – <span id="brandBranchTitleAr">فرع النويري</span>
+              <span class="en" id="brandBranchTitleEn">Diwan Market – Noueiery Branch</span>
+            </h1>
+            <div class="brand-tag">
+              ⚡ نظام إدارة الصالة وتسليم الورديات المركزي الموحد
+            </div>
           </div>
         </div>
 
@@ -1445,6 +1493,15 @@
       <!-- Sections rendered by JavaScript -->
     </main>
 
+    
+    <!-- APP FOOTER -->
+    <footer class="app-footer no-print" style="margin-top: 40px; padding: 24px 16px; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px;">
+        <img src="diwan.PNG" alt="شعار ديوان ماركت" style="height: 28px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
+        <strong style="color: var(--secondary); font-size: 14px;">شبكة فروع ديوان ماركت – لبنان</strong>
+      </div>
+      <div>نظام إدارة الصالة وفحص الأقسام وتسليم الورديات اللحظي &copy; 2026 – جميع الحقوق محفوظة</div>
+    </footer>
     <!-- PRINT SIGNATURES -->
     <div class="print-signatures">
       <div style="text-align: center;">
@@ -1467,7 +1524,10 @@
   <div class="modal-overlay" id="handoverModal" role="dialog" aria-modal="true" aria-labelledby="handoverModalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title">📋 إنهاء وتسليم الوردية للمشرف القادم</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title">إنهاء وتسليم الوردية للمشرف القادم</h3>
+        </div>
         <button class="close-btn" onclick="closeHandoverModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
@@ -1500,7 +1560,10 @@
   <div class="modal-overlay" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
-        <h3 class="modal-title">📁 سجل الورديات السابقة لماركت الديوان</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title">سجل الورديات السابقة لماركت الديوان</h3>
+        </div>
         <button class="close-btn" onclick="closeHistoryModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
@@ -1515,7 +1578,10 @@
   <div class="modal-overlay" id="supervisorsModal" role="dialog" aria-modal="true" aria-labelledby="supervisorsModalTitle">
     <div class="modal-card" style="max-width: 650px;">
       <div class="modal-header">
-        <h3 class="modal-title">👥 إدارة مسؤولي الصالة (صلاحية الإدارة)</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title">إدارة مسؤولي الصالة (صلاحية الإدارة)</h3>
+        </div>
         <button class="close-btn" onclick="closeSupervisorsModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
@@ -1591,7 +1657,10 @@
   <div class="modal-overlay" id="branchesModal" role="dialog" aria-modal="true" aria-labelledby="branchesModalTitle">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="branchesModalTitle">📍 إدارة شبكة الفروع (صلاحية الإدارة)</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title" id="branchesModalTitle">إدارة شبكة الفروع (صلاحية الإدارة)</h3>
+        </div>
         <button class="close-btn" onclick="closeBranchesModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
@@ -1652,7 +1721,10 @@
   <div class="modal-overlay" id="shiftsModal" role="dialog" aria-modal="true" aria-labelledby="shiftsModalTitle">
     <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="shiftsModalTitle">🕒 إدارة وتخصيص ورديات الفروع</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title" id="shiftsModalTitle">إدارة وتخصيص ورديات الفروع</h3>
+        </div>
         <button class="close-btn" onclick="closeShiftsModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
@@ -1719,7 +1791,10 @@
   <div class="modal-overlay" id="hqOverviewModal" role="dialog" aria-modal="true" aria-labelledby="hqOverviewModalTitle">
     <div class="modal-card" style="max-width: 780px;">
       <div class="modal-header">
-        <h3 class="modal-title">🏢 لوحة المتابعة المركزية لكافة الفروع (HQ Dashboard)</h3>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title">لوحة المتابعة المركزية لكافة الفروع (HQ Dashboard)</h3>
+        </div>
         <button class="close-btn" onclick="closeHqOverviewModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
