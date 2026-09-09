@@ -1583,7 +1583,7 @@
       </div>
 
       <div style="margin-bottom: 16px;">
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+        <p id="supervisorsModalDesc" style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
           يمكن للإدارة هنا إضافة مسؤولي صالة جدد، تعديل أسمائهم، إعادة تعيين رموز الـ PIN (المشفرة)، أو حذف من غادر العمل.
         </p>
 
@@ -1647,7 +1647,7 @@
 
         <!-- Reset & Close Footer -->
         <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetSupervisorsToDefault()">
+          <button type="button" id="btnResetSupervisors" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetSupervisorsToDefault()">
             🔄 استعادة المشرفين والمديرين الافتراضيين
           </button>
           <button type="button" class="btn btn-outline-white btn-sm" onclick="closeSupervisorsModal()">إغلاق</button>
@@ -2496,12 +2496,38 @@
 
     function populateSupervisorBranchSelect() {
       const select = document.getElementById('inputSupervisorBranch');
+      const roleSelect = document.getElementById('inputSupervisorRole');
       if (!select) return;
       const branches = getBranchesList();
-      const curVal = select.value;
-      select.innerHTML = '<option value="all">جميع الفروع (صلاحية عامة) 🌐</option>' +
-        branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)}</option>`).join('');
-      if (curVal) select.value = curVal;
+
+      if (currentUserRole === 'branch_manager') {
+        // Strict lock to the manager's branch only
+        const b = getBranchById(currentBranchId);
+        select.innerHTML = `<option value="${escapeHtml(currentBranchId)}" selected>🏢 ${escapeHtml(b ? b.nameAr : currentBranchId)} (فرعك فقط)</option>`;
+        select.disabled = true;
+
+        if (roleSelect) {
+          roleSelect.innerHTML = '<option value="supervisor" selected>👤 مسؤول صالة (Floor Supervisor)</option>';
+          roleSelect.disabled = true;
+        }
+      } else {
+        // Admin: Full flexibility
+        select.disabled = false;
+        const curVal = select.value;
+        select.innerHTML = '<option value="all">جميع الفروع (صلاحية عامة) 🌐</option>' +
+          branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)}</option>`).join('');
+        if (curVal && curVal !== 'all') select.value = curVal;
+
+        if (roleSelect) {
+          roleSelect.disabled = false;
+          const curRole = roleSelect.value;
+          roleSelect.innerHTML = `
+            <option value="supervisor">👤 مسؤول صالة (Floor Supervisor)</option>
+            <option value="branch_manager">🏢 مدير فرع (Branch Manager)</option>
+          `;
+          if (curRole) roleSelect.value = curRole;
+        }
+      }
     }
 
     /* ============================================================
@@ -4285,6 +4311,28 @@
         return;
       }
       cancelSupervisorForm();
+      populateSupervisorBranchSelect();
+
+      const b = getBranchById(currentBranchId);
+      const addBtn = document.getElementById('btnShowAddSupervisor');
+      if (addBtn) {
+        addBtn.innerText = (currentUserRole === 'branch_manager')
+          ? `➕ إضافة مسؤول صالة لفرع (${b ? b.nameAr : ''})`
+          : '➕ إضافة مسؤول صالة أو مدير جديد';
+      }
+
+      const desc = document.getElementById('supervisorsModalDesc');
+      if (desc) {
+        desc.innerText = (currentUserRole === 'branch_manager')
+          ? `بصفتك مدير فرع (${b ? b.nameAr : ''})، يمكنك إضافة وتعديل مسؤولي الصالة التابعين لفرعك فقط.`
+          : 'يمكن للمدير العام هنا إضافة مسؤولي صالة ومديري فروع جدد، تعديل بياناتهم، أو حذفهم مع المزامنة اللحظية.';
+      }
+
+      const resetBtn = document.getElementById('btnResetSupervisors');
+      if (resetBtn) {
+        resetBtn.style.display = (currentUserRole === 'admin') ? 'inline-block' : 'none';
+      }
+
       renderSupervisorsList();
       document.getElementById('supervisorsModal').classList.add('open');
     }
@@ -4346,7 +4394,11 @@
     }
 
     function showAddSupervisorForm() {
-      document.getElementById('supervisorFormTitle').innerText = '➕ إضافة مسؤول صالة جديد';
+      populateSupervisorBranchSelect();
+      const b = getBranchById(currentBranchId);
+      document.getElementById('supervisorFormTitle').innerText = (currentUserRole === 'branch_manager')
+        ? `➕ إضافة مسؤول صالة لفرع (${b ? b.nameAr : ''})`
+        : '➕ إضافة مسؤول صالة أو مدير فرع جديد';
       document.getElementById('editSupervisorId').value = '';
       document.getElementById('inputSupervisorName').value = '';
       if (document.getElementById('inputSupervisorRole')) document.getElementById('inputSupervisorRole').value = 'supervisor';
@@ -4364,11 +4416,19 @@
       const sup = list.find(s => s.id === id);
       if (!sup) return;
 
+      if (currentUserRole === 'branch_manager') {
+        if (sup.branchId !== currentBranchId || sup.role !== 'supervisor') {
+          alert("عذراً، يحق لك فقط تعديل مسؤولي الصالة التابعين لفرعك.");
+          return;
+        }
+      }
+
+      populateSupervisorBranchSelect();
       document.getElementById('supervisorFormTitle').innerText = '✏️ تعديل بيانات: ' + sup.name;
       const branchInput = document.getElementById('inputSupervisorBranch');
-      if (branchInput) branchInput.value = sup.branchId || 'all';
+      if (branchInput && currentUserRole === 'admin') branchInput.value = sup.branchId || 'all';
       const roleInput = document.getElementById('inputSupervisorRole');
-      if (roleInput) roleInput.value = sup.role || 'supervisor';
+      if (roleInput && currentUserRole === 'admin') roleInput.value = sup.role || 'supervisor';
       document.getElementById('editSupervisorId').value = sup.id;
       document.getElementById('inputSupervisorName').value = sup.name;
       document.getElementById('inputSupervisorPin').value = '';
@@ -4392,10 +4452,16 @@
       const pin = document.getElementById('inputSupervisorPin').value.trim();
       const confirmPin = document.getElementById('inputSupervisorPinConfirm').value.trim();
       const branchInput = document.getElementById('inputSupervisorBranch');
-      const branchId = branchInput ? branchInput.value : 'all';
+      let branchId = branchInput ? branchInput.value : 'all';
       const roleInput = document.getElementById('inputSupervisorRole');
-      const role = (roleInput && roleInput.value) ? roleInput.value : 'supervisor';
+      let role = (roleInput && roleInput.value) ? roleInput.value : 'supervisor';
       const errBox = document.getElementById('supervisorFormError');
+
+      // Strict security: Branch Managers can ONLY add floor supervisors to their own branch
+      if (currentUserRole === 'branch_manager') {
+        branchId = currentBranchId;
+        role = 'supervisor';
+      }
 
       if (!name) {
         errBox.innerText = 'يرجى إدخال اسم المشرف.';
