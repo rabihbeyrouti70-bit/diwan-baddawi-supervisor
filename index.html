@@ -1333,9 +1333,6 @@
           </button>
 
           <button class="btn btn-outline-white btn-sm" onclick="lockApp()" title="قفل الجلسة (خروج)">🔒 قفل</button>
-          <button class="btn btn-outline-white btn-sm" onclick="openSettingsModal()" title="إعدادات الربط السحابي">
-            ⚙️
-          </button>
         </div>
       </div>
     </header>
@@ -1509,36 +1506,6 @@
       </div>
     </div>
   </div>
-
-  <!-- MODAL: CLOUD SETTINGS -->
-  <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 class="modal-title">⚙️ إعدادات الربط السحابي (Firebase)</h3>
-        <button class="close-btn" onclick="closeSettingsModal()" aria-label="إغلاق النافذة">&times;</button>
-      </div>
-
-      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-        يعمل النظام حالياً بالتزامن اللحظي عبر المتصفحات. لربط هواتف المشرفين على الإنترنت عبر السحابة المجانية 100% دون أي سيرفر، يمكنك لصق إعدادات Firebase هنا:
-      </p>
-
-      <div class="form-group" style="margin-bottom: 12px;">
-        <label>كود إعداد Firebase (JSON أو Config Object):</label>
-        <textarea id="firebaseConfigInput" class="form-control" style="min-height: 120px; font-family: monospace; font-size: 12px; direction: ltr;" placeholder='{
-  "apiKey": "...",
-  "databaseURL": "https://...",
-  "projectId": "..."
-}'></textarea>
-      </div>
-
-      <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
-        <span id="settingsStatusText" style="font-size: 12px; color: var(--primary); font-weight: 700;"></span>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeSettingsModal()">إغلاق</button>
-          <button class="btn btn-primary" onclick="saveFirebaseConfig()">حفظ وتفعيل</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- MODAL: MANAGE SUPERVISORS (ADMIN ONLY) -->
@@ -4040,41 +4007,7 @@
       document.body.classList.remove('modal-open');
     }
 
-    /* ============================================================
-       SETTINGS MODAL
-       ============================================================ */
-    function openSettingsModal() {
-      document.body.classList.add('modal-open');
-      const savedConfig = localStorage.getItem('diwan_firebase_config') || '';
-      document.getElementById('firebaseConfigInput').value = savedConfig;
-      document.getElementById('settingsModal').classList.add('open');
-    }
-
-    function closeSettingsModal() {
-      document.getElementById('settingsModal').classList.remove('open');
-      document.body.classList.remove('modal-open');
-    }
-
-    function saveFirebaseConfig() {
-      const val = document.getElementById('firebaseConfigInput').value.trim();
-      if (!val) {
-        localStorage.removeItem('diwan_firebase_config');
-        setSyncBadgeStatus('local');
-        closeSettingsModal();
-        showToast("تم تفعيل وضع التزامن المحلي (بدون سحابة)");
-        return;
-      }
-
-      try {
-        JSON.parse(val);
-        localStorage.setItem('diwan_firebase_config', val);
-        initFirebaseIfConfigured();
-        closeSettingsModal();
-        showToast("✅ تم حفظ إعدادات Firebase وتفعيل الربط السحابي!");
-      } catch (e) {
-        alert("تنسيق JSON غير صالح. يرجى التأكد من نسخ كود الإعدادات بشكل صحيح.");
-      }
-    }
+    // Cloud settings modal removed per admin preference
 
     /* ============================================================
        HELPERS
