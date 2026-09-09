@@ -1312,6 +1312,10 @@
             👥 إدارة المشرفين
           </button>
 
+          <button id="btnManageShifts" class="btn btn-primary btn-sm" onclick="openShiftsModal()" style="display: none; background: #0284c7; border-color: #0369a1;" title="إدارة وتخصيص ورديات الفروع (صلاحية الإدارة)">
+            🕒 إدارة الورديات
+          </button>
+
           <button class="btn btn-warning" onclick="openHandoverModal()">
             📋 تسليم الوردية
           </button>
@@ -1600,6 +1604,74 @@
   </div>
 
   <!-- MODAL: HQ MULTI-BRANCH OVERVIEW -->
+  <!-- MODAL: BRANCH SHIFTS MANAGEMENT (ADMIN EXCLUSIVE) -->
+  <div class="modal-overlay" id="shiftsModal" role="dialog" aria-modal="true" aria-labelledby="shiftsModalTitle">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="shiftsModalTitle">🕒 إدارة وتخصيص ورديات الفروع</h3>
+        <button class="close-btn" onclick="closeShiftsModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+        <label for="shiftsBranchFilter" style="font-size: 13px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">
+          📍 اختر الفرع لتخصيص نوبة وردياته:
+        </label>
+        <select id="shiftsBranchFilter" class="form-control" style="font-weight: 800;" onchange="onShiftsBranchFilterChange()">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Shifts List Container -->
+      <div id="branchShiftsListContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; max-height: 280px; overflow-y: auto;">
+        <!-- Dynamically rendered shifts -->
+      </div>
+
+      <!-- Add Shift Action Button -->
+      <div style="margin-bottom: 14px;">
+        <button id="btnShowAddShift" type="button" class="btn btn-outline-white btn-sm" style="color: var(--primary-dark); border-color: var(--primary); width: 100%; justify-content: center; font-weight: 800;" onclick="showAddShiftForm()">
+          + إضافة وردية جديدة لهذا الفرع
+        </button>
+      </div>
+
+      <!-- Shift Form (Add / Edit) -->
+      <div id="shiftFormContainer" style="display: none; background: #f0fdf4; border: 1.5px solid var(--primary); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+        <h4 id="shiftFormTitle" style="font-size: 14px; font-weight: 800; color: var(--primary-dark); margin-bottom: 10px;">إضافة وردية جديدة</h4>
+        <input type="hidden" id="editShiftId">
+
+        <div class="form-group">
+          <label for="inputShiftName">اسم الوردية:</label>
+          <input type="text" id="inputShiftName" class="form-control" placeholder="مثال: وردية صباحية، وردية مسائية...">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label for="inputShiftStart">وقت البدء (ساعة):</label>
+            <input type="time" id="inputShiftStart" class="form-control" value="08:00">
+          </div>
+          <div class="form-group">
+            <label for="inputShiftEnd">وقت الانتهاء (ساعة):</label>
+            <input type="time" id="inputShiftEnd" class="form-control" value="16:00">
+          </div>
+        </div>
+
+        <div id="shiftFormError" style="color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 700;"></div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-outline-white btn-sm" onclick="cancelShiftForm()">إلغاء</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveShiftForm()">حفظ الوردية</button>
+        </div>
+      </div>
+
+      <!-- Reset & Close Footer -->
+      <div style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetBranchShiftsToDefault()">
+          🔄 استعادة الورديات الافتراضية لهذا الفرع
+        </button>
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeShiftsModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="hqOverviewModal" role="dialog" aria-modal="true" aria-labelledby="hqOverviewModalTitle">
     <div class="modal-card" style="max-width: 780px;">
       <div class="modal-header">
@@ -2128,6 +2200,7 @@
 
     const STORAGE_KEYS = {
       BRANCHES: 'diwan_branches_data',
+      BRANCH_SHIFTS: 'diwan_branch_shifts',
       SUPERVISORS: 'diwan_supervisors_data',
       FIREBASE_CONFIG: 'diwan_firebase_config',
       SHIFT_PREFIX: 'diwan_shift_',
@@ -2550,6 +2623,8 @@
 
           if (currentUserRole === 'admin') {
             if (btnManage) btnManage.style.display = 'inline-flex';
+            const btnShifts = document.getElementById('btnManageShifts');
+            if (btnShifts) btnShifts.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
@@ -2596,6 +2671,7 @@
     }
 
     function checkAuthOnLoad() {
+      populateShiftSelect(currentBranchId);
       // STRICT: Always lock on reload/open
       document.body.classList.remove('auth-passed');
       const overlay = document.getElementById('authOverlay');
@@ -2633,9 +2709,11 @@
 
       // Hide admin controls
       const btnManage = document.getElementById('btnManageSupervisors');
+      const btnShifts = document.getElementById('btnManageShifts');
       const btnHq = document.getElementById('btnHqOverview');
       const adminSwitcher = document.getElementById('adminBranchSwitcher');
       if (btnManage) btnManage.style.display = 'none';
+      if (btnShifts) btnShifts.style.display = 'none';
       if (btnHq) btnHq.style.display = 'none';
       if (adminSwitcher) adminSwitcher.style.display = 'none';
 
@@ -2688,19 +2766,338 @@
     }
 
     // Carry over incomplete / handover tasks from previous shift!
+    /* ============================================================
+       BRANCH SHIFTS CUSTOMIZATION ENGINE
+       ============================================================ */
+    const DEFAULT_BRANCH_SHIFTS = {
+      noueiery: [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ],
+      khaldeh: [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ],
+      tariq_jdideh: [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ],
+      hamra: [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ],
+      baddawi: [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ]
+    };
+
+    function getAllBranchShifts() {
+      const saved = safeGetItem(STORAGE_KEYS.BRANCH_SHIFTS);
+      if (saved) {
+        const parsed = safeJsonParse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_BRANCH_SHIFTS));
+    }
+
+    function getBranchShifts(branchId) {
+      const all = getAllBranchShifts();
+      if (all && all[branchId] && Array.isArray(all[branchId]) && all[branchId].length > 0) {
+        return all[branchId];
+      }
+      return DEFAULT_BRANCH_SHIFTS[branchId] || [
+        { id: 'morning', nameAr: 'وردية صباحية', start: '08:00', end: '16:00' },
+        { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
+        { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
+      ];
+    }
+
+    function saveAllBranchShifts(shiftsData, broadcast = true) {
+      safeSetItem(STORAGE_KEYS.BRANCH_SHIFTS, JSON.stringify(shiftsData));
+      populateShiftSelect(currentBranchId);
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_BRANCH_SHIFTS',
+          branchShifts: shiftsData
+        });
+      }
+      if (firebaseDb) {
+        firebaseDb.ref('config/branch_shifts').set(shiftsData).catch(e => console.warn('Firebase branch shifts write error:', e));
+      }
+    }
+
+    function formatTime12h(timeStr) {
+      if (!timeStr) return '';
+      const parts = timeStr.split(':');
+      let h = parseInt(parts[0], 10);
+      let m = parts[1] ? parseInt(parts[1], 10) : 0;
+      const period = (h >= 12 && h < 24) ? 'م' : 'ص';
+      let displayHour = h % 12;
+      if (displayHour === 0) displayHour = 12;
+      return String(displayHour).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' ' + period;
+    }
+
+    function getShiftDisplayName(shift) {
+      if (!shift) return '';
+      if (shift.start && shift.end) {
+        return shift.nameAr + ' (' + formatTime12h(shift.start) + ' - ' + formatTime12h(shift.end) + ')';
+      }
+      return shift.nameAr;
+    }
+
+    function getShiftName(branchId, shiftId) {
+      const shifts = getBranchShifts(branchId);
+      const found = shifts.find(s => s.id === shiftId);
+      return found ? found.nameAr : (SHIFT_NAMES[shiftId] || shiftId);
+    }
+
+    function populateShiftSelect(branchId) {
+      const select = document.getElementById('shiftTypeSelect');
+      if (!select) return;
+      const shifts = getBranchShifts(branchId || currentBranchId);
+      select.innerHTML = shifts.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(getShiftDisplayName(s))}</option>`).join('');
+
+      // Validate currentShiftType in this branch
+      const exists = shifts.some(s => s.id === currentShiftType);
+      if (!exists && shifts.length > 0) {
+        currentShiftType = shifts[0].id;
+      }
+      select.value = currentShiftType;
+    }
+
+    /* ============================================================
+       SHIFTS MODAL CONTROLS (ADMIN)
+       ============================================================ */
+    function openShiftsModal() {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة فقط.");
+        return;
+      }
+      populateShiftsBranchFilter();
+      renderBranchShiftsList();
+      cancelShiftForm();
+      document.body.classList.add('modal-open');
+      document.getElementById('shiftsModal').classList.add('open');
+    }
+
+    function closeShiftsModal() {
+      document.getElementById('shiftsModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+
+    function populateShiftsBranchFilter() {
+      const filter = document.getElementById('shiftsBranchFilter');
+      if (!filter) return;
+      const branches = getBranchesList();
+      filter.innerHTML = branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)} (${escapeHtml(b.location)})</option>`).join('');
+      filter.value = currentBranchId;
+    }
+
+    function onShiftsBranchFilterChange() {
+      cancelShiftForm();
+      renderBranchShiftsList();
+    }
+
+    function renderBranchShiftsList() {
+      const filter = document.getElementById('shiftsBranchFilter');
+      const branchId = filter ? filter.value : currentBranchId;
+      const shifts = getBranchShifts(branchId);
+      const container = document.getElementById('branchShiftsListContainer');
+
+      if (!shifts || shifts.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 16px;">لا توجد ورديات معرفة لهذا الفرع. أضف وردية الآن.</div>';
+        return;
+      }
+
+      container.innerHTML = shifts.map((s, idx) => `
+        <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="background: #e0f2fe; color: #0284c7; font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 999px;">نوبة ${idx + 1}</span>
+              <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.nameAr)}</strong>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              🕒 ${formatTime12h(s.start)} إلى ${formatTime12h(s.end)}
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px;" onclick="openEditShiftForm('${escapeHtml(branchId)}', '${escapeHtml(s.id)}')">
+              ✏️ تعديل
+            </button>
+            <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="deleteShift('${escapeHtml(branchId)}', '${escapeHtml(s.id)}')">
+              🗑️ حذف
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showAddShiftForm() {
+      document.getElementById('shiftFormTitle').innerText = 'إضافة وردية جديدة للفرع';
+      document.getElementById('editShiftId').value = '';
+      document.getElementById('inputShiftName').value = '';
+      document.getElementById('inputShiftStart').value = '08:00';
+      document.getElementById('inputShiftEnd').value = '16:00';
+      document.getElementById('shiftFormError').innerText = '';
+      document.getElementById('shiftFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddShift').style.display = 'none';
+      document.getElementById('inputShiftName').focus();
+    }
+
+    function openEditShiftForm(branchId, shiftId) {
+      const shifts = getBranchShifts(branchId);
+      const shift = shifts.find(s => s.id === shiftId);
+      if (!shift) return;
+
+      document.getElementById('shiftFormTitle').innerText = '✏️ تعديل بيانات: ' + shift.nameAr;
+      document.getElementById('editShiftId').value = shift.id;
+      document.getElementById('inputShiftName').value = shift.nameAr;
+      document.getElementById('inputShiftStart').value = shift.start || '08:00';
+      document.getElementById('inputShiftEnd').value = shift.end || '16:00';
+      document.getElementById('shiftFormError').innerText = '';
+      document.getElementById('shiftFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddShift').style.display = 'none';
+      document.getElementById('inputShiftName').focus();
+    }
+
+    function cancelShiftForm() {
+      document.getElementById('shiftFormContainer').style.display = 'none';
+      document.getElementById('btnShowAddShift').style.display = 'block';
+      document.getElementById('shiftFormError').innerText = '';
+    }
+
+    function saveShiftForm() {
+      const filter = document.getElementById('shiftsBranchFilter');
+      const branchId = filter ? filter.value : currentBranchId;
+      const editId = document.getElementById('editShiftId').value;
+      const name = document.getElementById('inputShiftName').value.trim();
+      const start = document.getElementById('inputShiftStart').value;
+      const end = document.getElementById('inputShiftEnd').value;
+      const errBox = document.getElementById('shiftFormError');
+
+      if (!name) {
+        errBox.innerText = 'يرجى إدخال اسم الوردية.';
+        return;
+      }
+      if (!start || !end) {
+        errBox.innerText = 'يرجى تحديد وقت البدء ووقت الانتهاء.';
+        return;
+      }
+
+      const all = getAllBranchShifts();
+      if (!all[branchId]) all[branchId] = [];
+
+      if (!editId) {
+        // ADD NEW
+        const newId = 'shift_' + Date.now();
+        all[branchId].push({
+          id: newId,
+          nameAr: name,
+          start: start,
+          end: end
+        });
+        showToast("✅ تمت إضافة الوردية للفرع بنجاح!");
+      } else {
+        // EDIT
+        const idx = all[branchId].findIndex(s => s.id === editId);
+        if (idx !== -1) {
+          all[branchId][idx].nameAr = name;
+          all[branchId][idx].start = start;
+          all[branchId][idx].end = end;
+          showToast("✅ تم تحديث بيانات الوردية بنجاح!");
+        }
+      }
+
+      saveAllBranchShifts(all);
+      cancelShiftForm();
+      renderBranchShiftsList();
+      if (branchId === currentBranchId) {
+        populateShiftSelect(currentBranchId);
+        onShiftChange();
+      }
+    }
+
+    function deleteShift(branchId, shiftId) {
+      const shifts = getBranchShifts(branchId);
+      if (shifts.length <= 1) {
+        alert("لا يمكن حذف هذه الوردية! يجب أن يحتوي الفرع على وردية واحدة على الأقل.");
+        return;
+      }
+      const shift = shifts.find(s => s.id === shiftId);
+      if (!confirm("هل أنت متأكد من حذف " + (shift ? shift.nameAr : "هذه الوردية") + " من الفرع؟")) {
+        return;
+      }
+
+      const all = getAllBranchShifts();
+      all[branchId] = all[branchId].filter(s => s.id !== shiftId);
+      saveAllBranchShifts(all);
+      cancelShiftForm();
+      renderBranchShiftsList();
+
+      if (branchId === currentBranchId) {
+        populateShiftSelect(currentBranchId);
+        onShiftChange();
+      }
+      showToast("🗑️ تم حذف الوردية بنجاح!");
+    }
+
+    function resetBranchShiftsToDefault() {
+      const filter = document.getElementById('shiftsBranchFilter');
+      const branchId = filter ? filter.value : currentBranchId;
+      const b = getBranchById(branchId);
+
+      if (!confirm("هل تريد بالتأكيد إعادة ورديات (" + b.nameAr + ") إلى الوردية الصباحية والمسائية والليلية الافتراضية؟")) {
+        return;
+      }
+
+      const all = getAllBranchShifts();
+      all[branchId] = JSON.parse(JSON.stringify(DEFAULT_BRANCH_SHIFTS[branchId] || DEFAULT_BRANCH_SHIFTS.noueiery));
+      saveAllBranchShifts(all);
+      cancelShiftForm();
+      renderBranchShiftsList();
+
+      if (branchId === currentBranchId) {
+        populateShiftSelect(currentBranchId);
+        onShiftChange();
+      }
+      showToast("🔄 تم استعادة الورديات الافتراضية لفرع " + b.nameAr);
+    }
+
+    function listenToFirebaseBranchShifts() {
+      if (!firebaseDb) return;
+      firebaseDb.ref('config/branch_shifts').on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val && typeof val === 'object') {
+          safeSetItem(STORAGE_KEYS.BRANCH_SHIFTS, JSON.stringify(val));
+          populateShiftSelect(currentBranchId);
+          const modal = document.getElementById('shiftsModal');
+          if (modal && modal.classList.contains('open')) {
+            renderBranchShiftsList();
+          }
+        }
+      }, (err) => console.warn('Firebase branch shifts listener error:', err));
+    }
+
     function checkAndCarryOverPreviousShift() {
+      const branchShifts = getBranchShifts(currentBranchId);
+      const curIdx = branchShifts.findIndex(s => s.id === currentShiftType);
       let prevShift = 'morning';
       let prevDate = currentDate;
 
-      if (currentShiftType === 'evening') {
-        prevShift = 'morning';
-        prevDate = currentDate;
-      } else if (currentShiftType === 'night') {
-        prevShift = 'evening';
+      if (curIdx > 0) {
+        // Previous shift in the SAME calendar day
+        prevShift = branchShifts[curIdx - 1].id;
         prevDate = currentDate;
       } else {
-        // Morning shift -> previous shift was night shift of PREVIOUS DAY (Timezone safe C6)
-        prevShift = 'night';
+        // First shift of the day -> Previous shift is the LAST shift of PREVIOUS DAY (C6, H6)
+        const lastShift = branchShifts[branchShifts.length - 1];
+        prevShift = lastShift ? lastShift.id : 'morning';
         const parts = currentDate.split('-').map(Number);
         const d = new Date(parts[0], parts[1] - 1, parts[2] - 1);
         const y = d.getFullYear();
@@ -2727,7 +3124,6 @@
             if (parsed.items) {
               Object.keys(parsed.items).forEach(id => {
                 const it = parsed.items[id];
-                // Support backwards compatible mapped id if contains &amp;
                 const cleanId = id.replace(/&amp;/g, '&');
                 if (it.status === 'handover' || it.status === 'critical' || it.status === 'in_progress') {
                   state.items[cleanId] = { ...it };
@@ -2736,7 +3132,7 @@
               });
             }
 
-            // Mark carriedOver flag on previous shift to prevent duplicate migration (H6)
+            // Mark carriedOver flag on previous shift to prevent duplicate migration
             parsed.handover.carriedOver = true;
             safeSetItem(prevKey, JSON.stringify(parsed));
           }
@@ -2787,6 +3183,7 @@
         firebaseDb = firebase.database();
         listenToFirebaseShift();
         listenToFirebaseSupervisors();
+        listenToFirebaseBranchShifts();
         setSyncBadgeStatus('cloud');
       } catch (e) {
         console.error("Firebase initialization failed:", e);
@@ -3202,7 +3599,7 @@
       loadStateForCurrentShift();
       if (firebaseDb) listenToFirebaseShift();
       renderAll();
-      showToast("تم الانتقال إلى: " + SHIFT_NAMES[currentShiftType]);
+      showToast("تم الانتقال إلى: " + getShiftName(currentBranchId, currentShiftType));
     }
 
     function onDateChange() {
@@ -3277,7 +3674,7 @@
         branchName: b.nameAr,
         date: currentDate,
         shiftType: currentShiftType,
-        shiftName: SHIFT_NAMES[currentShiftType],
+        shiftName: getShiftName(currentBranchId, currentShiftType),
         supervisor: currentSupervisor,
         timestamp: new Date().toLocaleString('ar-EG'),
         handoverNotes: (state.handover && state.handover.handoverNotes) || '',
@@ -3609,6 +4006,7 @@
     }
 
     function updateBranchUI() {
+      populateShiftSelect(currentBranchId);
       const b = getBranchById(currentBranchId);
       const titleAr = document.getElementById('brandBranchTitleAr');
       const titleEn = document.getElementById('brandBranchTitleEn');
