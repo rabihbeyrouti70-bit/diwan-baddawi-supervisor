@@ -986,6 +986,88 @@
       font-weight: 700;
       min-height: 20px;
       margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .key-btn:disabled, .pin-input:disabled {
+      opacity: 0.4 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+    }
+
+    /* Active supervisor badge in shift card */
+    .active-supervisor-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-weight: 700;
+      color: var(--secondary);
+    }
+    .active-supervisor-card .sup-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .active-supervisor-card .sup-name {
+      color: var(--primary-dark);
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .btn-switch-user {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-switch-user:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* Mobile Responsive Keypad */
+    @media (max-height: 720px), (max-width: 440px) {
+      .auth-card {
+        padding: 16px 18px !important;
+        max-width: 350px !important;
+      }
+      .auth-icon {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 22px !important;
+        margin-bottom: 8px !important;
+      }
+      .auth-title {
+        font-size: 17px !important;
+        margin-bottom: 2px !important;
+      }
+      .auth-subtitle {
+        font-size: 12px !important;
+        margin-bottom: 12px !important;
+      }
+      .pin-input {
+        font-size: 20px !important;
+        padding: 6px 10px !important;
+        margin-bottom: 8px !important;
+      }
+      .keypad-grid {
+        gap: 6px !important;
+        margin-bottom: 10px !important;
+      }
+      .key-btn {
+        padding: 8px 0 !important;
+        font-size: 18px !important;
+        border-radius: 8px !important;
+      }
     }
 
     .keypad-grid {
@@ -1118,12 +1200,16 @@
     <section class="shift-card no-print">
       <div class="shift-grid">
         <div class="form-group">
-          <label>👤 المشرف الحالي (مسؤول الصالة):</label>
-          <select id="supervisorSelect" class="form-control" onchange="onSupervisorChange()">
-            <option value="Ahmad Badrah">أحمد بدرة (Ahmad Badrah)</option>
-            <option value="Issa Warwar">عيسى ورور (Issa Warwar)</option>
-            <option value="Sameh El-Hassan">سامح الحسن (Sameh El-Hassan)</option>
-          </select>
+          <label>👤 المشرف المسؤول المسجل (هوية ثابتة):</label>
+          <div class="active-supervisor-card">
+            <div class="sup-info">
+              <span class="sup-icon">🛡️</span>
+              <span id="activeSupervisorDisplay" class="sup-name">أحمد بدرة</span>
+            </div>
+            <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
+              🔒 تبديل / خروج
+            </button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -1199,12 +1285,12 @@
 
     <!-- SEARCH & FILTER BAR -->
     <div class="filter-bar no-print">
-      <button class="filter-btn active" onclick="setFilter('all')">عرض الكل (59)</button>
-      <button class="filter-btn" onclick="setFilter('handover')">⚠️ محولة للوردية القادمة</button>
-      <button class="filter-btn" onclick="setFilter('critical')">🚨 أعطال وطوارئ</button>
-      <button class="filter-btn" onclick="setFilter('in_progress')">🔄 قيد العمل</button>
-      <button class="filter-btn" onclick="setFilter('pending')">⏳ لم تبدأ بعد</button>
-      <button class="filter-btn" onclick="setFilter('done')">✅ مكتملة</button>
+      <button class="filter-btn active" onclick="setFilter('all', this)">عرض الكل</button>
+      <button class="filter-btn" onclick="setFilter('handover', this)">⚠️ محولة للوردية القادمة</button>
+      <button class="filter-btn" onclick="setFilter('critical', this)">🚨 أعطال وطوارئ</button>
+      <button class="filter-btn" onclick="setFilter('in_progress', this)">🔄 قيد العمل</button>
+      <button class="filter-btn" onclick="setFilter('pending', this)">⏳ لم تبدأ بعد</button>
+      <button class="filter-btn" onclick="setFilter('done', this)">✅ مكتملة</button>
     </div>
 
     <!-- 10 OPERATIONAL SECTIONS -->
@@ -1846,25 +1932,150 @@
        ============================================================ */
     
     /* ============================================================
-       PIN AUTHENTICATION LOGIC (حماية الدخول الصارمة - قفل إجباري)
+       PIN AUTHENTICATION LOGIC (تشفير SHA-256 وقفل إجباري + حماية Brute-force)
        ============================================================ */
-    const DEFAULT_PINS = {
-      "Ahmad Badrah": "1122",
-      "Issa Warwar": "3344",
-      "Sameh El-Hassan": "5566",
-      "Admin": "9900"
+    // رموز مجزأة بتشفير أحادي الاتجاه (SHA-256) - لا تظهر الأرقام الصريحة إطلاقاً
+    const PIN_HASHES = {
+      "Ahmad Badrah": "b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a",
+      "Issa Warwar": "15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380",
+      "Sameh El-Hassan": "be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b",
+      "Admin": "21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8"
     };
 
     // Force clear any old cached logins
     localStorage.removeItem('diwan_auth_user');
     sessionStorage.removeItem('diwan_auth_user');
 
-    function getSupervisorPins() {
-      const saved = localStorage.getItem('diwan_supervisor_pins');
-      return saved ? JSON.parse(saved) : DEFAULT_PINS;
+    // SHA-256 Pure JS fallback implementation
+    function pureJsSha256(ascii) {
+      function rightRotate(value, amount) {
+        return (value>>>amount) | (value<<(32 - amount));
+      }
+      var mathPow = Math.pow;
+      var maxWord = mathPow(2, 32);
+      var lengthProperty = 'length';
+      var i, j;
+      var result = '';
+      var words = [];
+      var asciiBitLength = ascii[lengthProperty]*8;
+      var hash = [];
+      var k = [];
+      var primeCounter = 0;
+      var isComposite = {};
+      for (var candidate = 2; primeCounter < 64; candidate++) {
+        if (!isComposite[candidate]) {
+          for (i = 0; i < 313; i += candidate) {
+            isComposite[i] = candidate;
+          }
+          hash[primeCounter] = (mathPow(candidate, .5)*maxWord)|0;
+          k[primeCounter++] = (mathPow(candidate, 1/3)*maxWord)|0;
+        }
+      }
+      ascii += '\x80';
+      while (ascii[lengthProperty]%64 - 56) ascii += '\x00';
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        if (j>>8) return;
+        words[i>>2] |= j << ((3 - i)%4)*8;
+      }
+      words[words[lengthProperty]] = ((asciiBitLength/maxWord)|0);
+      words[words[lengthProperty]] = (asciiBitLength);
+      for (j = 0; j < words[lengthProperty];) {
+        var w = words.slice(j, j += 16);
+        var oldHash = hash;
+        hash = hash.slice(0, 8);
+        for (i = 0; i < 64; i++) {
+          var w15 = w[i - 15], w2 = w[i - 2];
+          var a = hash[0], e = hash[4];
+          var temp1 = hash[7]
+            + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+            + ((e & hash[5]) ^ ((~e) & hash[6]))
+            + k[i]
+            + (w[i] = (i < 16) ? w[i] : (
+                w[i - 16]
+                + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15>>>3))
+                + w[i - 7]
+                + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2>>>10))
+              )|0
+            );
+          var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+            + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+          hash = [(temp1 + temp2)|0].concat(hash);
+          hash[4] = (hash[4] + temp1)|0;
+        }
+        for (i = 0; i < 8; i++) {
+          hash[i] = (hash[i] + oldHash[i])|0;
+        }
+      }
+      for (i = 0; i < 8; i++) {
+        for (var i2 = 3; i2 >= 0; i2--) {
+          var b = (hash[i]>>(i2*8))&255;
+          result += ((b < 16) ? 0 : '') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+    async function computeHash(text) {
+      if (window.crypto && crypto.subtle && window.isSecureContext) {
+        try {
+          const buffer = new TextEncoder().encode(text);
+          const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
+          return Array.from(new Uint8Array(hashBuf))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        } catch (e) {
+          console.warn("crypto.subtle failed, using pureJsSha256", e);
+        }
+      }
+      return pureJsSha256(text);
+    }
+
+    function getSupervisorPinHashes() {
+      const saved = localStorage.getItem('diwan_supervisor_pin_hashes');
+      return saved ? JSON.parse(saved) : PIN_HASHES;
+    }
+
+    // Rate Limiting (حماية ضد التخمين)
+    let failedAttempts = 0;
+    let lockoutTimer = null;
+    let lockoutRemaining = 0;
+
+    function startLockout(seconds) {
+      lockoutRemaining = seconds;
+      const errorBox = document.getElementById('authError');
+      const pinInput = document.getElementById('authPinInput');
+      const keyBtns = document.querySelectorAll('.key-btn');
+
+      if (pinInput) pinInput.disabled = true;
+      keyBtns.forEach(btn => btn.disabled = true);
+
+      function updateMsg() {
+        if (errorBox) {
+          errorBox.innerHTML = `⛔ تم قفل الإدخال مؤقتاً بسبب المحاولات المتكررة!<br>يرجى الانتظار <span style="font-size:16px; color:#ef4444; font-weight:900;">${lockoutRemaining}</span> ثانية...`;
+        }
+      }
+
+      updateMsg();
+
+      if (lockoutTimer) clearInterval(lockoutTimer);
+      lockoutTimer = setInterval(() => {
+        lockoutRemaining--;
+        if (lockoutRemaining <= 0) {
+          clearInterval(lockoutTimer);
+          lockoutTimer = null;
+          failedAttempts = 0;
+          if (pinInput) pinInput.disabled = false;
+          keyBtns.forEach(btn => btn.disabled = false);
+          if (errorBox) errorBox.innerText = 'يمكنك المحاولة مجدداً الآن.';
+        } else {
+          updateMsg();
+        }
+      }, 1000);
     }
 
     function pressKey(num) {
+      if (lockoutRemaining > 0) return;
       const input = document.getElementById('authPinInput');
       if (input.value.length < 4) {
         input.value += num;
@@ -1875,15 +2086,19 @@
     }
 
     function clearPin() {
+      if (lockoutRemaining > 0) return;
       const input = document.getElementById('authPinInput');
       input.value = input.value.slice(0, -1);
-      document.getElementById('authError').innerText = '';
+      if (failedAttempts === 0) {
+        document.getElementById('authError').innerText = '';
+      }
     }
 
     // Physical keyboard listener
     window.addEventListener('keydown', (e) => {
       const overlay = document.getElementById('authOverlay');
       if (!overlay || overlay.classList.contains('unlocked')) return;
+      if (lockoutRemaining > 0) return;
 
       if (e.key >= '0' && e.key <= '9') {
         pressKey(e.key);
@@ -1894,15 +2109,27 @@
       }
     });
 
-    function submitPin() {
+    async function submitPin() {
+      if (lockoutRemaining > 0) return;
       const sup = document.getElementById('authSupervisorSelect').value;
       const pin = document.getElementById('authPinInput').value;
-      const pins = getSupervisorPins();
+      const hashes = getSupervisorPinHashes();
       const errorBox = document.getElementById('authError');
 
-      if (pins[sup] && pins[sup] === pin) {
-        currentSupervisor = (sup === 'Admin') ? 'Ahmad Badrah' : sup;
-        document.getElementById('supervisorSelect').value = currentSupervisor;
+      if (!pin || pin.length !== 4) {
+        errorBox.innerText = "يرجى إدخال رمز PIN مكون من 4 أرقام.";
+        return;
+      }
+
+      const enteredHash = await computeHash(pin);
+
+      if (hashes[sup] && hashes[sup] === enteredHash) {
+        failedAttempts = 0;
+        currentSupervisor = (sup === 'Admin') ? 'الإدارة (Admin)' : sup;
+        
+        // Update display badge and print metadata
+        const activeDisplay = document.getElementById('activeSupervisorDisplay');
+        if (activeDisplay) activeDisplay.innerText = currentSupervisor;
         
         // Unlock
         document.body.classList.add('auth-passed');
@@ -1914,8 +2141,14 @@
         renderAll();
         showToast("مرحباً بك: " + currentSupervisor + " 👋");
       } else {
-        errorBox.innerText = "❌ رمز PIN غير صحيح! يرجى إدخال 4 أرقام صحيحة.";
+        failedAttempts++;
         document.getElementById('authPinInput').value = '';
+        if (failedAttempts >= 5) {
+          startLockout(30);
+        } else {
+          const left = 5 - failedAttempts;
+          errorBox.innerText = `❌ رمز PIN غير صحيح! المتبقي: ${left} محاولات قبل القفل.`;
+        }
       }
     }
 
@@ -1936,7 +2169,9 @@
 
     function lockApp() {
       document.getElementById('authPinInput').value = '';
-      document.getElementById('authError').innerText = '';
+      if (lockoutRemaining <= 0) {
+        document.getElementById('authError').innerText = '';
+      }
       document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
       showToast("🔒 تم قفل الجلسة");
@@ -1983,13 +2218,25 @@
 
     // Carry over incomplete / handover tasks from previous shift!
     function checkAndCarryOverPreviousShift() {
-      // Find previous shift
+      // Find previous shift and date accurately
       let prevShift = 'morning';
-      if (currentShiftType === 'evening') prevShift = 'morning';
-      else if (currentShiftType === 'night') prevShift = 'evening';
-      else prevShift = 'night';
+      let prevDate = currentDate;
 
-      const prevKey = 'diwan_shift_' + currentDate + '_' + prevShift;
+      if (currentShiftType === 'evening') {
+        prevShift = 'morning';
+        prevDate = currentDate;
+      } else if (currentShiftType === 'night') {
+        prevShift = 'evening';
+        prevDate = currentDate;
+      } else {
+        // Morning shift -> previous shift was night shift of PREVIOUS DAY
+        prevShift = 'night';
+        const d = new Date(currentDate);
+        d.setDate(d.getDate() - 1);
+        prevDate = d.toISOString().split('T')[0];
+      }
+
+      const prevKey = 'diwan_shift_' + prevDate + '_' + prevShift;
       const prevData = localStorage.getItem(prevKey);
       if (prevData) {
         try {
@@ -2068,6 +2315,9 @@
 
     function listenToFirebaseShift() {
       if (!firebaseDb) return;
+      if (firebaseRef) {
+        try { firebaseRef.off(); } catch (e) {}
+      }
       const path = 'shifts/' + currentDate + '/' + currentShiftType;
       firebaseRef = firebaseDb.ref(path);
 
@@ -2311,6 +2561,14 @@
     /* ============================================================
        STATE UPDATERS
        ============================================================ */
+    function getStatusLabel(s) {
+      if (s === 'done') return 'منجز ✅';
+      if (s === 'in_progress') return 'قيد العمل 🔄';
+      if (s === 'handover') return 'للوردية القادمة ⚠️';
+      if (s === 'critical') return 'خلل طارئ 🚨';
+      return 'لم يبدأ ⏳';
+    }
+
     function setItemStatus(rawId, newStatus) {
       if (!state.items[rawId]) {
         state.items[rawId] = {};
@@ -2323,12 +2581,72 @@
         state.items[rawId].status = newStatus;
       }
 
+      const updatedTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
       state.items[rawId].updatedBy = currentSupervisor;
-      state.items[rawId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      state.items[rawId].updatedAt = updatedTime;
 
       saveState();
-      renderAll();
-      showToast("تم تحديث حالة البند: " + newStatus);
+
+      // Smooth targeted DOM update if viewing all items (prevents scroll jump)
+      if (activeFilter === 'all') {
+        const row = document.getElementById('row_' + encodeURIComponent(rawId));
+        if (row) {
+          const curStatus = state.items[rawId].status;
+          const pills = row.querySelectorAll('.status-pill');
+          if (pills && pills.length === 4) {
+            pills[0].className = 'status-pill' + (curStatus === 'done' ? ' active-done' : '');
+            pills[1].className = 'status-pill' + (curStatus === 'in_progress' ? ' active-progress' : '');
+            pills[2].className = 'status-pill' + (curStatus === 'handover' ? ' active-handover' : '');
+            pills[3].className = 'status-pill' + (curStatus === 'critical' ? ' active-critical' : '');
+          }
+
+          const auditSpan = row.querySelector('.item-audit span');
+          if (auditSpan) {
+            auditSpan.innerText = `👤 آخر تعديل بواسطة: ${currentSupervisor} (${updatedTime})`;
+          }
+
+          const auditDiv = row.querySelector('.item-audit');
+          if (auditDiv) {
+            let noteInput = auditDiv.querySelector('.item-note-input');
+            if (curStatus === 'handover' || curStatus === 'critical' || state.items[rawId].note) {
+              if (!noteInput) {
+                noteInput = document.createElement('input');
+                noteInput.type = 'text';
+                noteInput.className = 'item-note-input';
+                noteInput.placeholder = 'ملاحظة خاصة بالبند (مثلاً: سبب الترحيل للوردية التالية)...';
+                noteInput.value = state.items[rawId].note || '';
+                noteInput.onchange = function() { setItemNote(rawId, this.value); };
+                auditDiv.appendChild(noteInput);
+              }
+            }
+          }
+
+          // Update section badge count
+          const sectionCard = row.closest('.section-card');
+          if (sectionCard) {
+            const secId = sectionCard.id.replace('section_', '');
+            const secData = SECTIONS_DATA.find(s => s.id === secId);
+            if (secData) {
+              let sDone = 0;
+              secData.items.forEach(it => {
+                if (state.items[it.rawId] && state.items[it.rawId].status === 'done') sDone++;
+              });
+              const badge = sectionCard.querySelector('.section-badge');
+              if (badge) {
+                const isDone = sDone === secData.items.length && secData.items.length > 0;
+                badge.className = 'section-badge' + (isDone ? ' completed' : '');
+                badge.innerText = `${sDone} / ${secData.items.length} ${isDone ? 'مكتمل ✅' : ''}`;
+              }
+            }
+          }
+        }
+        updateStats();
+        renderHandoverBanner();
+      } else {
+        renderAll();
+      }
+
+      showToast("تم تحديث حالة البند: " + getStatusLabel(state.items[rawId].status));
     }
 
     function setItemNote(rawId, noteText) {
@@ -2360,7 +2678,11 @@
        STATS & FILTERS
        ============================================================ */
     function updateStats() {
-      let total = 59;
+      let total = 0;
+      SECTIONS_DATA.forEach(sec => {
+        if (sec.items) total += sec.items.length;
+      });
+      if (total === 0) total = 59;
       let done = 0;
       let progress = 0;
       let handover = 0;
@@ -2384,16 +2706,16 @@
       document.getElementById('progressBar').style.width = pct + '%';
     }
 
-    function setFilter(filterType) {
+    function setFilter(filterType, btnElement) {
       activeFilter = filterType;
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      if (btnElement) {
+        btnElement.classList.add('active');
+      } else {
+        const targetBtn = document.querySelector(`.filter-btn[onclick*="'${filterType}'"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+      }
       renderSections();
-    }
-
-    function onSupervisorChange() {
-      currentSupervisor = document.getElementById('supervisorSelect').value;
-      showToast("المشرف النشط: " + currentSupervisor);
     }
 
     function onShiftChange() {
@@ -2444,6 +2766,9 @@
     }
 
     function submitHandover() {
+      if (!confirm("هل أنت متأكد من إنهاء وتسليم ورديتك الحالية؟\nسيتم حفظ وتجميد السجل وترحيل المهام المعلقة للمشرف التالي.")) {
+        return;
+      }
       const notes = document.getElementById('handoverModalNotes').value;
       const now = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
