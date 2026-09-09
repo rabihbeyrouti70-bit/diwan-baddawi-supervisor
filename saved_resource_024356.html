@@ -1846,7 +1846,7 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div id="securityVersionTag" style="text-align: center; margin: 0 auto 12px auto; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; color: #10b981; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>🔒</span>
-        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v2.9)</span>
+        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.0)</span>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
@@ -1986,7 +1986,7 @@
         <div class="admin-panel-badge">
           <span>👑</span>
           <span>لوحة تحكم الإدارة المركزية العامة</span>
-          <span class="admin-user-pill">علي عبد العال</span>
+          <span id="adminExecutiveUserPill" class="admin-user-pill">علي عبد العال</span>
         </div>
         <div class="admin-quick-branch">
           <span>🏢 الانتقال السريع لفرع:</span>
@@ -2259,6 +2259,7 @@
             <select id="inputSupervisorRole" class="form-control" style="font-weight: 700;">
               <option value="supervisor">👤 مسؤول صالة (Floor Supervisor)</option>
               <option value="branch_manager">🏢 مدير فرع (Branch Manager)</option>
+              <option value="admin">👑 مدير عام (General Manager)</option>
             </select>
           </div>
 
@@ -3049,6 +3050,7 @@
 
     // Current State
     let currentSupervisor = "علي عبد العال";
+    let currentUserId = "admin";
     let currentShiftType = "morning";
     let currentDate = new Date().toISOString().split("T")[0];
     let activeFilter = "all";
@@ -3421,17 +3423,6 @@
         const parsed = safeJsonParse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           let needsUpdate = false;
-          // Sync official names for existing users only (do NOT resurrect deleted users)
-          const adminUser = parsed.find(p => p.id === 'admin');
-          if (adminUser && !adminUser.name.includes('علي عبد العال')) {
-            adminUser.name = 'علي عبد العال (Ali Abd El-Aal) - المدير العام';
-            needsUpdate = true;
-          }
-          const baddawiUser = parsed.find(p => p.id === 'mgr_baddawi');
-          if (baddawiUser && !baddawiUser.name.includes('أحمد بدرة')) {
-            baddawiUser.name = 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي';
-            needsUpdate = true;
-          }
           // Remove redundant legacy sup_ahmad if still present
           const legacyAhmadIdx = parsed.findIndex(p => p.id === 'sup_ahmad');
           if (legacyAhmadIdx !== -1) {
@@ -3450,13 +3441,13 @@
             });
           }
           // Remove any duplicate supervisor with name Ali Abd El-Aal if id !== 'admin'
-          const duplicateAdminIdx = parsed.findIndex(p => p.id !== 'admin' && p.name && p.name.includes('علي عبد العال'));
+          const duplicateAdminIdx = parsed.findIndex(p => p.id !== 'admin' && p.name && (p.name.includes('علي عبد العال') || p.name.toLowerCase().includes('ali abd')));
           if (duplicateAdminIdx !== -1) {
             parsed.splice(duplicateAdminIdx, 1);
             needsUpdate = true;
           }
 
-          // Bulletproof guarantee: Ensure all official users have their exact roles, branchId, and pinHash
+          // Ensure all official users exist with correct roles & branches while PRESERVING user-edited names & custom PINs
           DEFAULT_SUPERVISORS.forEach(ds => {
             const existing = parsed.find(p => p.id === ds.id);
             if (existing) {
@@ -3468,11 +3459,13 @@
                 existing.branchId = ds.branchId;
                 needsUpdate = true;
               }
-              if (existing.name !== ds.name) {
+              // Only assign default name if name is missing/blank (do NOT overwrite custom edits in Arabic or English)
+              if (!existing.name || !existing.name.trim()) {
                 existing.name = ds.name;
                 needsUpdate = true;
               }
-              if (!existing.salt && existing.pinHash !== ds.pinHash) {
+              // Only assign default pinHash if user has no pinHash at all
+              if (!existing.pinHash) {
                 existing.pinHash = ds.pinHash;
                 needsUpdate = true;
               }
@@ -3769,6 +3762,7 @@
         if (matchedUser) {
           failedAttempts = 0;
           currentSupervisor = matchedUser.name;
+          currentUserId = matchedUser.id;
           // Absolute role hard-locking
           if (matchedUser.id === 'admin' || (matchedUser.name && (matchedUser.name.includes('علي عبد العال') || matchedUser.name.includes('المدير العام')))) {
             currentUserRole = 'admin';
@@ -3848,6 +3842,10 @@
           const activeDisplay = document.getElementById('activeSupervisorDisplay');
           const roleBadge = document.getElementById('activeRoleBadge');
           if (activeDisplay) activeDisplay.innerText = currentSupervisor;
+          const execUserPill = document.getElementById('adminExecutiveUserPill') || document.querySelector('.admin-user-pill');
+          if (execUserPill && currentUserRole === 'admin') {
+            execUserPill.innerText = currentSupervisor;
+          }
           if (roleBadge) {
             if (currentUserRole === 'admin') {
               roleBadge.innerHTML = '<span style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">👑 المدير العام (كامل الصلاحيات)</span>';
@@ -5049,11 +5047,12 @@
                 existing.branchId = ds.branchId;
                 needsUpdate = true;
               }
-              if (existing.name !== ds.name) {
+              // Preserve custom edited names (Arabic or English) - do NOT overwrite unless empty
+              if (!existing.name || !existing.name.trim()) {
                 existing.name = ds.name;
                 needsUpdate = true;
               }
-              if (!existing.salt && existing.pinHash !== ds.pinHash) {
+              if (!existing.pinHash) {
                 existing.pinHash = ds.pinHash;
                 needsUpdate = true;
               }
@@ -5187,13 +5186,24 @@
         : '➕ إضافة مسؤول صالة أو مدير فرع جديد';
       document.getElementById('editSupervisorId').value = '';
       document.getElementById('inputSupervisorName').value = '';
-      if (document.getElementById('inputSupervisorRole')) document.getElementById('inputSupervisorRole').value = 'supervisor';
+      const roleInput = document.getElementById('inputSupervisorRole');
+      if (roleInput) {
+        roleInput.value = 'supervisor';
+        roleInput.disabled = (currentUserRole === 'branch_manager');
+      }
+      const branchInput = document.getElementById('inputSupervisorBranch');
+      if (branchInput) {
+        branchInput.value = (currentUserRole === 'branch_manager') ? currentBranchId : 'all';
+        branchInput.disabled = (currentUserRole === 'branch_manager');
+      }
       document.getElementById('inputSupervisorPin').value = '';
       document.getElementById('inputSupervisorPinConfirm').value = '';
       document.getElementById('labelSupervisorPin').innerText = 'رمز PIN (4 أرقام):';
       document.getElementById('supervisorFormError').innerText = '';
-      document.getElementById('supervisorFormContainer').style.display = 'block';
+      const formContainer = document.getElementById('supervisorFormContainer');
+      formContainer.style.display = 'block';
       document.getElementById('btnShowAddSupervisor').style.display = 'none';
+      formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       document.getElementById('inputSupervisorName').focus();
     }
 
@@ -5212,24 +5222,37 @@
       populateSupervisorBranchSelect();
       document.getElementById('supervisorFormTitle').innerText = '✏️ تعديل بيانات: ' + sup.name;
       const branchInput = document.getElementById('inputSupervisorBranch');
-      if (branchInput && currentUserRole === 'admin') branchInput.value = sup.branchId || 'all';
+      if (branchInput) {
+        branchInput.value = sup.branchId || 'all';
+        branchInput.disabled = (sup.id === 'admin' || currentUserRole === 'branch_manager');
+      }
       const roleInput = document.getElementById('inputSupervisorRole');
-      if (roleInput && currentUserRole === 'admin') roleInput.value = sup.role || 'supervisor';
+      if (roleInput) {
+        roleInput.value = sup.role || 'supervisor';
+        roleInput.disabled = (sup.id === 'admin' || currentUserRole === 'branch_manager');
+      }
       document.getElementById('editSupervisorId').value = sup.id;
       document.getElementById('inputSupervisorName').value = sup.name;
       document.getElementById('inputSupervisorPin').value = '';
       document.getElementById('inputSupervisorPinConfirm').value = '';
       document.getElementById('labelSupervisorPin').innerText = 'رمز PIN الجديد (اتركه فارغاً للإبقاء على الرمز الحالي):';
       document.getElementById('supervisorFormError').innerText = '';
-      document.getElementById('supervisorFormContainer').style.display = 'block';
+      const formContainer = document.getElementById('supervisorFormContainer');
+      formContainer.style.display = 'block';
       document.getElementById('btnShowAddSupervisor').style.display = 'none';
+      formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       document.getElementById('inputSupervisorName').focus();
     }
 
     function cancelSupervisorForm() {
-      document.getElementById('supervisorFormContainer').style.display = 'none';
+      const formContainer = document.getElementById('supervisorFormContainer');
+      formContainer.style.display = 'none';
       document.getElementById('btnShowAddSupervisor').style.display = 'block';
       document.getElementById('supervisorFormError').innerText = '';
+      const branchInput = document.getElementById('inputSupervisorBranch');
+      if (branchInput) branchInput.disabled = false;
+      const roleInput = document.getElementById('inputSupervisorRole');
+      if (roleInput) roleInput.disabled = false;
     }
 
     async function saveSupervisorForm() {
@@ -5243,10 +5266,16 @@
       let role = (roleInput && roleInput.value) ? roleInput.value : 'supervisor';
       const errBox = document.getElementById('supervisorFormError');
 
-      // Strict security: Branch Managers can ONLY add floor supervisors to their own branch
+      // Strict security: Branch Managers can ONLY add/edit floor supervisors to their own branch
       if (currentUserRole === 'branch_manager') {
         branchId = currentBranchId;
         role = 'supervisor';
+      }
+
+      // General Manager (admin) account locks
+      if (id === 'admin') {
+        role = 'admin';
+        branchId = 'all';
       }
 
       if (!name) {
@@ -5289,9 +5318,15 @@
         const idx = list.findIndex(s => s.id === id);
         if (idx === -1) return;
 
+        const oldName = list[idx].name;
         list[idx].name = name;
-        list[idx].branchId = branchId;
-        if (role) list[idx].role = role; // Fixed: save branchId on edit (C5)
+        if (id === 'admin') {
+          list[idx].role = 'admin';
+          list[idx].branchId = 'all';
+        } else {
+          list[idx].branchId = branchId;
+          if (role) list[idx].role = role;
+        }
 
         // If PIN was entered, update it with salt
         if (pin) {
@@ -5306,6 +5341,17 @@
           const salt = Math.random().toString(36).substring(2, 10);
           list[idx].salt = salt;
           list[idx].pinHash = await computeHash(pin, salt);
+        }
+
+        // Live display sync: If the user edited their own active account, update currentSupervisor display immediately
+        if (currentSupervisor === oldName || (typeof currentUserId !== 'undefined' && currentUserId === id) || (currentUserRole === 'admin' && id === 'admin')) {
+          currentSupervisor = name;
+          const activeDisplay = document.getElementById('activeSupervisorDisplay');
+          if (activeDisplay) activeDisplay.innerText = name;
+          const execUserPill = document.getElementById('adminExecutiveUserPill') || document.querySelector('.admin-user-pill');
+          if (execUserPill && (id === 'admin' || currentUserRole === 'admin')) {
+            execUserPill.innerText = name;
+          }
         }
 
         saveSupervisorsList(list);
