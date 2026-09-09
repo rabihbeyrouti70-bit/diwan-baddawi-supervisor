@@ -895,6 +895,197 @@
       background: white;
     }
 
+    /* MULTI-SHIFT MATRIX & SCOREBOARD (V4.0) */
+    .shift-tab-btn {
+      background: transparent;
+      border: none;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .shift-tab-btn.active {
+      background: white;
+      color: var(--secondary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-weight: 800;
+    }
+    .daily-scoreboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .score-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .score-card.active-shift-card {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+    .score-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .score-shift-title {
+      font-weight: 800;
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .score-card-body {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .score-sup-name {
+      font-weight: 700;
+      color: var(--secondary);
+    }
+    .score-stat-pill {
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* Multi-Shift Grid on each item */
+    .multi-shift-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+      width: 100%;
+    }
+    .shift-slot {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .shift-slot.slot-done {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+    .shift-slot.slot-critical {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .slot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .slot-who {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .slot-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .btn-slot-pill {
+      flex: 1;
+      padding: 4px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      touch-action: manipulation;
+      font-family: inherit;
+    }
+    .btn-slot-pill.active-done {
+      background: #059669;
+      color: white;
+      border-color: #047857;
+    }
+    .btn-slot-pill.active-progress {
+      background: #2563eb;
+      color: white;
+      border-color: #1d4ed8;
+    }
+    .btn-slot-pill.active-critical {
+      background: #dc2626;
+      color: white;
+      border-color: #b91c1c;
+    }
+
+    /* Multi-Shift Refrigerator Temperatures */
+    .temp-shifts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .temp-shift-col {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      text-align: center;
+    }
+    .temp-shift-col.alert {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+    .temp-shift-tag {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--secondary);
+    }
+    .temp-shift-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .temp-shift-input {
+      width: 65px;
+      padding: 4px 6px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .temp-shift-who {
+      font-size: 10px;
+      color: var(--text-muted);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* REFRIGERATOR TEMPERATURE BOX */
     .btn-range-edit {
       background: #f1f5f9;
@@ -1869,7 +2060,7 @@
       <p class="auth-subtitle">منصة مركزية موحدة لإدارة صالات وفروع ديوان ماركت 🛡️</p>
       <div id="securityVersionTag" style="text-align: center; margin: 0 auto 12px auto; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 6px 10px; font-size: 11.5px; color: #10b981; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span>🔒</span>
-        <span>نظام أمني مشدد: PIN خاص وحصري لكل مشرف (v3.2)</span>
+        <span>مصفوفة العمليات اليومية الموحدة (v4.0)</span>
       </div>
 
       <div class="form-group" style="text-align: right; margin-bottom: 12px;">
@@ -1986,8 +2177,8 @@
             📍 إدارة الفروع
           </button>
 
-          <button class="btn btn-warning" onclick="openHandoverModal()">
-            📋 تسليم الوردية
+          <button class="btn btn-warning" id="btnHeaderShiftMode" onclick="toggleAllShiftsView()" title="التبديل بين وضع مقارنة كافة الورديات والوردية المنفردة">
+            📊 مقارنة كافة الورديات
           </button>
 
           <button class="btn btn-outline-white" onclick="openHistoryModal()">
@@ -2101,31 +2292,35 @@
           <input type="date" id="shiftDateInput" class="form-control" onchange="onDateChange()">
         </div>
       </div>
+
+      <!-- MULTI-SHIFT VIEW MODE SELECTOR (NEW IN V4.0) -->
+      <div class="shift-mode-bar" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 12.5px; font-weight: 800; color: var(--secondary);">👁️ نمط العرض:</span>
+          <div class="shift-pill-tabs" id="shiftModeTabs" style="display: inline-flex; background: #e2e8f0; border-radius: 999px; padding: 3px; gap: 3px; flex-wrap: wrap;">
+            <button type="button" class="shift-tab-btn active" data-mode="all" onclick="setShiftViewMode('all', this)">
+              🌐 مقارنة كافة الورديات
+            </button>
+            <button type="button" class="shift-tab-btn" data-mode="morning" onclick="setShiftViewMode('morning', this)">
+              ☀️ الصباحية
+            </button>
+            <button type="button" class="shift-tab-btn" data-mode="evening" onclick="setShiftViewMode('evening', this)">
+              🌆 المسائية
+            </button>
+            <button type="button" class="shift-tab-btn" data-mode="night" onclick="setShiftViewMode('night', this)">
+              🌙 الليلية
+            </button>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          <span>الوردية النشطة لتسجيلك: </span><strong id="activeShiftBadge" style="color: var(--primary-dark); font-weight: 800;">الوردية الصباحية</strong>
+        </div>
+      </div>
     </section>
 
-    <!-- HANDOVER ALERT BANNER (Shown if there is an active handover) -->
-    <div id="handoverAlertBanner" class="handover-banner" style="display: none;">
-      <div class="handover-banner-header">
-        <div class="handover-title">
-          📥 <span>استلام وردية جديدة من المشرف السابق:</span>
-          <strong id="handoverFromSupervisor">أحمد بدرة</strong>
-          <span class="handover-badge" id="handoverTimestamp">اليوم 03:45 م</span>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="acknowledgeHandover()">
-          ✅ تأكيد استلام الوردية وبدء العمل
-        </button>
-      </div>
-
-      <div class="handover-notes-box" id="handoverNotesContent">
-        ملاحظات التسليم: لا توجد ملاحظات خاصة.
-      </div>
-
-      <div>
-        <span style="font-size: 13px; font-weight: 700; color: #92400e;">المهام العالقة المحولة لك لإكمالها:</span>
-        <div class="handover-tasks-list" id="handoverPendingChips">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
+    <!-- SUPERVISORS DAILY MULTI-SHIFT SCOREBOARD (NEW IN V4.0) -->
+    <div id="dailyShiftScoreboard" class="daily-scoreboard no-print" style="margin-bottom: 16px;">
+      <!-- Rendered dynamically -->
     </div>
 
     <!-- STATS & PROGRESS -->
@@ -2173,13 +2368,7 @@
       <!-- Sections rendered by JavaScript -->
     </main>
 
-    <!-- BOTTOM HANDOVER CALL TO ACTION -->
-    <div class="no-print" style="margin: 28px auto 20px auto; max-width: 600px; text-align: center; padding: 0 16px;">
-      <button type="button" class="btn btn-warning" style="width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 800; border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: manipulation;" onclick="openHandoverModal()">
-        <span>📋</span>
-        <span>إنهاء وتسليم الوردية للمشرف القادم</span>
-      </button>
-    </div>
+
 
     
     <!-- PRINT SIGNATURES -->
@@ -3137,37 +3326,67 @@
       }
     }
 
-    // Centralized Stats Calculation (H8 Fix)
-    function calculateStats(itemsState) {
-      const items = itemsState || (state && state.items) || {};
-      let done = 0, inProgress = 0, handover = 0, critical = 0;
-      Object.values(items).forEach(it => {
+    // Centralized Stats Calculation (V4.0 Multi-Shift Matrix Support)
+    function calculateShiftStats(shiftId) {
+      let done = 0, inProgress = 0, critical = 0, handover = 0;
+      const targetItems = (state && state.items) || {};
+      Object.values(targetItems).forEach(it => {
         if (!it) return;
-        if (it.status === 'done') done++;
-        else if (it.status === 'in_progress') inProgress++;
-        else if (it.status === 'handover') handover++;
-        else if (it.status === 'critical') critical++;
+        const shData = it[shiftId] || (typeof it.status === 'string' && (shiftId === currentShiftType) ? it : null);
+        if (!shData) return;
+        if (shData.status === 'done') done++;
+        else if (shData.status === 'in_progress') inProgress++;
+        else if (shData.status === 'critical') critical++;
+        else if (shData.status === 'handover') handover++;
       });
       const total = TOTAL_ITEMS;
-      const pending = Math.max(0, total - done - inProgress - handover - critical);
+      const pending = Math.max(0, total - done - inProgress - critical - handover);
       const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { done, inProgress, handover, critical, pending, total, percentage };
+      return { done, inProgress, critical, handover, pending, total, percentage };
+    }
+
+    function calculateStats(itemsState) {
+      if (itemsState && typeof itemsState === 'object') {
+        let done = 0, inProgress = 0, handover = 0, critical = 0;
+        let isMatrix = false;
+        Object.values(itemsState).forEach(it => {
+          if (!it) return;
+          if (it.morning || it.evening || it.night) {
+            isMatrix = true;
+          } else {
+            if (it.status === 'done') done++;
+            else if (it.status === 'in_progress') inProgress++;
+            else if (it.status === 'handover') handover++;
+            else if (it.status === 'critical') critical++;
+          }
+        });
+        if (isMatrix) {
+          const targetShift = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+          return calculateShiftStats(targetShift);
+        }
+        const total = TOTAL_ITEMS;
+        const pending = Math.max(0, total - done - inProgress - handover - critical);
+        const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { done, inProgress, handover, critical, pending, total, percentage };
+      }
+      const targetShift = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      return calculateShiftStats(targetShift);
     }
 
 
-    // Current State
+    // Current State (V4.0 Multi-Shift Operations Matrix)
     let currentSupervisor = "علي عبد العال";
     let currentUserId = "admin";
-    let currentShiftType = "morning";
+    let currentShiftType = "morning"; // Active operating shift for logging
+    let activeShiftView = "all";       // View mode: 'all' (matrix comparison) or 'morning' | 'evening' | 'night'
     let currentDate = new Date().toISOString().split("T")[0];
     let activeFilter = "all";
 
-    // Operational State: Items, Temperatures, Section Notes, Handover Info
+    // Operational State: Items per shift, Temperatures per shift, Section Notes per shift
     let state = {
-      items: {},          // key: rawId -> { status: 'pending'|'done'|'in_progress'|'handover'|'critical', updatedBy, updatedAt, note }
-      temperatures: {},   // key: tempName -> { value: number, updatedBy, updatedAt }
-      sectionNotes: {},   // key: sectionId -> string
-      handover: null      // { fromSupervisor, toSupervisor, handoverNotes, timestamp, acknowledged: false }
+      items: {},          // key: rawId -> { morning: { status, updatedBy, updatedAt, note }, evening: {...}, night: {...} }
+      temperatures: {},   // key: tempName -> { morning: { value, updatedBy, updatedAt }, evening: {...}, night: {...} }
+      sectionNotes: {}    // key: sectionId -> { morning: string, evening: string, night: string }
     };
 
     // Multi-tab BroadcastChannel for zero-config live sync
@@ -3176,11 +3395,12 @@
       broadcastChannel = new BroadcastChannel('diwan_market_realtime_channel');
       broadcastChannel.onmessage = (event) => {
         if (!event.data) return;
-        if (event.data.type === 'SYNC_STATE') {
-          if (event.data.branchId === currentBranchId && event.data.date === currentDate && event.data.shiftType === currentShiftType) {
+        if (event.data.type === 'SYNC_DAY_STATE' || event.data.type === 'SYNC_STATE') {
+          if (event.data.branchId === currentBranchId && event.data.date === currentDate) {
             state = event.data.state;
+            normalizeDayState(state);
             renderAll();
-            showToast("🔄 تم استلام تحديث جديد من مشرف آخر");
+            showToast("🔄 تم استلام تحديثات العمليات اليومية من مشرف آخر");
           }
         } else if (event.data.type === 'SYNC_TEMP_RANGES') {
           if (event.data.branchId === currentBranchId) {
@@ -4108,19 +4328,89 @@
     });
 
     function getStorageKey() {
-      return 'diwan_shift_' + currentBranchId + '_' + currentDate + '_' + currentShiftType;
+      return 'diwan_day_ops_' + currentBranchId + '_' + currentDate;
+    }
+
+    function normalizeDayState(s) {
+      if (!s) return;
+      if (!s.items || typeof s.items !== 'object') s.items = {};
+      if (!s.temperatures || typeof s.temperatures !== 'object') s.temperatures = {};
+      if (!s.sectionNotes || typeof s.sectionNotes !== 'object') s.sectionNotes = {};
+
+      // Migrate flat legacy items if encountered
+      Object.keys(s.items).forEach(rawId => {
+        const it = s.items[rawId];
+        if (it && typeof it.status === 'string') {
+          const shift = currentShiftType || 'morning';
+          s.items[rawId] = {
+            [shift]: { status: it.status, updatedBy: it.updatedBy || '', updatedAt: it.updatedAt || '', note: it.note || '' }
+          };
+        }
+      });
+
+      // Migrate flat legacy temperatures if encountered
+      Object.keys(s.temperatures).forEach(tName => {
+        const tp = s.temperatures[tName];
+        if (tp && typeof tp.value !== 'undefined') {
+          const shift = currentShiftType || 'morning';
+          s.temperatures[tName] = {
+            [shift]: { value: tp.value, updatedBy: tp.updatedBy || '', updatedAt: tp.updatedAt || '' }
+          };
+        }
+      });
     }
 
     function loadStateForCurrentShift() {
-      const saved = localStorage.getItem(getStorageKey());
+      const key = getStorageKey();
+      const saved = localStorage.getItem(key);
       if (saved) {
         try {
           state = JSON.parse(saved);
+          normalizeDayState(state);
         } catch (e) {
           initStateDefaults();
         }
       } else {
+        // Auto-merge legacy shift records if they exist
         initStateDefaults();
+        let foundLegacy = false;
+        ['morning', 'evening', 'night'].forEach(sh => {
+          const legacyKey = 'diwan_shift_' + currentBranchId + '_' + currentDate + '_' + sh;
+          const legSaved = localStorage.getItem(legacyKey);
+          if (legSaved) {
+            try {
+              const legState = JSON.parse(legSaved);
+              if (legState && legState.items) {
+                Object.keys(legState.items).forEach(rawId => {
+                  const it = legState.items[rawId];
+                  if (!state.items[rawId]) state.items[rawId] = {};
+                  state.items[rawId][sh] = {
+                    status: it.status || 'pending',
+                    updatedBy: it.updatedBy || '',
+                    updatedAt: it.updatedAt || '',
+                    note: it.note || ''
+                  };
+                });
+                foundLegacy = true;
+              }
+              if (legState && legState.temperatures) {
+                Object.keys(legState.temperatures).forEach(tName => {
+                  const tp = legState.temperatures[tName];
+                  if (!state.temperatures[tName]) state.temperatures[tName] = {};
+                  state.temperatures[tName][sh] = {
+                    value: tp.value || '',
+                    updatedBy: tp.updatedBy || '',
+                    updatedAt: tp.updatedAt || ''
+                  };
+                });
+                foundLegacy = true;
+              }
+            } catch (e) {}
+          }
+        });
+        if (foundLegacy) {
+          safeSetItem(key, JSON.stringify(state));
+        }
       }
     }
 
@@ -4128,12 +4418,8 @@
       state = {
         items: {},
         temperatures: {},
-        sectionNotes: {},
-        handover: null
+        sectionNotes: {}
       };
-
-      // Check if previous shift had handover
-      checkAndCarryOverPreviousShift();
     }
 
     // Carry over incomplete / handover tasks from previous shift!
@@ -4522,23 +4808,23 @@
     function saveState(broadcast = true) {
       safeSetItem(getStorageKey(), JSON.stringify(state));
 
-      // Broadcast to other tabs locally (matching active branch)
+      // Broadcast to other tabs locally
       if (broadcast && broadcastChannel) {
         broadcastChannel.postMessage({
-          type: 'SYNC_STATE',
+          type: 'SYNC_DAY_STATE',
           branchId: currentBranchId,
           date: currentDate,
-          shiftType: currentShiftType,
           state: state
         });
       }
 
-      // Sync to Firebase if active
+      // Sync to Firebase if connected
       if (firebaseRef) {
         firebaseRef.set(state).catch(err => console.error("Firebase write error:", err));
       }
 
       updateStats();
+      renderScoreboard();
       updatePrintHeader();
     }
 
@@ -4575,15 +4861,16 @@
       if (firebaseRef) {
         try { firebaseRef.off(); } catch (e) {}
       }
-      const path = 'branches/' + currentBranchId + '/shifts/' + currentDate + '/' + currentShiftType;
+      const path = 'branches/' + currentBranchId + '/daily_ops/' + currentDate;
       firebaseRef = firebaseDb.ref(path);
 
       firebaseRef.on('value', (snapshot) => {
         const val = snapshot.val();
         if (val) {
           state = val;
+          normalizeDayState(state);
           renderAll();
-          showToast("☁️ تم استلام تحديثات سحابية فورية");
+          showToast("☁️ تم استلام تحديثات العمليات السحابية اليومية");
         }
       }, (err) => {
         console.error("Firebase shift sync error:", err);
@@ -4604,8 +4891,8 @@
        UI RENDERING
        ============================================================ */
     function renderAll() {
+      renderScoreboard();
       renderSections();
-      renderHandoverBanner();
       updateStats();
       updatePrintHeader();
     }
@@ -4661,12 +4948,18 @@
 
     function renderSections() {
       const container = document.getElementById('sectionsContainer');
+      if (!container) return;
       container.innerHTML = '';
+
+      const branchShifts = getBranchShifts(currentBranchId);
 
       SECTIONS_DATA.forEach((sec, idx) => {
         // Filter items according to activeFilter
         const matchingItems = sec.items.filter(item => {
-          const itemState = state.items[item.rawId] || { status: 'pending' };
+          const itemEntry = state.items[item.rawId] || {};
+          const itemState = (activeShiftView === 'all') 
+            ? (itemEntry[currentShiftType] || { status: 'pending' }) 
+            : (itemEntry[activeShiftView] || { status: 'pending' });
           if (activeFilter === 'all') return true;
           if (activeFilter === 'done' && itemState.status === 'done') return true;
           if (activeFilter === 'in_progress' && itemState.status === 'in_progress') return true;
@@ -4679,7 +4972,9 @@
         // Calculate completion for section
         let secDone = 0;
         sec.items.forEach(it => {
-          if (state.items[it.rawId] && state.items[it.rawId].status === 'done') secDone++;
+          const itemEntry = state.items[it.rawId] || {};
+          const targetSh = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+          if (itemEntry[targetSh] && itemEntry[targetSh].status === 'done') secDone++;
         });
 
         const isFullyDone = secDone === sec.items.length && sec.items.length > 0;
@@ -4721,61 +5016,111 @@
         const body = document.createElement('div');
         body.className = 'section-body';
 
-        // Check Items
+        // Check Items (V4.0 Multi-Shift Matrix)
         matchingItems.forEach(item => {
-          const itemState = state.items[item.rawId] || { status: 'pending' };
+          const itemEntry = state.items[item.rawId] || {};
           const row = document.createElement('div');
           row.className = 'item-row';
           row.id = 'row_' + encodeURIComponent(item.rawId);
 
-          const lastUpdated = itemState.updatedBy ? 
-            `آخر تعديل بواسطة: ${escapeHtml(itemState.updatedBy)} (${escapeHtml(itemState.updatedAt || '')})` : 'لم يبدأ بعد';
+          if (activeShiftView === 'all') {
+            // MATRIX COMPARISON VIEW (ALL SHIFTS SIDE-BY-SIDE)
+            row.innerHTML = `
+              <div class="item-main" style="margin-bottom: 6px;">
+                <div class="item-titles">
+                  <span class="item-ar">${escapeHtml(item.ar || item.en)}</span>
+                  <span class="item-en">${escapeHtml(item.en)}</span>
+                </div>
+              </div>
+              <div class="multi-shift-grid">
+                ${branchShifts.map(sh => {
+                  const shData = itemEntry[sh.id] || { status: 'pending' };
+                  const st = shData.status || 'pending';
+                  const isDone = (st === 'done');
+                  const isProgress = (st === 'in_progress');
+                  const isCritical = (st === 'critical');
+                  const shIcon = sh.id === 'morning' ? '☀️' : (sh.id === 'evening' ? '🌆' : '🌙');
+                  const who = shData.updatedBy ? `${shData.updatedBy} (${shData.updatedAt || ''})` : 'لم تفحص بعد';
 
-          row.innerHTML = `
-            <div class="item-main">
-              <div class="item-titles">
-                <span class="item-ar">${escapeHtml(item.ar || item.en)}</span>
-                <span class="item-en">${escapeHtml(item.en)}</span>
+                  return `
+                    <div class="shift-slot ${isDone ? 'slot-done' : (isCritical ? 'slot-critical' : '')}">
+                      <div class="slot-header">
+                        <span>${shIcon} ${escapeHtml(sh.nameAr)}</span>
+                        <span class="slot-who" title="${escapeHtml(who)}">👤 ${escapeHtml(who)}</span>
+                      </div>
+                      <div class="slot-actions">
+                        <button type="button" class="btn-slot-pill ${isDone ? 'active-done' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'done')" title="إتمام الفحص">✅ منجز</button>
+                        <button type="button" class="btn-slot-pill ${isProgress ? 'active-progress' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'in_progress')" title="قيد العمل">🔄 قيد العمل</button>
+                        <button type="button" class="btn-slot-pill ${isCritical ? 'active-critical' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'critical')" title="عطل طارئ">🚨 عطل</button>
+                      </div>
+                      ${(isCritical || shData.note) ? `
+                        <input type="text" class="item-note-input" style="font-size: 11px; margin-top: 4px;" placeholder="ملاحظة خاصة بالوردية..." value="${escapeHtml(shData.note || '')}" onchange="setTaskShiftNote('${escapeSingleQuotes(item.rawId)}', '${sh.id}', this.value)">
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
               </div>
-              <div class="status-group">
-                <button type="button" class="status-pill ${itemState.status === 'done' ? 'active-done' : ''}" 
-                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'done')">
-                  ✅ منجز
-                </button>
-                <button type="button" class="status-pill ${itemState.status === 'in_progress' ? 'active-progress' : ''}" 
-                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'in_progress')">
-                  🔄 قيد العمل
-                </button>
-                <button type="button" class="status-pill ${itemState.status === 'handover' ? 'active-handover' : ''}" 
-                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'handover')">
-                  ⚠️ للوردية القادمة
-                </button>
-                <button type="button" class="status-pill ${itemState.status === 'critical' ? 'active-critical' : ''}" 
-                  onclick="setItemStatus('${escapeSingleQuotes(item.rawId)}', 'critical')">
-                  🚨 خلل طارئ
-                </button>
+            `;
+          } else {
+            // FOCUSED SINGLE SHIFT VIEW (WITH CROSS-SHIFT AUDIT BADGES)
+            const activeData = itemEntry[activeShiftView] || { status: 'pending' };
+            const lastUpdated = activeData.updatedBy ? 
+              `آخر فحص لهذه الوردية: ${escapeHtml(activeData.updatedBy)} (${escapeHtml(activeData.updatedAt || '')})` : 'لم تفحص بعد';
+
+            row.innerHTML = `
+              <div class="item-main">
+                <div class="item-titles">
+                  <span class="item-ar">${escapeHtml(item.ar || item.en)}</span>
+                  <span class="item-en">${escapeHtml(item.en)}</span>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                    ${branchShifts.filter(s => s.id !== activeShiftView).map(other => {
+                      const othData = itemEntry[other.id] || { status: 'pending' };
+                      const othIcon = other.id === 'morning' ? '☀️' : (other.id === 'evening' ? '🌆' : '🌙');
+                      let othColor = '#64748b';
+                      let othText = 'لم تفحص';
+                      if (othData.status === 'done') { othColor = '#059669'; othText = `منجز (${othData.updatedBy || ''})`; }
+                      else if (othData.status === 'critical') { othColor = '#dc2626'; othText = `عطل (${othData.updatedBy || ''})`; }
+                      else if (othData.status === 'in_progress') { othColor = '#2563eb'; othText = `قيد العمل (${othData.updatedBy || ''})`; }
+                      return `<span style="font-size: 11px; background: #f1f5f9; color: ${othColor}; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${othIcon} ${escapeHtml(other.nameAr)}: ${escapeHtml(othText)}</span>`;
+                    }).join('')}
+                  </div>
+                </div>
+                <div class="status-group">
+                  <button type="button" class="status-pill ${activeData.status === 'done' ? 'active-done' : ''}" 
+                    onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'done')">
+                    ✅ منجز
+                  </button>
+                  <button type="button" class="status-pill ${activeData.status === 'in_progress' ? 'active-progress' : ''}" 
+                    onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'in_progress')">
+                    🔄 قيد العمل
+                  </button>
+                  <button type="button" class="status-pill ${activeData.status === 'critical' ? 'active-critical' : ''}" 
+                    onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'critical')">
+                    🚨 خلل طارئ
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="item-audit">
-              <span>👤 ${lastUpdated}</span>
-              ${itemState.status === 'handover' || itemState.status === 'critical' || itemState.note ? `
-                <input type="text" class="item-note-input" placeholder="ملاحظة خاصة بالبند (مثلاً: سبب الترحيل للوردية التالية)..." 
-                  value="${escapeHtml(itemState.note || '')}" 
-                  onchange="setItemNote('${escapeSingleQuotes(item.rawId)}', this.value)">
-              ` : ''}
-            </div>
-          `;
+              <div class="item-audit">
+                <span>👤 ${lastUpdated}</span>
+                ${activeData.status === 'critical' || activeData.note ? `
+                  <input type="text" class="item-note-input" placeholder="ملاحظة خاصة بالوردية..." 
+                    value="${escapeHtml(activeData.note || '')}" 
+                    onchange="setTaskShiftNote('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', this.value)">
+                ` : ''}
+              </div>
+            `;
+          }
 
           body.appendChild(row);
         });
 
-        // Temperatures (if applicable)
+        // Temperatures (Multi-Shift Daily Progression)
         if (sec.temps && sec.temps.length > 0) {
           const tempBox = document.createElement('div');
           tempBox.className = 'temperatures-container';
           tempBox.innerHTML = `
             <div class="temperatures-title">
-              🌡️ سجل درجات حرارة الثلاجات (${sec.titleAr})
+              🌡️ سجل درجات حرارة الثلاجات اليومي (${sec.titleAr})
             </div>
             <div class="temp-grid" id="tempGrid_${sec.id}"></div>
           `;
@@ -4783,32 +5128,51 @@
           const tempGrid = tempBox.querySelector('.temp-grid');
           sec.temps.forEach(tName => {
             const conf = getTempConfig(tName);
-            const curVal = state.temperatures[tName] ? state.temperatures[tName].value : '';
-            const numVal = parseFloat(curVal);
-            const isAlert = curVal !== '' && !isNaN(numVal) && (numVal > conf.max || numVal < conf.min);
-
             const tCard = document.createElement('div');
-            tCard.className = 'temp-card' + (isAlert ? ' alert' : '');
+            tCard.className = 'temp-card';
+            tCard.style.flexDirection = 'column';
+            tCard.style.alignItems = 'stretch';
+
             tCard.innerHTML = `
-              <div class="temp-info">
-                <h4>${escapeHtml(conf.ar || tName)}</h4>
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px;">
-                  <span style="font-size: 11.5px; color: var(--text-muted);">
-                    النطاق الآمن: <strong style="color: ${conf.isCustom ? 'var(--primary)' : 'var(--secondary)'};">${conf.min}°C إلى ${conf.max}°C</strong>
-                    ${conf.isCustom ? '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800;">مخصص</span>' : ''}
-                  </span>
-                  <button type="button" class="btn-range-edit" onclick="openTempRangeModal('${escapeSingleQuotes(tName)}')" title="تعديل النطاق الآمن لهذه الثلاجة">
-                    ⚙️ تحديد النطاق
-                  </button>
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div class="temp-info">
+                  <h4>${escapeHtml(conf.ar || tName)}</h4>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px;">
+                    <span style="font-size: 11.5px; color: var(--text-muted);">
+                      النطاق الآمن: <strong style="color: ${conf.isCustom ? 'var(--primary)' : 'var(--secondary)'};">${conf.min}°C إلى ${conf.max}°C</strong>
+                      ${conf.isCustom ? '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800;">مخصص</span>' : ''}
+                    </span>
+                    <button type="button" class="btn-range-edit" onclick="openTempRangeModal('${escapeSingleQuotes(tName)}')" title="تعديل النطاق الآمن لهذه الثلاجة">
+                      ⚙️ تحديد النطاق
+                    </button>
+                  </div>
                 </div>
-                ${isAlert ? `<div style="color: #ef4444; font-size: 11px; font-weight: 800; margin-top: 4px;">⚠️ خارج النطاق الآمن المحدد (${conf.min}°C - ${conf.max}°C)!</div>` : ''}
               </div>
-              <div class="temp-input-wrapper">
-                <input type="number" step="0.1" class="temp-input" 
-                  placeholder="--" 
-                  value="${curVal}"
-                  onchange="setTemperature('${escapeSingleQuotes(tName)}', this.value)">
-                <span class="temp-unit">°C</span>
+
+              <div class="temp-shifts-grid">
+                ${branchShifts.map(sh => {
+                  const shTemp = (state.temperatures[tName] && state.temperatures[tName][sh.id]) || {};
+                  const val = shTemp.value || '';
+                  const numVal = parseFloat(val);
+                  const isAlert = (val !== '' && !isNaN(numVal) && (numVal > conf.max || numVal < conf.min));
+                  const shIcon = sh.id === 'morning' ? '☀️' : (sh.id === 'evening' ? '🌆' : '🌙');
+                  const who = shTemp.updatedBy ? `${shTemp.updatedBy} (${shTemp.updatedAt || ''})` : 'لم تُسجل';
+
+                  return `
+                    <div class="temp-shift-col ${isAlert ? 'alert' : ''}">
+                      <span class="temp-shift-tag">${shIcon} ${escapeHtml(sh.nameAr)}</span>
+                      <div class="temp-shift-input-wrap">
+                        <input type="number" step="0.1" class="temp-shift-input" 
+                          placeholder="--" 
+                          value="${val}"
+                          onchange="setShiftTemperature('${escapeSingleQuotes(tName)}', '${sh.id}', this.value)">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">°C</span>
+                      </div>
+                      <span class="temp-shift-who" title="${escapeHtml(who)}">👤 ${escapeHtml(who)}</span>
+                      ${isAlert ? '<span style="color: #dc2626; font-size: 10px; font-weight: 800;">⚠️ غير طبيعي!</span>' : ''}
+                    </div>
+                  `;
+                }).join('')}
               </div>
             `;
             tempGrid.appendChild(tCard);
@@ -4821,7 +5185,9 @@
         if (sec.note) {
           const noteBox = document.createElement('div');
           noteBox.className = 'section-notes-area';
-          const savedNote = state.sectionNotes[sec.id] || '';
+          const savedNote = (state.sectionNotes[sec.id] && typeof state.sectionNotes[sec.id] === 'object') ?
+            (state.sectionNotes[sec.id][activeShiftView === 'all' ? currentShiftType : activeShiftView] || '') :
+            (state.sectionNotes[sec.id] || '');
           noteBox.innerHTML = `
             <label>📝 ملاحظات عامة لقسم ${sec.titleAr}:</label>
             <textarea class="section-notes-textarea" 
@@ -4838,6 +5204,136 @@
     }
 
     /* ============================================================
+       MULTI-SHIFT CONTINUOUS OPERATIONS MATRIX CONTROLLERS (V4.0)
+       ============================================================ */
+    function setShiftViewMode(mode, btn) {
+      activeShiftView = mode;
+      document.querySelectorAll('.shift-tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) {
+        btn.classList.add('active');
+      } else {
+        const targetBtn = document.querySelector(`.shift-tab-btn[data-mode="${mode}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+      }
+      const btnHeader = document.getElementById('btnHeaderShiftMode');
+      if (btnHeader) {
+        btnHeader.innerText = (mode === 'all') ? '☀️ عرض وردية مفردة' : '📊 مقارنة كافة الورديات';
+      }
+      renderAll();
+    }
+
+    function toggleAllShiftsView() {
+      if (activeShiftView === 'all') {
+        setShiftViewMode(currentShiftType);
+      } else {
+        setShiftViewMode('all');
+      }
+    }
+
+    function setTaskShiftStatus(rawId, shiftId, newStatus) {
+      if (!state.items[rawId]) state.items[rawId] = {};
+      if (!state.items[rawId][shiftId]) state.items[rawId][shiftId] = {};
+
+      const cur = state.items[rawId][shiftId];
+      if (cur.status === newStatus) {
+        cur.status = 'pending';
+        cur.updatedBy = '';
+        cur.updatedAt = '';
+      } else {
+        cur.status = newStatus;
+        cur.updatedBy = currentSupervisor;
+        cur.updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      saveState();
+      renderSections();
+      renderScoreboard();
+    }
+
+    function setTaskShiftNote(rawId, shiftId, noteText) {
+      if (!state.items[rawId]) state.items[rawId] = {};
+      if (!state.items[rawId][shiftId]) state.items[rawId][shiftId] = {};
+
+      state.items[rawId][shiftId].note = noteText;
+      state.items[rawId][shiftId].updatedBy = currentSupervisor;
+      state.items[rawId][shiftId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      saveState();
+    }
+
+    function setShiftTemperature(tempName, shiftId, value) {
+      const parsedVal = typeof value === 'string' ? value.replace(',', '.').trim() : value;
+      if (!state.temperatures[tempName]) state.temperatures[tempName] = {};
+      
+      state.temperatures[tempName][shiftId] = {
+        value: parsedVal,
+        updatedBy: currentSupervisor,
+        updatedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      saveState();
+      renderSections();
+      if (parsedVal !== '') {
+        const conf = getTempConfig(tempName);
+        showToast(`🌡️ سجلت حرارة (${conf.ar || tempName}) بـ ${parsedVal}°C`);
+      }
+    }
+
+    function renderScoreboard() {
+      const container = document.getElementById('dailyShiftScoreboard');
+      if (!container) return;
+      const branchShifts = getBranchShifts(currentBranchId);
+
+      container.innerHTML = branchShifts.map(shift => {
+        const stats = calculateShiftStats(shift.id);
+        const isActive = (shift.id === currentShiftType);
+        
+        // Determine active supervisors for this shift
+        const supsSet = new Set();
+        Object.values(state.items).forEach(it => {
+          if (it && it[shift.id] && it[shift.id].updatedBy && it[shift.id].status !== 'pending') {
+            supsSet.add(it[shift.id].updatedBy);
+          }
+        });
+        Object.values(state.temperatures).forEach(tp => {
+          if (tp && tp[shift.id] && tp[shift.id].updatedBy && tp[shift.id].value) {
+            supsSet.add(tp[shift.id].updatedBy);
+          }
+        });
+
+        const sups = Array.from(supsSet);
+        const supDisplay = sups.length > 0 ? sups.join('، ') : 'لم يبدأ بعد';
+        const shiftIcon = shift.id === 'morning' ? '☀️' : (shift.id === 'evening' ? '🌆' : '🌙');
+
+        return `
+          <div class="score-card ${isActive ? 'active-shift-card' : ''}" onclick="setShiftViewMode('${shift.id}')" style="cursor: pointer;" title="انقر للتركيز على هذه الوردية">
+            <div class="score-card-header">
+              <div class="score-shift-title">
+                <span>${shiftIcon}</span>
+                <span>${escapeHtml(shift.nameAr)}</span>
+                ${isActive ? '<span style="background: #ecfdf5; color: #059669; font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 800; border: 1px solid #a7f3d0;">تسجيلك الحالي</span>' : ''}
+              </div>
+              <span class="score-stat-pill" style="color: ${stats.percentage === 100 ? '#059669' : 'var(--secondary)'};">${stats.percentage}%</span>
+            </div>
+            <div style="background: #e2e8f0; border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: 8px;">
+              <div style="background: ${stats.critical > 0 ? 'var(--danger)' : 'var(--primary)'}; width: ${stats.percentage}%; height: 100%; transition: width 0.3s ease;"></div>
+            </div>
+            <div class="score-card-body">
+              <div>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;">المشرف المسؤول:</span>
+                <span class="score-sup-name">${escapeHtml(supDisplay)}</span>
+              </div>
+              <div style="text-align: left; font-size: 11.5px; font-weight: 700;">
+                <span style="color: var(--primary);">✅ ${stats.done}</span>
+                ${stats.critical > 0 ? `<span style="color: var(--danger); margin-right: 6px;">🚨 ${stats.critical}</span>` : ''}
+                <span style="color: var(--text-muted); margin-right: 6px;">⏳ ${stats.pending}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ============================================================
        STATE UPDATERS
        ============================================================ */
     function getStatusLabel(s) {
@@ -4849,93 +5345,13 @@
     }
 
     function setItemStatus(rawId, newStatus) {
-      if (!state.items[rawId]) {
-        state.items[rawId] = {};
-      }
-
-      // If clicking same status, toggle back to pending
-      if (state.items[rawId].status === newStatus) {
-        state.items[rawId].status = 'pending';
-      } else {
-        state.items[rawId].status = newStatus;
-      }
-
-      const updatedTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-      state.items[rawId].updatedBy = currentSupervisor;
-      state.items[rawId].updatedAt = updatedTime;
-
-      saveState();
-
-      // Smooth targeted DOM update if viewing all items (prevents scroll jump)
-      if (activeFilter === 'all') {
-        const row = document.getElementById('row_' + encodeURIComponent(rawId));
-        if (row) {
-          const curStatus = state.items[rawId].status;
-          const pills = row.querySelectorAll('.status-pill');
-          if (pills && pills.length === 4) {
-            pills[0].className = 'status-pill' + (curStatus === 'done' ? ' active-done' : '');
-            pills[1].className = 'status-pill' + (curStatus === 'in_progress' ? ' active-progress' : '');
-            pills[2].className = 'status-pill' + (curStatus === 'handover' ? ' active-handover' : '');
-            pills[3].className = 'status-pill' + (curStatus === 'critical' ? ' active-critical' : '');
-          }
-
-          const auditSpan = row.querySelector('.item-audit span');
-          if (auditSpan) {
-            auditSpan.innerText = `👤 آخر تعديل بواسطة: ${currentSupervisor} (${updatedTime})`;
-          }
-
-          const auditDiv = row.querySelector('.item-audit');
-          if (auditDiv) {
-            let noteInput = auditDiv.querySelector('.item-note-input');
-            if (curStatus === 'handover' || curStatus === 'critical' || state.items[rawId].note) {
-              if (!noteInput) {
-                noteInput = document.createElement('input');
-                noteInput.type = 'text';
-                noteInput.className = 'item-note-input';
-                noteInput.placeholder = 'ملاحظة خاصة بالبند (مثلاً: سبب الترحيل للوردية التالية)...';
-                noteInput.value = state.items[rawId].note || '';
-                noteInput.onchange = function() { setItemNote(rawId, this.value); };
-                auditDiv.appendChild(noteInput);
-              }
-            } else if (noteInput && !state.items[rawId].note) {
-              noteInput.remove();
-            }
-          }
-
-          // Update section badge count
-          const sectionCard = row.closest('.section-card');
-          if (sectionCard) {
-            const secId = sectionCard.id.replace('section_', '');
-            const secData = SECTIONS_DATA.find(s => s.id === secId);
-            if (secData) {
-              let sDone = 0;
-              secData.items.forEach(it => {
-                if (state.items[it.rawId] && state.items[it.rawId].status === 'done') sDone++;
-              });
-              const badge = sectionCard.querySelector('.section-badge');
-              if (badge) {
-                const isDone = sDone === secData.items.length && secData.items.length > 0;
-                badge.className = 'section-badge' + (isDone ? ' completed' : '');
-                badge.innerText = `${sDone} / ${secData.items.length} ${isDone ? 'مكتمل ✅' : ''}`;
-              }
-            }
-          }
-        }
-        updateStats();
-        renderHandoverBanner();
-      } else {
-        renderAll();
-      }
-
-      showToast("تم تحديث حالة البند: " + getStatusLabel(state.items[rawId].status));
+      const targetSh = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      setTaskShiftStatus(rawId, targetSh, newStatus);
     }
 
     function setItemNote(rawId, noteText) {
-      if (!state.items[rawId]) state.items[rawId] = { status: 'pending' };
-      state.items[rawId].note = noteText;
-      state.items[rawId].updatedBy = currentSupervisor;
-      state.items[rawId].updatedAt = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-      saveState();
+      const targetSh = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      setTaskShiftNote(rawId, targetSh, noteText);
     }
 
     /* ============================================================
@@ -5069,19 +5485,16 @@
     }
 
     function setTemperature(tempName, value) {
-      const parsedVal = typeof value === 'string' ? value.replace(',', '.') : value;
-      state.temperatures[tempName] = {
-        value: parsedVal,
-        updatedBy: currentSupervisor,
-        updatedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-      };
-      saveState();
-      renderAll();
-      showToast("تم تسجيل درجة الحرارة: " + value + "°C");
+      const targetSh = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      setShiftTemperature(tempName, targetSh, value);
     }
 
     function setSectionNote(secId, note) {
-      state.sectionNotes[secId] = note;
+      if (!state.sectionNotes[secId] || typeof state.sectionNotes[secId] !== 'object') {
+        state.sectionNotes[secId] = {};
+      }
+      const targetSh = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      state.sectionNotes[secId][targetSh] = note;
       saveState();
       showToast("تم حفظ ملاحظة القسم");
     }
@@ -5090,7 +5503,8 @@
        STATS & FILTERS
        ============================================================ */
     function updateStats() {
-      const s = calculateStats(state.items);
+      const targetShift = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
+      const s = calculateShiftStats(targetShift);
 
       document.getElementById('statDone').innerText = s.done;
       document.getElementById('statProgress').innerText = s.inProgress;
@@ -5120,10 +5534,10 @@
 
     function onShiftChange() {
       currentShiftType = document.getElementById('shiftTypeSelect').value;
-      loadStateForCurrentShift();
-      if (firebaseDb) listenToFirebaseShift();
+      const badge = document.getElementById('activeShiftBadge');
+      if (badge) badge.innerText = getShiftName(currentBranchId, currentShiftType);
       renderAll();
-      showToast("تم الانتقال إلى: " + getShiftName(currentBranchId, currentShiftType));
+      showToast("الوردية النشطة لتسجيلك الآن: " + getShiftName(currentBranchId, currentShiftType));
     }
 
     function onDateChange() {
