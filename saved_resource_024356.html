@@ -1176,6 +1176,10 @@
             <span id="syncStatusText">متزامن لحظياً</span>
           </div>
 
+          <button id="btnManageSupervisors" class="btn btn-primary" onclick="openSupervisorsModal()" style="display: none; background: #2563eb; border-color: #1d4ed8;" title="إدارة مسؤولي الصالة (صلاحية الإدارة فقط)">
+            👥 إدارة المشرفين
+          </button>
+
           <button class="btn btn-warning" onclick="openHandoverModal()">
             📋 تسليم الوردية
           </button>
@@ -1390,6 +1394,60 @@
           <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeSettingsModal()">إغلاق</button>
           <button class="btn btn-primary" onclick="saveFirebaseConfig()">حفظ وتفعيل</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGE SUPERVISORS (ADMIN ONLY) -->
+  <div class="modal-overlay" id="supervisorsModal">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title">👥 إدارة مسؤولي الصالة (صلاحية الإدارة)</h3>
+        <button class="close-btn" onclick="closeSupervisorsModal()">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          يمكن للإدارة هنا إضافة مسؤولي صالة جدد، تعديل أسمائهم، إعادة تعيين رموز الـ PIN (المشفرة)، أو حذف من غادر العمل.
+        </p>
+
+        <!-- List of current supervisors -->
+        <div id="supervisorsListContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Add/Edit form container -->
+        <div id="supervisorFormContainer" style="display: none; background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+          <h4 id="supervisorFormTitle" style="font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 12px;">➕ إضافة مسؤول صالة جديد</h4>
+          <input type="hidden" id="editSupervisorId" value="">
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label>اسم المشرف (بالعربية والإنجليزية):</label>
+            <input type="text" id="inputSupervisorName" class="form-control" placeholder="مثال: رامي خضر (Rami Kheder)">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label id="labelSupervisorPin">رمز PIN (4 أرقام):</label>
+              <input type="password" id="inputSupervisorPin" class="form-control" maxlength="4" placeholder="••••" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label>تأكيد رمز PIN:</label>
+              <input type="password" id="inputSupervisorPinConfirm" class="form-control" maxlength="4" placeholder="••••" inputmode="numeric">
+            </div>
+          </div>
+
+          <div id="supervisorFormError" style="color: #ef4444; font-size: 13px; font-weight: 700; margin-bottom: 10px; min-height: 18px;"></div>
+
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="cancelSupervisorForm()">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="saveSupervisorForm()">💾 حفظ البيانات</button>
+          </div>
+        </div>
+
+        <button id="btnShowAddSupervisor" class="btn btn-primary" style="width: 100%;" onclick="showAddSupervisorForm()">
+          ➕ إضافة مسؤول صالة جديد
+        </button>
       </div>
     </div>
   </div>
@@ -1911,12 +1969,21 @@
     try {
       broadcastChannel = new BroadcastChannel('diwan_market_realtime_channel');
       broadcastChannel.onmessage = (event) => {
-        if (event.data && event.data.type === 'SYNC_STATE') {
+        if (!event.data) return;
+        if (event.data.type === 'SYNC_STATE') {
           if (event.data.date === currentDate && event.data.shiftType === currentShiftType) {
             state = event.data.state;
             renderAll();
             showToast("🔄 تم استلام تحديث جديد من مشرف آخر");
           }
+        } else if (event.data.type === 'SYNC_SUPERVISORS') {
+          localStorage.setItem('diwan_supervisors_data', JSON.stringify(event.data.supervisors));
+          populateAuthSupervisorSelect();
+          const modal = document.getElementById('supervisorsModal');
+          if (modal && modal.classList.contains('open')) {
+            renderSupervisorsList();
+          }
+          showToast("👥 تم تحديث قائمة مسؤولي الصالة");
         }
       };
     } catch (e) {
@@ -1934,17 +2001,55 @@
     /* ============================================================
        PIN AUTHENTICATION LOGIC (تشفير SHA-256 وقفل إجباري + حماية Brute-force)
        ============================================================ */
-    // رموز مجزأة بتشفير أحادي الاتجاه (SHA-256) - لا تظهر الأرقام الصريحة إطلاقاً
-    const PIN_HASHES = {
-      "Ahmad Badrah": "b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a",
-      "Issa Warwar": "15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380",
-      "Sameh El-Hassan": "be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b",
-      "Admin": "21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8"
-    };
+    // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة
+    const DEFAULT_SUPERVISORS = [
+      { id: 'sup_ahmad', name: 'أحمد بدرة (Ahmad Badrah)', role: 'supervisor', pinHash: 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a' },
+      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
+      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' },
+      { id: 'admin', name: 'الإدارة / مدير الفرع (Manager)', role: 'admin', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' }
+    ];
+
+    let currentUserRole = 'supervisor';
 
     // Force clear any old cached logins
     localStorage.removeItem('diwan_auth_user');
     sessionStorage.removeItem('diwan_auth_user');
+
+    function getSupervisorsList() {
+      const saved = localStorage.getItem('diwan_supervisors_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+      }
+      return DEFAULT_SUPERVISORS;
+    }
+
+    function saveSupervisorsList(list, broadcast = true) {
+      localStorage.setItem('diwan_supervisors_data', JSON.stringify(list));
+      populateAuthSupervisorSelect();
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_SUPERVISORS',
+          supervisors: list
+        });
+      }
+      if (firebaseDb) {
+        firebaseDb.ref('config/supervisors').set(list).catch(err => console.error("Firebase write error:", err));
+      }
+    }
+
+    function populateAuthSupervisorSelect() {
+      const select = document.getElementById('authSupervisorSelect');
+      if (!select) return;
+      const list = getSupervisorsList();
+      const currentVal = select.value;
+      select.innerHTML = list.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      if (currentVal && list.some(s => s.id === currentVal)) {
+        select.value = currentVal;
+      }
+    }
 
     // SHA-256 Pure JS fallback implementation
     function pureJsSha256(ascii) {
@@ -2031,11 +2136,6 @@
       return pureJsSha256(text);
     }
 
-    function getSupervisorPinHashes() {
-      const saved = localStorage.getItem('diwan_supervisor_pin_hashes');
-      return saved ? JSON.parse(saved) : PIN_HASHES;
-    }
-
     // Rate Limiting (حماية ضد التخمين)
     let failedAttempts = 0;
     let lockoutTimer = null;
@@ -2111,9 +2211,10 @@
 
     async function submitPin() {
       if (lockoutRemaining > 0) return;
-      const sup = document.getElementById('authSupervisorSelect').value;
+      const supId = document.getElementById('authSupervisorSelect').value;
       const pin = document.getElementById('authPinInput').value;
-      const hashes = getSupervisorPinHashes();
+      const list = getSupervisorsList();
+      const sup = list.find(s => s.id === supId);
       const errorBox = document.getElementById('authError');
 
       if (!pin || pin.length !== 4) {
@@ -2121,12 +2222,24 @@
         return;
       }
 
+      if (!sup) {
+        errorBox.innerText = "المشرف المحدد غير موجود.";
+        return;
+      }
+
       const enteredHash = await computeHash(pin);
 
-      if (hashes[sup] && hashes[sup] === enteredHash) {
+      if (sup.pinHash === enteredHash) {
         failedAttempts = 0;
-        currentSupervisor = (sup === 'Admin') ? 'الإدارة (Admin)' : sup;
+        currentSupervisor = sup.name;
+        currentUserRole = sup.role || 'supervisor';
         
+        // Show/hide admin management button
+        const btnManage = document.getElementById('btnManageSupervisors');
+        if (btnManage) {
+          btnManage.style.display = (currentUserRole === 'admin') ? 'inline-flex' : 'none';
+        }
+
         // Update display badge and print metadata
         const activeDisplay = document.getElementById('activeSupervisorDisplay');
         if (activeDisplay) activeDisplay.innerText = currentSupervisor;
@@ -2157,6 +2270,9 @@
       document.body.classList.remove('auth-passed');
       const overlay = document.getElementById('authOverlay');
       if (overlay) overlay.classList.remove('unlocked');
+      
+      populateAuthSupervisorSelect();
+
       const pinInp = document.getElementById('authPinInput');
       if (pinInp) {
         pinInp.value = '';
@@ -2172,8 +2288,14 @@
       if (lockoutRemaining <= 0) {
         document.getElementById('authError').innerText = '';
       }
+      // Hide admin button
+      const btnManage = document.getElementById('btnManageSupervisors');
+      if (btnManage) btnManage.style.display = 'none';
+      currentUserRole = 'supervisor';
+
       document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
+      populateAuthSupervisorSelect();
       showToast("🔒 تم قفل الجلسة");
     }
 
@@ -2306,6 +2428,7 @@
         }
         firebaseDb = firebase.database();
         listenToFirebaseShift();
+        listenToFirebaseSupervisors();
         setSyncBadgeStatus('cloud');
       } catch (e) {
         console.error("Firebase initialization failed:", e);
@@ -2881,6 +3004,190 @@
 
     function escapeSingleQuotes(str) {
       return (str || '').replace(/'/g, "\\'");
+    }
+
+    /* ============================================================
+       SUPERVISOR MANAGEMENT (ADMIN EXCLUSIVE)
+       ============================================================ */
+    function listenToFirebaseSupervisors() {
+      if (!firebaseDb) return;
+      firebaseDb.ref('config/supervisors').on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val && Array.isArray(val) && val.length > 0) {
+          localStorage.setItem('diwan_supervisors_data', JSON.stringify(val));
+          populateAuthSupervisorSelect();
+          const modal = document.getElementById('supervisorsModal');
+          if (modal && modal.classList.contains('open')) {
+            renderSupervisorsList();
+          }
+        }
+      });
+    }
+
+    function openSupervisorsModal() {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، هذه الصلاحية مخصصة لمدير الفرع والإدارة فقط.");
+        return;
+      }
+      cancelSupervisorForm();
+      renderSupervisorsList();
+      document.getElementById('supervisorsModal').classList.add('open');
+    }
+
+    function closeSupervisorsModal() {
+      document.getElementById('supervisorsModal').classList.remove('open');
+    }
+
+    function renderSupervisorsList() {
+      const container = document.getElementById('supervisorsListContainer');
+      const list = getSupervisorsList();
+
+      container.innerHTML = list.map(s => `
+        <div style="display: flex; justify-content: space-between; align-items: center; background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;">
+          <div>
+            <div style="font-weight: 800; font-size: 14px; color: var(--secondary); display: flex; align-items: center; gap: 8px;">
+              <span>${s.name}</span>
+              ${s.role === 'admin' ? 
+                '<span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">مدير الفرع</span>' : 
+                '<span style="background: #ecfdf5; color: #059669; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">مسؤول صالة</span>'}
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              رمز الدخول: •••• (مشفر ومحمي)
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-outline-white btn-sm" style="color: var(--primary-dark); border-color: var(--border);" onclick="openEditSupervisorForm('${s.id}')">
+              ✏️ تعديل
+            </button>
+            ${s.role !== 'admin' ? `
+              <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; background: #fff5f5;" onclick="deleteSupervisor('${s.id}')">
+                🗑️ حذف
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showAddSupervisorForm() {
+      document.getElementById('supervisorFormTitle').innerText = '➕ إضافة مسؤول صالة جديد';
+      document.getElementById('editSupervisorId').value = '';
+      document.getElementById('inputSupervisorName').value = '';
+      document.getElementById('inputSupervisorPin').value = '';
+      document.getElementById('inputSupervisorPinConfirm').value = '';
+      document.getElementById('labelSupervisorPin').innerText = 'رمز PIN (4 أرقام):';
+      document.getElementById('supervisorFormError').innerText = '';
+      document.getElementById('supervisorFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddSupervisor').style.display = 'none';
+      document.getElementById('inputSupervisorName').focus();
+    }
+
+    function openEditSupervisorForm(id) {
+      const list = getSupervisorsList();
+      const sup = list.find(s => s.id === id);
+      if (!sup) return;
+
+      document.getElementById('supervisorFormTitle').innerText = '✏️ تعديل بيانات: ' + sup.name;
+      document.getElementById('editSupervisorId').value = sup.id;
+      document.getElementById('inputSupervisorName').value = sup.name;
+      document.getElementById('inputSupervisorPin').value = '';
+      document.getElementById('inputSupervisorPinConfirm').value = '';
+      document.getElementById('labelSupervisorPin').innerText = 'رمز PIN الجديد (اتركه فارغاً للإبقاء على الرمز الحالي):';
+      document.getElementById('supervisorFormError').innerText = '';
+      document.getElementById('supervisorFormContainer').style.display = 'block';
+      document.getElementById('btnShowAddSupervisor').style.display = 'none';
+      document.getElementById('inputSupervisorName').focus();
+    }
+
+    function cancelSupervisorForm() {
+      document.getElementById('supervisorFormContainer').style.display = 'none';
+      document.getElementById('btnShowAddSupervisor').style.display = 'block';
+      document.getElementById('supervisorFormError').innerText = '';
+    }
+
+    async function saveSupervisorForm() {
+      const id = document.getElementById('editSupervisorId').value;
+      const name = document.getElementById('inputSupervisorName').value.trim();
+      const pin = document.getElementById('inputSupervisorPin').value.trim();
+      const confirmPin = document.getElementById('inputSupervisorPinConfirm').value.trim();
+      const errBox = document.getElementById('supervisorFormError');
+
+      if (!name) {
+        errBox.innerText = 'يرجى إدخال اسم المشرف.';
+        return;
+      }
+
+      let list = [...getSupervisorsList()];
+
+      if (!id) {
+        // ADD NEW
+        if (!pin || pin.length !== 4 || !/^[0-9]{4}$/.test(pin)) {
+          errBox.innerText = 'يرجى إدخال رمز PIN مكون من 4 أرقام عددية.';
+          return;
+        }
+        if (pin !== confirmPin) {
+          errBox.innerText = 'رمز PIN وتأكيد الرمز غير متطابقين.';
+          return;
+        }
+
+        const hash = await computeHash(pin);
+        const newId = 'sup_' + Date.now();
+        list.push({
+          id: newId,
+          name: name,
+          role: 'supervisor',
+          pinHash: hash
+        });
+
+        saveSupervisorsList(list);
+        cancelSupervisorForm();
+        renderSupervisorsList();
+        showToast("✅ تمت إضافة المشرف بنجاح!");
+      } else {
+        // EDIT EXISTING
+        const idx = list.findIndex(s => s.id === id);
+        if (idx === -1) return;
+
+        list[idx].name = name;
+
+        // If PIN was entered, update it
+        if (pin) {
+          if (pin.length !== 4 || !/^[0-9]{4}$/.test(pin)) {
+            errBox.innerText = 'رمز PIN يجب أن يتكون من 4 أرقام عددية.';
+            return;
+          }
+          if (pin !== confirmPin) {
+            errBox.innerText = 'رمز PIN وتأكيد الرمز غير متطابقين.';
+            return;
+          }
+          list[idx].pinHash = await computeHash(pin);
+        }
+
+        saveSupervisorsList(list);
+        cancelSupervisorForm();
+        renderSupervisorsList();
+        showToast("✅ تم تحديث بيانات المشرف بنجاح!");
+      }
+    }
+
+    function deleteSupervisor(id) {
+      let list = getSupervisorsList();
+      const sup = list.find(s => s.id === id);
+      if (!sup) return;
+
+      if (sup.role === 'admin') {
+        alert("لا يمكن حذف حساب الإدارة!");
+        return;
+      }
+
+      if (!confirm(`هل أنت متأكد من حذف المشرف "${sup.name}" من النظام؟\nلن يتمكن بعد الآن من الدخول للنظام.`)) {
+        return;
+      }
+
+      list = list.filter(s => s.id !== id);
+      saveSupervisorsList(list);
+      renderSupervisorsList();
+      showToast("🗑️ تم حذف المشرف من النظام");
     }
   </script>
 </body>
