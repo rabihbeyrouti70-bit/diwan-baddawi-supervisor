@@ -3177,6 +3177,10 @@
         currentBranchId = branchSelect.value;
       }
       populateAuthSupervisorSelect();
+      const pinInp = document.getElementById('authPinInput');
+      if (pinInp) pinInp.value = '';
+      const errorBox = document.getElementById('authError');
+      if (errorBox) errorBox.innerText = '';
     }
 
     function populateAuthSupervisorSelect() {
@@ -3385,45 +3389,24 @@
         const selectedSupId = supSelect ? supSelect.value : '';
         const selectedSup = list.find(s => s.id === selectedSupId);
 
-        // 1. First test currently selected supervisor
-        let matchedUser = null;
-        if (selectedSup) {
-          let matches = false;
-          if (selectedSup.salt) {
-            const saltedHash = await computeHash(pin, selectedSup.salt);
-            matches = (selectedSup.pinHash === saltedHash);
-          } else {
-            const directHash = await computeHash(pin);
-            matches = (selectedSup.pinHash === directHash);
-          }
-          if (matches) matchedUser = selectedSup;
+        if (!selectedSup) {
+          errorBox.innerText = 'يرجى اختيار اسم المشرف أولاً.';
+          return;
         }
 
-        // 2. SMART PIN RESOLUTION: If not matched with selected option, search ALL users!
-        if (!matchedUser) {
+        // STRICT VALIDATION: Strictly adhere to the selected supervisor's PIN only!
+        let matches = false;
+        if (selectedSup.salt) {
+          const saltedHash = await computeHash(pin, selectedSup.salt);
+          matches = (selectedSup.pinHash === saltedHash);
+        } else {
           const directHash = await computeHash(pin);
-          // Legacy PIN 1122 for Ahmad Badrah alias support
+          // Legacy PIN 1122 alias support for Ahmad Badrah specifically
           const HASH_1122 = 'b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a';
-          if (directHash === HASH_1122) {
-            matchedUser = list.find(s => s.id === 'mgr_baddawi');
-          }
-          if (!matchedUser) {
-            for (const s of list) {
-              if (s.salt) {
-                const sHash = await computeHash(pin, s.salt);
-                if (s.pinHash === sHash) {
-                  matchedUser = s;
-                  break;
-                }
-              } else {
-                if (s.pinHash === directHash) {
-                  matchedUser = s;
-                  break;
-                }
-              }
-            }
-          }
+          matches = (selectedSup.pinHash === directHash) || (selectedSup.id === 'mgr_baddawi' && directHash === HASH_1122);
         }
+
+        const matchedUser = matches ? selectedSup : null;
 
         if (matchedUser) {
           failedAttempts = 0;
@@ -3503,7 +3486,7 @@
             startLockout(APP_CONFIG.LOCKOUT_DURATION);
           } else {
             const left = APP_CONFIG.MAX_ATTEMPTS - failedAttempts;
-            errorBox.innerText = `❌ رمز PIN غير صحيح! المتبقي: ${left} محاولات قبل القفل.`;
+            errorBox.innerText = `❌ رمز PIN غير صحيح لـ (${selectedSup.name})! المتبقي: ${left} محاولات قبل القفل.`;
           }
         }
       } catch (err) {
@@ -3522,6 +3505,16 @@
       
       populateAuthBranchSelect();
       populateAuthSupervisorSelect();
+
+      const supSelect = document.getElementById('authSupervisorSelect');
+      if (supSelect) {
+        supSelect.addEventListener('change', function() {
+          const pinInp = document.getElementById('authPinInput');
+          if (pinInp) pinInp.value = '';
+          const errorBox = document.getElementById('authError');
+          if (errorBox) errorBox.innerText = '';
+        });
+      }
 
       const pinInp = document.getElementById('authPinInput');
       if (pinInp) {
