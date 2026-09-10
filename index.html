@@ -919,7 +919,7 @@
     .excel-workbook-container {
       background: #f1f5f9;
       border: 1.5px solid #cbd5e1;
-      border-bottom: 2.5px solid #107c41; /* Signature Excel Green border connecting into the sheet */
+      border-bottom: 2.5px solid var(--primary); /* Signature Excel Green border connecting into the sheet */
       border-radius: 12px 12px 0 0;
       padding: 8px 12px 0 12px;
       margin-top: 16px;
@@ -944,18 +944,7 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .excel-icon-box {
-      background: #107c41;
-      color: white;
-      font-size: 13px;
-      font-weight: 900;
-      padding: 2px 7px;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 2px rgba(16, 124, 65, 0.3);
-    }
+    .excel-icon-box { display: none; }
     .excel-title-text {
       font-size: 13px;
       font-weight: 800;
@@ -964,7 +953,7 @@
     .excel-branch-badge {
       font-size: 11px;
       font-weight: 700;
-      color: #107c41;
+      color: var(--primary-dark);
       background: #ecfdf5;
       border: 1px solid #a7f3d0;
       padding: 2px 8px;
@@ -993,7 +982,7 @@
     .excel-scroll-btn:hover {
       background: #107c41;
       color: white;
-      border-color: #107c41;
+      border-color: var(--primary-dark);
     }
     .excel-tabs-track {
       display: flex;
@@ -1036,7 +1025,7 @@
       color: #0f172a;
       font-weight: 800;
       border-color: #cbd5e1;
-      border-top: 3.5px solid #107c41; /* Signature Excel Green */
+      border-top: 3.5px solid var(--primary); /* Signature Excel Green */
       border-bottom: 2px solid #ffffff; /* Seamlessly merges with the content table */
       box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.05);
       position: relative;
@@ -2341,10 +2330,6 @@
             📍 إدارة الفروع
           </button>
 
-          <button class="btn btn-warning" id="btnHeaderShiftMode" onclick="toggleAllShiftsView()" title="التبديل بين وضع مقارنة كافة الورديات والوردية المنفردة">
-            📊 مقارنة كافة الورديات
-          </button>
-
           <button class="btn btn-outline-white" onclick="openHistoryModal()">
             📁 سجل الورديات
           </button>
@@ -2443,42 +2428,16 @@
         </div>
 
         <div class="form-group">
-          <label for="shiftTypeSelect">🕒 الوردية الحالية (Shift):</label>
-          <select id="shiftTypeSelect" class="form-control" onchange="onShiftChange()">
-            <option value="morning">وردية صباحية (08:00 ص - 04:00 م)</option>
-            <option value="evening">وردية مسائية (04:00 م - 12:00 ص)</option>
-            <option value="night">وردية ليلية (12:00 ص - 08:00 ص)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="shiftDateInput">📅 التاريخ:</label>
+          <label for="shiftDateInput">📅 تاريخ العمليات:</label>
           <input type="date" id="shiftDateInput" class="form-control" onchange="onDateChange()">
         </div>
-      </div>
 
-      <!-- MULTI-SHIFT VIEW MODE SELECTOR (NEW IN V4.0) -->
-      <div class="shift-mode-bar" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <span style="font-size: 12.5px; font-weight: 800; color: var(--secondary);">👁️ نمط العرض:</span>
-          <div class="shift-pill-tabs" id="shiftModeTabs" style="display: inline-flex; background: #e2e8f0; border-radius: 999px; padding: 3px; gap: 3px; flex-wrap: wrap;">
-            <button type="button" class="shift-tab-btn active" data-mode="all" onclick="setShiftViewMode('all', this)">
-              🌐 مقارنة كافة الورديات
-            </button>
-            <button type="button" class="shift-tab-btn" data-mode="morning" onclick="setShiftViewMode('morning', this)">
-              ☀️ الصباحية
-            </button>
-            <button type="button" class="shift-tab-btn" data-mode="evening" onclick="setShiftViewMode('evening', this)">
-              🌆 المسائية
-            </button>
-            <button type="button" class="shift-tab-btn" data-mode="night" onclick="setShiftViewMode('night', this)">
-              🌙 الليلية
-            </button>
-          </div>
-        </div>
-        <div style="font-size: 12px; color: var(--text-muted);">
-          <span>الوردية النشطة لتسجيلك: </span><strong id="activeShiftBadge" style="color: var(--primary-dark); font-weight: 800;">الوردية الصباحية</strong>
-        </div>
+        <!-- Hidden select for script compatibility -->
+        <select id="shiftTypeSelect" style="display: none;" onchange="onShiftChange()">
+          <option value="morning">وردية صباحية</option>
+          <option value="evening">وردية مسائية</option>
+          <option value="night">وردية ليلية</option>
+        </select>
       </div>
     </section>
 
@@ -2531,9 +2490,10 @@
     <div class="excel-workbook-container no-print" id="excelWorkbookContainer">
       <div class="excel-workbook-header">
         <div class="excel-workbook-title">
-          <span class="excel-icon-box">📊 Excel</span>
-          <span class="excel-title-text">مصنّف أوراق ورديات اليوم:</span>
+          <span style="font-size: 16px;">📑</span>
+          <span class="excel-title-text">ورديات اليوم الواحد:</span>
           <span class="excel-branch-badge" id="excelBranchDateBadge">فرع النويري | 2026-09-10</span>
+          <span style="font-size: 11.5px; color: var(--text-muted); margin-right: 8px;">الوردية المفتوحة: <strong id="activeShiftBadge" style="color: var(--primary-dark); font-weight: 800;">الوردية الصباحية</strong></span>
         </div>
         <div class="excel-nav-arrows">
           <button type="button" class="excel-scroll-btn" onclick="scrollExcelTabs(1)" title="التمرير للأمام">◀</button>
@@ -5404,10 +5364,10 @@
       // Master Tab: All Shifts Matrix Sheet
       const isAllActive = (activeShiftView === 'all');
       let tabsHtml = `
-        <div class="excel-sheet-tab ${isAllActive ? 'active' : ''}" data-mode="all" onclick="setShiftViewMode('all')" title="عرض مصفوفة المقارنة لكافة ورديات اليوم">
-          <span class="excel-tab-icon">📊</span>
-          <span class="excel-tab-name">ورقة مصفوفة اليوم (كافة الورديات)</span>
-          <span class="excel-tab-badge-all">مقارنة شاملة</span>
+        <div class="excel-sheet-tab ${isAllActive ? 'active' : ''}" data-mode="all" onclick="setShiftViewMode('all')" title="عرض مقارنة شاملة لكافة ورديات اليوم">
+          <span class="excel-tab-icon">🌐</span>
+          <span class="excel-tab-name">مقارنة كافة الورديات (اليوم كاملاً)</span>
+          <span class="excel-tab-badge-all">شاملة</span>
         </div>
       `;
 
@@ -5432,10 +5392,10 @@
 
         const sups = Array.from(supsSet);
         const supDisplay = sups.length > 0 ? sups.join('، ') : 'لم تبدأ بعد';
-        const pctColor = stats.percentage === 100 ? '#107c41' : (stats.percentage > 0 ? '#0284c7' : '#64748b');
+        const pctColor = stats.percentage === 100 ? '#059669' : (stats.percentage > 0 ? '#0284c7' : '#64748b');
 
         tabsHtml += `
-          <div class="excel-sheet-tab ${isActive ? 'active' : ''}" data-mode="${shift.id}" onclick="setShiftViewMode('${shift.id}')" title="ورقة ${escapeHtml(shift.nameAr)}">
+          <div class="excel-sheet-tab ${isActive ? 'active' : ''}" data-mode="${shift.id}" onclick="setShiftViewMode('${shift.id}')" title="${escapeHtml(shift.nameAr)}">
             <span class="excel-tab-icon">${shiftIcon}</span>
             <span class="excel-tab-name">${escapeHtml(shift.nameAr)}</span>
             <span class="excel-tab-sup" title="المشرف: ${escapeHtml(supDisplay)}">👤 ${escapeHtml(supDisplay)}</span>
@@ -5472,16 +5432,9 @@
         try { targetExcelTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) {}
       }
 
-      if (btn && btn.classList.contains('shift-tab-btn')) {
-        btn.classList.add('active');
-      } else {
-        const targetBtn = document.querySelector(`.shift-tab-btn[data-mode="${mode}"]`);
-        if (targetBtn) targetBtn.classList.add('active');
-      }
-
-      const btnHeader = document.getElementById('btnHeaderShiftMode');
-      if (btnHeader) {
-        btnHeader.innerText = (mode === 'all') ? '☀️ عرض ورقة وردية مفردة' : '📊 ورقة كافة الورديات';
+      const badge = document.getElementById('activeShiftBadge');
+      if (badge) {
+        badge.innerText = (mode === 'all') ? 'مقارنة كافة الورديات' : getShiftName(currentBranchId, mode);
       }
       renderAll();
     }
