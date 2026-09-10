@@ -2503,23 +2503,13 @@
     </section>
 
     <!-- SEARCH & FILTER BAR -->
-    <div class="filter-bar no-print" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        <button class="filter-btn active" onclick="setFilter('all', this)">عرض الكل</button>
-        <button class="filter-btn" onclick="setFilter('handover', this)">⚠️ محولة للوردية القادمة</button>
-        <button class="filter-btn" onclick="setFilter('critical', this)">🚨 أعطال وطوارئ</button>
-        <button class="filter-btn" onclick="setFilter('in_progress', this)">🔄 قيد العمل</button>
-        <button class="filter-btn" onclick="setFilter('pending', this)">⏳ لم تبدأ بعد</button>
-        <button class="filter-btn" onclick="setFilter('done', this)">✅ مكتملة</button>
-      </div>
-      <div style="display: inline-flex; align-items: center; gap: 6px; margin-right: auto;">
-        <button type="button" class="btn btn-outline-white btn-sm" style="color: var(--secondary); border: 1px solid var(--border); background: white; font-size: 11.5px; padding: 5px 10px; border-radius: 6px; font-weight: 700;" onclick="collapseAllSections()" title="ضم كافة الأقسام العشرة">
-          📁 ضم الكل
-        </button>
-        <button type="button" class="btn btn-outline-white btn-sm" style="color: var(--secondary); border: 1px solid var(--border); background: white; font-size: 11.5px; padding: 5px 10px; border-radius: 6px; font-weight: 700;" onclick="expandAllSections()" title="فتح كافة الأقسام العشرة">
-          📂 فتح الكل
-        </button>
-      </div>
+    <div class="filter-bar no-print">
+      <button class="filter-btn active" onclick="setFilter('all', this)">عرض الكل</button>
+      <button class="filter-btn" onclick="setFilter('handover', this)">⚠️ محولة للوردية القادمة</button>
+      <button class="filter-btn" onclick="setFilter('critical', this)">🚨 أعطال وطوارئ</button>
+      <button class="filter-btn" onclick="setFilter('in_progress', this)">🔄 قيد العمل</button>
+      <button class="filter-btn" onclick="setFilter('pending', this)">⏳ لم تبدأ بعد</button>
+      <button class="filter-btn" onclick="setFilter('done', this)">✅ مكتملة</button>
     </div>
 
     <!-- EXCEL-STYLE WORKBOOK SHEETS TAB BAR (ورديات اليوم الواحد في الفرع بنمط إكسل) -->
@@ -2531,9 +2521,9 @@
           <span class="excel-branch-badge" id="excelBranchDateBadge">فرع النويري | 2026-09-10</span>
           <span style="font-size: 11.5px; color: var(--text-muted); margin-right: 8px;">الوردية المفتوحة: <strong id="activeShiftBadge" style="color: var(--primary-dark); font-weight: 800;">الوردية الصباحية</strong></span>
         </div>
-        <div class="excel-nav-arrows">
-          <button type="button" class="excel-scroll-btn" onclick="scrollExcelTabs(1)" title="التمرير للأمام">◀</button>
-          <button type="button" class="excel-scroll-btn" onclick="scrollExcelTabs(-1)" title="التمرير للخلف">▶</button>
+        <div class="excel-nav-arrows" style="display: flex; align-items: center; gap: 4px;">
+          <button type="button" class="excel-scroll-btn" onclick="expandAllSections()" title="فتح المهام كلها (فتح الكل)" aria-label="فتح المهام كلها" style="font-size: 14px;">📂</button>
+          <button type="button" class="excel-scroll-btn" onclick="collapseAllSections()" title="إغلاق المهام كلها (إغلاق الكل)" aria-label="إغلاق المهام كلها" style="font-size: 14px;">📁</button>
         </div>
       </div>
       <div class="excel-tabs-track" id="excelTabsTrack">
@@ -5166,13 +5156,13 @@
     function collapseAllSections() {
       expandedSections.clear();
       renderSections();
-      showToast("تم ضم كافة الأقسام 📁");
+      showToast("تم إغلاق كافة المهام 📁");
     }
 
     function expandAllSections() {
       SECTIONS_DATA.forEach(s => expandedSections.add(s.id));
       renderSections();
-      showToast("تم فتح كافة الأقسام 📂");
+      showToast("تم فتح كافة المهام 📂");
     }
 
     function renderSections() {
