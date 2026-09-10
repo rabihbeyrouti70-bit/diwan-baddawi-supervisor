@@ -5021,6 +5021,124 @@
 
     let lastLocalSaveTime = 0;
 
+    // Firebase Key Encoding (Replaces characters forbidden by Firebase: / . $ # [ ])
+    function encodeFirebaseKey(key) {
+      return encodeURIComponent(key || '').replace(/\./g, '%2E');
+    }
+
+    function decodeFirebaseKey(key) {
+      try {
+        return decodeURIComponent(key || '');
+      } catch (e) {
+        return key || '';
+      }
+    }
+
+    function serializeStateForFirebase(s) {
+      if (!s || typeof s !== 'object') return null;
+      const copy = {
+        handover: s.handover || {}
+      };
+      if (s.items && typeof s.items === 'object') {
+        copy.items = {};
+        for (const k in s.items) {
+          copy.items[encodeFirebaseKey(k)] = s.items[k];
+        }
+      }
+      if (s.temperatures && typeof s.temperatures === 'object') {
+        copy.temperatures = {};
+        for (const k in s.temperatures) {
+          copy.temperatures[encodeFirebaseKey(k)] = s.temperatures[k];
+        }
+      }
+      if (s.sectionNotes && typeof s.sectionNotes === 'object') {
+        copy.sectionNotes = {};
+        for (const k in s.sectionNotes) {
+          copy.sectionNotes[encodeFirebaseKey(k)] = s.sectionNotes[k];
+        }
+      }
+      return copy;
+    }
+
+    function deserializeStateFromFirebase(cloudVal) {
+      if (!cloudVal || typeof cloudVal !== 'object') return null;
+      const copy = {
+        items: {},
+        temperatures: {},
+        sectionNotes: {},
+        handover: cloudVal.handover || {}
+      };
+      if (cloudVal.items && typeof cloudVal.items === 'object') {
+        for (const k in cloudVal.items) {
+          copy.items[decodeFirebaseKey(k)] = cloudVal.items[k];
+        }
+      }
+      if (cloudVal.temperatures && typeof cloudVal.temperatures === 'object') {
+        for (const k in cloudVal.temperatures) {
+          copy.temperatures[decodeFirebaseKey(k)] = cloudVal.temperatures[k];
+        }
+      }
+      if (cloudVal.sectionNotes && typeof cloudVal.sectionNotes === 'object') {
+        for (const k in cloudVal.sectionNotes) {
+          copy.sectionNotes[decodeFirebaseKey(k)] = cloudVal.sectionNotes[k];
+        }
+      }
+      return copy;
+    }
+
+    function mergeDayStates(localState, cloudState) {
+      if (!cloudState) return localState || { items: {}, temperatures: {}, sectionNotes: {} };
+      if (!localState) return cloudState;
+
+      const merged = {
+        items: { ...(localState.items || {}) },
+        temperatures: { ...(localState.temperatures || {}) },
+        sectionNotes: { ...(localState.sectionNotes || {}) },
+        handover: cloudState.handover || localState.handover || {}
+      };
+
+      if (cloudState.items) {
+        for (const rawId in cloudState.items) {
+          if (!merged.items[rawId]) {
+            merged.items[rawId] = cloudState.items[rawId];
+          } else {
+            merged.items[rawId] = {
+              ...merged.items[rawId],
+              ...cloudState.items[rawId]
+            };
+          }
+        }
+      }
+
+      if (cloudState.temperatures) {
+        for (const tName in cloudState.temperatures) {
+          if (!merged.temperatures[tName]) {
+            merged.temperatures[tName] = cloudState.temperatures[tName];
+          } else {
+            merged.temperatures[tName] = {
+              ...merged.temperatures[tName],
+              ...cloudState.temperatures[tName]
+            };
+          }
+        }
+      }
+
+      if (cloudState.sectionNotes) {
+        for (const secId in cloudState.sectionNotes) {
+          if (!merged.sectionNotes[secId] || typeof merged.sectionNotes[secId] !== 'object') {
+            merged.sectionNotes[secId] = cloudState.sectionNotes[secId];
+          } else if (typeof cloudState.sectionNotes[secId] === 'object') {
+            merged.sectionNotes[secId] = {
+              ...merged.sectionNotes[secId],
+              ...cloudState.sectionNotes[secId]
+            };
+          }
+        }
+      }
+
+      return merged;
+    }
+
     function saveState(broadcast = true) {
       lastLocalSaveTime = Date.now();
       safeSetItem(getStorageKey(), JSON.stringify(state));
@@ -5035,9 +5153,10 @@
         });
       }
 
-      // Sync to Firebase if connected
+      // Sync to Firebase if connected (with safe key serialization)
       if (firebaseRef) {
-        firebaseRef.set(state).catch(err => console.error("Firebase write error:", err));
+        const payload = serializeStateForFirebase(state);
+        firebaseRef.set(payload).catch(err => console.error("Firebase write error:", err));
       }
 
       updateStats();
@@ -5101,32 +5220,27 @@
       firebaseRef = firebaseDb.ref(path);
 
       firebaseRef.on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-          state = val;
-          normalizeDayState(state);
+        const rawCloudVal = snapshot.val();
+        if (rawCloudVal) {
+          const cloudVal = deserializeStateFromFirebase(rawCloudVal);
+          const merged = mergeDayStates(state, cloudVal);
+          normalizeDayState(merged);
+          
+          state = merged;
           const key = 'diwan_day_ops_' + currentBranchId + '_' + currentDate;
           safeSetItem(key, JSON.stringify(state));
           renderAll();
-          if (Date.now() - lastLocalSaveTime > 2000) {
+
+          // If local device had items not yet stored in cloud, upload merged state
+          const serializedMerged = serializeStateForFirebase(state);
+          if (JSON.stringify(serializedMerged) !== JSON.stringify(rawCloudVal)) {
+            firebaseRef.set(serializedMerged).catch(e => console.warn("Cloud merge push failed:", e));
+          } else if (Date.now() - lastLocalSaveTime > 2000) {
             showToast("☁️ تم استلام تحديثات العمليات السحابية من الفرع");
           }
         } else if (state && Object.keys(state.items || {}).length > 0) {
-          // If cloud has no state for today yet, but local device has existing progress, push it up to cloud
-          let hasDone = false;
-          for (const rawId in state.items) {
-            const it = state.items[rawId];
-            for (const sh in it) {
-              if (it[sh] && (it[sh].status === 'done' || it[sh].status === 'in_progress' || it[sh].status === 'handover' || it[sh].status === 'critical')) {
-                hasDone = true;
-                break;
-              }
-            }
-            if (hasDone) break;
-          }
-          if (hasDone) {
-            firebaseRef.set(state).catch(e => console.warn("Initial cloud seed failed:", e));
-          }
+          const payload = serializeStateForFirebase(state);
+          firebaseRef.set(payload).catch(e => console.warn("Initial cloud seed failed:", e));
         }
       }, (err) => {
         console.error("Firebase shift sync error:", err);
