@@ -2487,10 +2487,6 @@
           <span class="num" id="statProgress">0</span>
           <span class="label">🔄 قيد العمل</span>
         </div>
-        <div class="stat-pill pill-handover">
-          <span class="num" id="statHandover">0</span>
-          <span class="label">⚠️ محولة للوردية</span>
-        </div>
         <div class="stat-pill pill-critical">
           <span class="num" id="statCritical">0</span>
           <span class="label">🚨 أعطال حرجة</span>
@@ -2501,7 +2497,6 @@
     <!-- SEARCH & FILTER BAR -->
     <div class="filter-bar no-print">
       <button class="filter-btn active" onclick="setFilter('all', this)">عرض الكل</button>
-      <button class="filter-btn" onclick="setFilter('handover', this)">⚠️ محولة للوردية القادمة</button>
       <button class="filter-btn" onclick="setFilter('critical', this)">🚨 أعطال وطوارئ</button>
       <button class="filter-btn" onclick="setFilter('in_progress', this)">🔄 قيد العمل</button>
       <button class="filter-btn" onclick="setFilter('pending', this)">⏳ لم تبدأ بعد</button>
@@ -6077,7 +6072,7 @@
 
       document.getElementById('statDone').innerText = s.done;
       document.getElementById('statProgress').innerText = s.inProgress;
-      document.getElementById('statHandover').innerText = s.handover;
+      const elH = document.getElementById('statHandover'); if (elH) elH.innerText = s.handover;
       document.getElementById('statCritical').innerText = s.critical;
 
       document.getElementById('progressPercentage').innerText = s.percentage + '%';
@@ -6787,7 +6782,6 @@
             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
               <span>✅ ${s.done} مكتمل</span>
               <span>🔄 ${s.inProgress} قيد العمل</span>
-              <span>⚠️ ${s.handover} مؤجل</span>
               <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
             </div>
 
@@ -6830,7 +6824,6 @@
                   <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
                     <span>✅ ${s.done} مكتمل</span>
                     <span>🔄 ${s.inProgress} قيد العمل</span>
-                    <span>⚠️ ${s.handover} مؤجل</span>
                     <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
                   </div>
 
