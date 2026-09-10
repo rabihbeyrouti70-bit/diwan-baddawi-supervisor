@@ -915,6 +915,170 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       font-weight: 800;
     }
+    /* EXCEL WORKBOOK SHEET TABS (ورديات اليوم الواحد بنمط إكسل) */
+    .excel-workbook-container {
+      background: #f1f5f9;
+      border: 1.5px solid #cbd5e1;
+      border-bottom: 2.5px solid #107c41; /* Signature Excel Green border connecting into the sheet */
+      border-radius: 12px 12px 0 0;
+      padding: 8px 12px 0 12px;
+      margin-top: 16px;
+      margin-bottom: 0;
+      position: sticky;
+      top: 52px;
+      z-index: 85;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      backdrop-filter: blur(8px);
+    }
+    .excel-workbook-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .excel-workbook-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .excel-icon-box {
+      background: #107c41;
+      color: white;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(16, 124, 65, 0.3);
+    }
+    .excel-title-text {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .excel-branch-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #107c41;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .excel-nav-arrows {
+      display: flex;
+      gap: 4px;
+    }
+    .excel-scroll-btn {
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+    .excel-scroll-btn:hover {
+      background: #107c41;
+      color: white;
+      border-color: #107c41;
+    }
+    .excel-tabs-track {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0;
+    }
+    .excel-tabs-track::-webkit-scrollbar {
+      display: none;
+    }
+    .excel-sheet-tab {
+      background: #e2e8f0;
+      color: #475569;
+      border: 1.5px solid #cbd5e1;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 14px 7px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      user-select: none;
+      transition: all 0.15s ease;
+      position: relative;
+      margin-bottom: 0;
+      touch-action: manipulation;
+    }
+    .excel-sheet-tab:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    .excel-sheet-tab.active {
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 800;
+      border-color: #cbd5e1;
+      border-top: 3.5px solid #107c41; /* Signature Excel Green */
+      border-bottom: 2px solid #ffffff; /* Seamlessly merges with the content table */
+      box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.05);
+      position: relative;
+      z-index: 3;
+      margin-bottom: -2px;
+      padding-bottom: 9px;
+    }
+    .excel-tab-icon {
+      font-size: 14px;
+    }
+    .excel-tab-name {
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+    .excel-tab-sup {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .excel-sheet-tab.active .excel-tab-sup {
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .excel-tab-pct {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+    .excel-tab-badge-all {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
     .daily-scoreboard {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -2361,6 +2525,24 @@
       <button class="filter-btn" onclick="setFilter('in_progress', this)">🔄 قيد العمل</button>
       <button class="filter-btn" onclick="setFilter('pending', this)">⏳ لم تبدأ بعد</button>
       <button class="filter-btn" onclick="setFilter('done', this)">✅ مكتملة</button>
+    </div>
+
+    <!-- EXCEL-STYLE WORKBOOK SHEETS TAB BAR (ورديات اليوم الواحد في الفرع بنمط إكسل) -->
+    <div class="excel-workbook-container no-print" id="excelWorkbookContainer">
+      <div class="excel-workbook-header">
+        <div class="excel-workbook-title">
+          <span class="excel-icon-box">📊 Excel</span>
+          <span class="excel-title-text">مصنّف أوراق ورديات اليوم:</span>
+          <span class="excel-branch-badge" id="excelBranchDateBadge">فرع النويري | 2026-09-10</span>
+        </div>
+        <div class="excel-nav-arrows">
+          <button type="button" class="excel-scroll-btn" onclick="scrollExcelTabs(1)" title="التمرير للأمام">◀</button>
+          <button type="button" class="excel-scroll-btn" onclick="scrollExcelTabs(-1)" title="التمرير للخلف">▶</button>
+        </div>
+      </div>
+      <div class="excel-tabs-track" id="excelTabsTrack">
+        <!-- Rendered dynamically by renderExcelSheetTabs() -->
+      </div>
     </div>
 
     <!-- 10 OPERATIONAL SECTIONS -->
@@ -4825,6 +5007,7 @@
 
       updateStats();
       renderScoreboard();
+      renderExcelSheetTabs();
       updatePrintHeader();
     }
 
@@ -4892,6 +5075,7 @@
        ============================================================ */
     function renderAll() {
       renderScoreboard();
+      renderExcelSheetTabs();
       renderSections();
       updateStats();
       updatePrintHeader();
@@ -5206,18 +5390,98 @@
     /* ============================================================
        MULTI-SHIFT CONTINUOUS OPERATIONS MATRIX CONTROLLERS (V4.0)
        ============================================================ */
+    function renderExcelSheetTabs() {
+      const track = document.getElementById('excelTabsTrack');
+      if (!track) return;
+      const branchShifts = getBranchShifts(currentBranchId);
+      const b = getBranchById(currentBranchId);
+
+      const badge = document.getElementById('excelBranchDateBadge');
+      if (badge) {
+        badge.innerText = `${b ? b.nameAr : currentBranchId} | ${currentDate}`;
+      }
+
+      // Master Tab: All Shifts Matrix Sheet
+      const isAllActive = (activeShiftView === 'all');
+      let tabsHtml = `
+        <div class="excel-sheet-tab ${isAllActive ? 'active' : ''}" data-mode="all" onclick="setShiftViewMode('all')" title="عرض مصفوفة المقارنة لكافة ورديات اليوم">
+          <span class="excel-tab-icon">📊</span>
+          <span class="excel-tab-name">ورقة مصفوفة اليوم (كافة الورديات)</span>
+          <span class="excel-tab-badge-all">مقارنة شاملة</span>
+        </div>
+      `;
+
+      // Individual Shift Tabs
+      branchShifts.forEach(shift => {
+        const isActive = (activeShiftView === shift.id);
+        const stats = calculateShiftStats(shift.id);
+        const shiftIcon = shift.id === 'morning' ? '☀️' : (shift.id === 'evening' ? '🌆' : '🌙');
+
+        // Determine active supervisors for this shift
+        const supsSet = new Set();
+        Object.values(state.items).forEach(it => {
+          if (it && it[shift.id] && it[shift.id].updatedBy && it[shift.id].status !== 'pending') {
+            supsSet.add(it[shift.id].updatedBy);
+          }
+        });
+        Object.values(state.temperatures).forEach(tp => {
+          if (tp && tp[shift.id] && tp[shift.id].updatedBy && tp[shift.id].value) {
+            supsSet.add(tp[shift.id].updatedBy);
+          }
+        });
+
+        const sups = Array.from(supsSet);
+        const supDisplay = sups.length > 0 ? sups.join('، ') : 'لم تبدأ بعد';
+        const pctColor = stats.percentage === 100 ? '#107c41' : (stats.percentage > 0 ? '#0284c7' : '#64748b');
+
+        tabsHtml += `
+          <div class="excel-sheet-tab ${isActive ? 'active' : ''}" data-mode="${shift.id}" onclick="setShiftViewMode('${shift.id}')" title="ورقة ${escapeHtml(shift.nameAr)}">
+            <span class="excel-tab-icon">${shiftIcon}</span>
+            <span class="excel-tab-name">${escapeHtml(shift.nameAr)}</span>
+            <span class="excel-tab-sup" title="المشرف: ${escapeHtml(supDisplay)}">👤 ${escapeHtml(supDisplay)}</span>
+            <span class="excel-tab-pct" style="color: ${pctColor}; background: ${stats.percentage === 100 ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${pctColor}40;">${stats.percentage}%</span>
+          </div>
+        `;
+      });
+
+      track.innerHTML = tabsHtml;
+    }
+
+    function scrollExcelTabs(dir) {
+      const track = document.getElementById('excelTabsTrack');
+      if (track) {
+        track.scrollBy({ left: dir * 180, behavior: 'smooth' });
+      }
+    }
+
     function setShiftViewMode(mode, btn) {
       activeShiftView = mode;
+      if (mode !== 'all') {
+        currentShiftType = mode;
+        const sel = document.getElementById('shiftTypeSelect');
+        if (sel) sel.value = mode;
+        const badge = document.getElementById('activeShiftBadge');
+        if (badge) badge.innerText = getShiftName(currentBranchId, mode);
+      }
       document.querySelectorAll('.shift-tab-btn').forEach(b => b.classList.remove('active'));
-      if (btn) {
+      document.querySelectorAll('.excel-sheet-tab').forEach(b => b.classList.remove('active'));
+
+      const targetExcelTab = document.querySelector(`.excel-sheet-tab[data-mode="${mode}"]`);
+      if (targetExcelTab) {
+        targetExcelTab.classList.add('active');
+        try { targetExcelTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) {}
+      }
+
+      if (btn && btn.classList.contains('shift-tab-btn')) {
         btn.classList.add('active');
       } else {
         const targetBtn = document.querySelector(`.shift-tab-btn[data-mode="${mode}"]`);
         if (targetBtn) targetBtn.classList.add('active');
       }
+
       const btnHeader = document.getElementById('btnHeaderShiftMode');
       if (btnHeader) {
-        btnHeader.innerText = (mode === 'all') ? '☀️ عرض وردية مفردة' : '📊 مقارنة كافة الورديات';
+        btnHeader.innerText = (mode === 'all') ? '☀️ عرض ورقة وردية مفردة' : '📊 ورقة كافة الورديات';
       }
       renderAll();
     }
@@ -5536,8 +5800,8 @@
       currentShiftType = document.getElementById('shiftTypeSelect').value;
       const badge = document.getElementById('activeShiftBadge');
       if (badge) badge.innerText = getShiftName(currentBranchId, currentShiftType);
-      renderAll();
-      showToast("الوردية النشطة لتسجيلك الآن: " + getShiftName(currentBranchId, currentShiftType));
+      setShiftViewMode(currentShiftType);
+      showToast("تم فتح ورقة: " + getShiftName(currentBranchId, currentShiftType));
     }
 
     function onDateChange() {
