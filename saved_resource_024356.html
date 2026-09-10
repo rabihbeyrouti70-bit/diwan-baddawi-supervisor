@@ -5009,7 +5009,10 @@
       }
     }
 
+    let lastLocalSaveTime = 0;
+
     function saveState(broadcast = true) {
+      lastLocalSaveTime = Date.now();
       safeSetItem(getStorageKey(), JSON.stringify(state));
 
       // Broadcast to other tabs locally
@@ -5036,15 +5039,32 @@
     /* ============================================================
        FIREBASE INTEGRATION
        ============================================================ */
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "AIzaSy-diwan-supervisor-default",
+      projectId: "diwan-supervisor",
+      databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
     function initFirebaseIfConfigured() {
+      let config = DEFAULT_FIREBASE_CONFIG;
       const configStr = localStorage.getItem('diwan_firebase_config');
-      if (!configStr) {
+      if (configStr) {
+        try {
+          const parsed = JSON.parse(configStr);
+          if (parsed && parsed.databaseURL) {
+            config = parsed;
+          }
+        } catch (e) {
+          console.warn("Custom firebase config parse error:", e);
+        }
+      }
+
+      if (!config || !config.databaseURL) {
         setSyncBadgeStatus('local');
         return;
       }
 
       try {
-        const config = JSON.parse(configStr);
         if (!firebase.apps.length) {
           firebase.initializeApp(config);
         }
@@ -5055,6 +5075,7 @@
         listenToFirebaseTempRanges();
         listenToFirebaseBranches();
         setSyncBadgeStatus('cloud');
+        console.log("☁️ Firebase Realtime Database connected successfully:", config.databaseURL);
       } catch (e) {
         console.error("Firebase initialization failed:", e);
         setSyncBadgeStatus('local');
@@ -5074,8 +5095,28 @@
         if (val) {
           state = val;
           normalizeDayState(state);
+          const key = 'diwan_day_ops_' + currentBranchId + '_' + currentDate;
+          safeSetItem(key, JSON.stringify(state));
           renderAll();
-          showToast("☁️ تم استلام تحديثات العمليات السحابية اليومية");
+          if (Date.now() - lastLocalSaveTime > 2000) {
+            showToast("☁️ تم استلام تحديثات العمليات السحابية من الفرع");
+          }
+        } else if (state && Object.keys(state.items || {}).length > 0) {
+          // If cloud has no state for today yet, but local device has existing progress, push it up to cloud
+          let hasDone = false;
+          for (const rawId in state.items) {
+            const it = state.items[rawId];
+            for (const sh in it) {
+              if (it[sh] && (it[sh].status === 'done' || it[sh].status === 'in_progress' || it[sh].status === 'handover' || it[sh].status === 'critical')) {
+                hasDone = true;
+                break;
+              }
+            }
+            if (hasDone) break;
+          }
+          if (hasDone) {
+            firebaseRef.set(state).catch(e => console.warn("Initial cloud seed failed:", e));
+          }
         }
       }, (err) => {
         console.error("Firebase shift sync error:", err);
@@ -5086,9 +5127,19 @@
       const badge = document.getElementById('syncStatusBadge');
       const text = document.getElementById('syncStatusText');
       if (type === 'cloud') {
-        text.innerText = "متزامن سحابياً ☁️";
+        if (text) text.innerText = "متزامن سحابياً ☁️";
+        if (badge) {
+          badge.style.background = "#ecfdf5";
+          badge.style.color = "#065f46";
+          badge.style.border = "1px solid #10b981";
+        }
       } else {
-        text.innerText = "تزامن محلي نشط 🟢";
+        if (text) text.innerText = "تزامن محلي نشط 🟢";
+        if (badge) {
+          badge.style.background = "";
+          badge.style.color = "";
+          badge.style.border = "";
+        }
       }
     }
 
