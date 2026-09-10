@@ -3488,9 +3488,9 @@
     }
 
     // Centralized Stats Calculation (V4.0 Multi-Shift Matrix Support)
-    function calculateShiftStats(shiftId) {
+    function calculateShiftStats(shiftId, optionalItems) {
       let done = 0, inProgress = 0, critical = 0, handover = 0;
-      const targetItems = (state && state.items) || {};
+      const targetItems = optionalItems || (state && state.items) || {};
       
       SECTIONS_DATA.forEach(sec => {
         sec.items.forEach(itDef => {
@@ -3510,7 +3510,8 @@
       return { done, inProgress, critical, handover, pending, total, percentage };
     }
 
-    function calculateStats(itemsState) {
+    function calculateStats(itemsState, targetShift) {
+      const sh = targetShift || ((activeShiftView === 'all') ? currentShiftType : activeShiftView);
       if (itemsState && typeof itemsState === 'object') {
         let done = 0, inProgress = 0, handover = 0, critical = 0;
         let isMatrix = false;
@@ -3526,16 +3527,14 @@
           }
         });
         if (isMatrix) {
-          const targetShift = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
-          return calculateShiftStats(targetShift);
+          return calculateShiftStats(sh, itemsState);
         }
         const total = TOTAL_ITEMS;
         const pending = Math.max(0, total - done - inProgress - handover - critical);
         const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
         return { done, inProgress, handover, critical, pending, total, percentage };
       }
-      const targetShift = (activeShiftView === 'all') ? currentShiftType : activeShiftView;
-      return calculateShiftStats(targetShift);
+      return calculateShiftStats(sh);
     }
 
 
@@ -6738,105 +6737,122 @@
       document.body.classList.remove('modal-open');
     }
 
+    function renderHqBranchCardHtml(b, s, isCurrent, isCloud, hasData) {
+      const pct = s.percentage;
+      return `
+        <div id="hqCard_${b.id}" style="background: white; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 12px; padding: 14px; position: relative; box-shadow: var(--shadow-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${escapeHtml(b.nameAr)}</h4>
+              <span style="font-size: 11px; color: var(--text-muted);">📍 ${escapeHtml(b.location)}${isCloud ? ' (محدّث سحابياً ☁️)' : ''}</span>
+            </div>
+            ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
+          </div>
+
+          <div style="margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+              <span>نسبة الإنجاز اليوم:</span>
+              <span style="color: ${pct > 70 ? 'var(--primary)' : (pct > 0 ? 'var(--warning)' : '#64748b')};">${hasData ? pct + '%' : 'لم يبدأ بعد ⏳'}</span>
+            </div>
+            <div style="background: #e2e8f0; height: 8px; border-radius: 999px; overflow: hidden;">
+              <div style="background: var(--primary); height: 100%; width: ${pct}%;"></div>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
+            <span>✅ ${s.done} مكتمل</span>
+            <span>🔄 ${s.inProgress} قيد العمل</span>
+            <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
+          </div>
+
+          <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
+            ${isCurrent ? 'أنت تتصفح هذا الفرع الآن' : 'الانتقال ومتابعة هذا الفرع ➔'}
+          </button>
+        </div>
+      `;
+    }
+
     function renderHqBranchesGrid() {
       const grid = document.getElementById('hqBranchesGrid');
+      if (!grid) return;
       const branches = getBranchesList();
 
+      // 1. Initial render from local cache / active branch state
       grid.innerHTML = branches.map(b => {
-        const key = STORAGE_KEYS.SHIFT_PREFIX + b.id + '_' + currentDate + '_' + currentShiftType;
-        const savedData = safeGetItem(key);
-        let s = { done: 0, inProgress: 0, handover: 0, critical: 0, total: TOTAL_ITEMS, percentage: 0 };
-        let hasData = false;
-
-        if (savedData) {
-          const parsed = safeJsonParse(savedData);
-          if (parsed && parsed.items) {
-            hasData = true;
-            s = calculateStats(parsed.items);
+        let branchItems = null;
+        if (b.id === currentBranchId && state && state.items) {
+          branchItems = state.items;
+        } else {
+          const opsKey = 'diwan_day_ops_' + b.id + '_' + currentDate;
+          const legacyKey = STORAGE_KEYS.SHIFT_PREFIX + b.id + '_' + currentDate + '_' + currentShiftType;
+          const savedData = safeGetItem(opsKey) || safeGetItem(legacyKey);
+          if (savedData) {
+            const parsed = safeJsonParse(savedData);
+            if (parsed && parsed.items) {
+              branchItems = parsed.items;
+            }
           }
         }
 
-        const pct = s.percentage;
+        let s = { done: 0, inProgress: 0, handover: 0, critical: 0, total: TOTAL_ITEMS, percentage: 0 };
+        let hasData = false;
+
+        if (branchItems) {
+          s = calculateStats(branchItems, currentShiftType);
+          if (s.done === 0 && s.percentage === 0) {
+            let dayDone = 0;
+            Object.values(branchItems).forEach(it => {
+              if (it && (it.morning?.status === 'done' || it.evening?.status === 'done' || it.night?.status === 'done')) dayDone++;
+            });
+            if (dayDone > 0) {
+              s.done = dayDone;
+              s.percentage = Math.round((dayDone / TOTAL_ITEMS) * 100);
+            }
+          }
+          if (s.done > 0 || s.inProgress > 0 || s.critical > 0) {
+            hasData = true;
+          }
+        }
+
         const isCurrent = b.id === currentBranchId;
-
-        return `
-          <div id="hqCard_${b.id}" style="background: white; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; border-radius: 12px; padding: 14px; position: relative; box-shadow: var(--shadow-sm);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-              <div>
-                <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${escapeHtml(b.nameAr)}</h4>
-                <span style="font-size: 11px; color: var(--text-muted);">📍 ${escapeHtml(b.location)}</span>
-              </div>
-              ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
-            </div>
-
-            <div style="margin: 10px 0;">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
-                <span>نسبة الإنجاز اليوم:</span>
-                <span style="color: ${pct > 70 ? 'var(--primary)' : (pct > 30 ? 'var(--warning)' : '#64748b')};">${hasData ? pct + '%' : 'لم يبدأ بعد ⏳'}</span>
-              </div>
-              <div style="background: #e2e8f0; height: 8px; border-radius: 999px; overflow: hidden;">
-                <div style="background: var(--primary); height: 100%; width: ${pct}%;"></div>
-              </div>
-            </div>
-
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
-              <span>✅ ${s.done} مكتمل</span>
-              <span>🔄 ${s.inProgress} قيد العمل</span>
-              <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
-            </div>
-
-            <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
-              ${isCurrent ? 'أنت تتصفح هذا الفرع الآن' : 'الانتقال ومتابعة هذا الفرع ➔'}
-            </button>
-          </div>
-        `;
+        return renderHqBranchCardHtml(b, s, isCurrent, false, hasData);
       }).join('');
 
-      // Fetch live cloud status from Firebase if active (H5)
+      // 2. Fetch live cloud status from Firebase (Multi-shift daily_ops)
       if (firebaseDb) {
         branches.forEach(b => {
-          firebaseDb.ref('branches/' + b.id + '/shifts/' + currentDate + '/' + currentShiftType).once('value', snapshot => {
-            const remoteData = snapshot.val();
-            if (remoteData && remoteData.items) {
-              const card = document.getElementById('hqCard_' + b.id);
-              if (card) {
-                const s = calculateStats(remoteData.items);
-                const isCurrent = b.id === currentBranchId;
-                card.innerHTML = `
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <div>
-                      <h4 style="font-size: 15px; font-weight: 800; color: var(--secondary);">${escapeHtml(b.nameAr)}</h4>
-                      <span style="font-size: 11px; color: var(--text-muted);">📍 ${escapeHtml(b.location)} (محدّث سحابياً ☁️)</span>
-                    </div>
-                    ${isCurrent ? '<span style="background: var(--primary-light); color: var(--primary-dark); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">الفرع النشط حالياً</span>' : ''}
-                  </div>
-
-                  <div style="margin: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
-                      <span>نسبة الإنجاز اليوم:</span>
-                      <span style="color: ${s.percentage > 70 ? 'var(--primary)' : (s.percentage > 30 ? 'var(--warning)' : '#64748b')};">${s.percentage}%</span>
-                    </div>
-                    <div style="background: #e2e8f0; height: 8px; border-radius: 999px; overflow: hidden;">
-                      <div style="background: var(--primary); height: 100%; width: ${s.percentage}%;"></div>
-                    </div>
-                  </div>
-
-                  <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
-                    <span>✅ ${s.done} مكتمل</span>
-                    <span>🔄 ${s.inProgress} قيد العمل</span>
-                    <span style="color: ${s.critical > 0 ? '#ef4444' : 'inherit'}; font-weight: ${s.critical > 0 ? '800' : 'normal'};">🚨 ${s.critical} عطل</span>
-                  </div>
-
-                  <button type="button" class="btn btn-outline-white btn-sm" style="width: 100%; justify-content: center; font-weight: 800; ${isCurrent ? 'opacity: 0.5; pointer-events: none;' : 'color: var(--primary-dark); border-color: var(--primary);'}" onclick="onAdminSwitchBranch('${b.id}'); closeHqOverviewModal();">
-                    ${isCurrent ? 'أنت تتصفح هذا الفرع الآن' : 'الانتقال ومتابعة هذا الفرع ➔'}
-                  </button>
-                `;
+          const path = 'branches/' + b.id + '/daily_ops/' + currentDate;
+          firebaseDb.ref(path).once('value', snapshot => {
+            const rawCloudVal = snapshot.val();
+            if (rawCloudVal) {
+              const cloudVal = typeof deserializeStateFromFirebase === 'function'
+                ? deserializeStateFromFirebase(rawCloudVal)
+                : rawCloudVal;
+              if (cloudVal && cloudVal.items) {
+                let s = calculateStats(cloudVal.items, currentShiftType);
+                if (s.done === 0 && s.percentage === 0) {
+                  let dayDone = 0;
+                  Object.values(cloudVal.items).forEach(it => {
+                    if (it && (it.morning?.status === 'done' || it.evening?.status === 'done' || it.night?.status === 'done')) dayDone++;
+                  });
+                  if (dayDone > 0) {
+                    s.done = dayDone;
+                    s.percentage = Math.round((dayDone / TOTAL_ITEMS) * 100);
+                  }
+                }
+                const hasData = (s.done > 0 || s.inProgress > 0 || s.critical > 0);
+                const card = document.getElementById('hqCard_' + b.id);
+                if (card) {
+                  const isCurrent = b.id === currentBranchId;
+                  card.outerHTML = renderHqBranchCardHtml(b, s, isCurrent, true, hasData);
+                }
               }
             }
           }).catch(err => console.warn('HQ live fetch failed for branch', b.id, err));
         });
       }
     }
+
     // Close modal when clicking backdrop (H7)
     window.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.modal-overlay').forEach(modal => {
