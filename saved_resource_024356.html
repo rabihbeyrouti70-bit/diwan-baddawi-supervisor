@@ -4337,13 +4337,18 @@
           document.getElementById('authPinInput').value = '';
           errorBox.innerText = '';
           
+          // Auto-detect current shift based on clock time
+          const autoShift = getAutoDetectedShift(currentBranchId);
+          currentShiftType = autoShift;
+          activeShiftView = autoShift;
+
           // Load shift state for this branch & render
           loadStateForCurrentShift();
           if (firebaseDb) listenToFirebaseShift();
           renderAll();
 
           const b = getBranchById(currentBranchId);
-          showToast("مرحباً بك: " + currentSupervisor + " 👋 (" + (b ? b.nameAr : '') + ")");
+          showToast("مرحباً بك: " + currentSupervisor + " 👋 - تم فتح " + getShiftName(currentBranchId, autoShift) + " تلقائياً");
         } else {
           failedAttempts++;
           document.getElementById('authPinInput').value = '';
@@ -4462,6 +4467,11 @@
     window.addEventListener('DOMContentLoaded', () => {
       checkAuthOnLoad();
       document.getElementById('shiftDateInput').value = currentDate;
+
+      // Auto-detect shift by current time
+      const autoShift = getAutoDetectedShift(currentBranchId);
+      currentShiftType = autoShift;
+      activeShiftView = autoShift;
       
       initFirebaseIfConfigured();
       loadStateForCurrentShift();
@@ -4615,6 +4625,30 @@
         { id: 'evening', nameAr: 'وردية مسائية', start: '16:00', end: '00:00' },
         { id: 'night',   nameAr: 'وردية ليلية',   start: '00:00', end: '08:00' }
       ];
+    }
+
+    function getAutoDetectedShift(branchId) {
+      try {
+        const now = new Date();
+        const curMin = now.getHours() * 60 + now.getMinutes();
+        const shifts = getBranchShifts(branchId || currentBranchId);
+        for (const sh of shifts) {
+          if (!sh.start || !sh.end) continue;
+          const [sH, sM] = sh.start.split(':').map(Number);
+          const [eH, eM] = sh.end.split(':').map(Number);
+          const sMin = sH * 60 + (sM || 0);
+          let eMin = eH * 60 + (eM || 0);
+          if (eMin <= sMin) {
+            // Crosses midnight (e.g. 16:00 to 00:00 or 00:00 to 08:00)
+            if (curMin >= sMin || curMin < eMin) return sh.id;
+          } else {
+            if (curMin >= sMin && curMin < eMin) return sh.id;
+          }
+        }
+        return shifts[0] ? shifts[0].id : 'morning';
+      } catch (e) {
+        return 'morning';
+      }
     }
 
     function saveAllBranchShifts(shiftsData, broadcast = true) {
