@@ -3500,14 +3500,18 @@
     function calculateShiftStats(shiftId) {
       let done = 0, inProgress = 0, critical = 0, handover = 0;
       const targetItems = (state && state.items) || {};
-      Object.values(targetItems).forEach(it => {
-        if (!it) return;
-        const shData = it[shiftId] || (typeof it.status === 'string' && (shiftId === currentShiftType) ? it : null);
-        if (!shData) return;
-        if (shData.status === 'done') done++;
-        else if (shData.status === 'in_progress') inProgress++;
-        else if (shData.status === 'critical') critical++;
-        else if (shData.status === 'handover') handover++;
+      
+      SECTIONS_DATA.forEach(sec => {
+        sec.items.forEach(itDef => {
+          const it = targetItems[itDef.rawId];
+          if (!it) return;
+          const shData = it[shiftId] || (typeof it.status === 'string' && (shiftId === currentShiftType) ? it : null);
+          if (!shData) return;
+          if (shData.status === 'done') done++;
+          else if (shData.status === 'in_progress') inProgress++;
+          else if (shData.status === 'critical') critical++;
+          else if (shData.status === 'handover') handover++;
+        });
       });
       const total = TOTAL_ITEMS;
       const pending = Math.max(0, total - done - inProgress - critical - handover);
@@ -4517,8 +4521,14 @@
       if (!s.temperatures || typeof s.temperatures !== 'object') s.temperatures = {};
       if (!s.sectionNotes || typeof s.sectionNotes !== 'object') s.sectionNotes = {};
 
-      // Migrate flat legacy items if encountered
+      // Prune orphan items not matching SECTIONS_DATA & migrate flat legacy items
+      const validRawIds = new Set();
+      SECTIONS_DATA.forEach(sec => sec.items.forEach(it => validRawIds.add(it.rawId)));
       Object.keys(s.items).forEach(rawId => {
+        if (!validRawIds.has(rawId)) {
+          delete s.items[rawId];
+          return;
+        }
         const it = s.items[rawId];
         if (it && typeof it.status === 'string') {
           const shift = currentShiftType || 'morning';
