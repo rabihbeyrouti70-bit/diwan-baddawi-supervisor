@@ -2521,9 +2521,11 @@
           <span class="excel-branch-badge" id="excelBranchDateBadge">فرع النويري | 2026-09-10</span>
           <span style="font-size: 11.5px; color: var(--text-muted); margin-right: 8px;">الوردية المفتوحة: <strong id="activeShiftBadge" style="color: var(--primary-dark); font-weight: 800;">الوردية الصباحية</strong></span>
         </div>
-        <div class="excel-nav-arrows" style="display: flex; align-items: center; gap: 4px;">
-          <button type="button" class="excel-scroll-btn" onclick="expandAllSections()" title="فتح المهام كلها (فتح الكل)" aria-label="فتح المهام كلها" style="font-size: 14px;">📂</button>
-          <button type="button" class="excel-scroll-btn" onclick="collapseAllSections()" title="إغلاق المهام كلها (إغلاق الكل)" aria-label="إغلاق المهام كلها" style="font-size: 14px;">📁</button>
+        <div class="excel-nav-arrows" style="display: flex; align-items: center;">
+          <button type="button" class="excel-scroll-btn" id="toggleAllSectionsBtn" onclick="toggleAllSections()" title="فتح كافة المهام (فتح الكل)" aria-label="تبديل فتح وإغلاق كافة المهام" style="min-width: 30px; width: auto; height: 28px; padding: 2px 9px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 6px;">
+            <span id="toggleAllIcon" style="font-size: 14px;">📂</span>
+            <span id="toggleAllText">فتح الكل</span>
+          </button>
         </div>
       </div>
       <div class="excel-tabs-track" id="excelTabsTrack">
@@ -5153,15 +5155,43 @@
     // Accordion State: Collapsed by default (مضبوبة افتراضياً)
     let expandedSections = new Set();
 
+    function updateToggleAllButton() {
+      const btn = document.getElementById('toggleAllSectionsBtn');
+      const icon = document.getElementById('toggleAllIcon');
+      const text = document.getElementById('toggleAllText');
+      if (!btn) return;
+
+      const allOpen = expandedSections.size === SECTIONS_DATA.length;
+      if (allOpen) {
+        if (icon) icon.innerText = '📁';
+        if (text) text.innerText = 'إغلاق الكل';
+        btn.title = 'إغلاق كافة المهام (طي الكل)';
+      } else {
+        if (icon) icon.innerText = '📂';
+        if (text) text.innerText = 'فتح الكل';
+        btn.title = 'فتح كافة المهام (فتح الكل)';
+      }
+    }
+
+    function toggleAllSections() {
+      if (expandedSections.size === SECTIONS_DATA.length) {
+        collapseAllSections();
+      } else {
+        expandAllSections();
+      }
+    }
+
     function collapseAllSections() {
       expandedSections.clear();
       renderSections();
+      updateToggleAllButton();
       showToast("تم إغلاق كافة المهام 📁");
     }
 
     function expandAllSections() {
       SECTIONS_DATA.forEach(s => expandedSections.add(s.id));
       renderSections();
+      updateToggleAllButton();
       showToast("تم فتح كافة المهام 📂");
     }
 
@@ -5244,6 +5274,7 @@
             const icon = header.querySelector('.section-toggle-icon');
             if (icon) icon.innerText = '▲';
           }
+          updateToggleAllButton();
         };
 
         // Section Body (Collapsed by default)
@@ -5444,6 +5475,7 @@
         card.appendChild(body);
         container.appendChild(card);
       });
+      updateToggleAllButton();
     }
 
     /* ============================================================
