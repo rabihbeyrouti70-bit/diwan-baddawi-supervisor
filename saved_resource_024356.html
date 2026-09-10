@@ -915,6 +915,32 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       font-weight: 800;
     }
+    /* SHIFT PERMISSION LOCKING (منع تعديل ورديات المشرفين الآخرين) */
+    .slot-locked {
+      background: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+      opacity: 0.88;
+    }
+    .btn-slot-pill:disabled, .status-pill:disabled {
+      cursor: not-allowed !important;
+      opacity: 0.65 !important;
+    }
+    .temp-shift-input:disabled, .temp-shift-input[readonly] {
+      background: #f1f5f9 !important;
+      color: #64748b !important;
+      cursor: not-allowed !important;
+    }
+    .read-only-notice {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
     /* EXCEL WORKBOOK SHEET TABS (ورديات اليوم الواحد بنمط إكسل) */
     .excel-workbook-container {
       background: #f1f5f9;
@@ -5194,7 +5220,7 @@
         const body = document.createElement('div');
         body.className = 'section-body';
 
-        // Check Items (V4.0 Multi-Shift Matrix)
+        // Check Items (V4.0 Multi-Shift Matrix with Permission Locking)
         matchingItems.forEach(item => {
           const itemEntry = state.items[item.rawId] || {};
           const row = document.createElement('div');
@@ -5219,20 +5245,21 @@
                   const isCritical = (st === 'critical');
                   const shIcon = sh.id === 'morning' ? '☀️' : (sh.id === 'evening' ? '🌆' : '🌙');
                   const who = shData.updatedBy ? `${shData.updatedBy} (${shData.updatedAt || ''})` : 'لم تفحص بعد';
+                  const editable = canEditShift(sh.id);
 
                   return `
-                    <div class="shift-slot ${isDone ? 'slot-done' : (isCritical ? 'slot-critical' : '')}">
+                    <div class="shift-slot ${isDone ? 'slot-done' : (isCritical ? 'slot-critical' : '')} ${!editable ? 'slot-locked' : ''}">
                       <div class="slot-header">
-                        <span>${shIcon} ${escapeHtml(sh.nameAr)}</span>
+                        <span>${shIcon} ${escapeHtml(sh.nameAr)} ${!editable ? '<small style="color: #94a3b8; font-size: 10px;" title="للاطلاع فقط">🔒</small>' : ''}</span>
                         <span class="slot-who" title="${escapeHtml(who)}">👤 ${escapeHtml(who)}</span>
                       </div>
                       <div class="slot-actions">
-                        <button type="button" class="btn-slot-pill ${isDone ? 'active-done' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'done')" title="إتمام الفحص">✅ منجز</button>
-                        <button type="button" class="btn-slot-pill ${isProgress ? 'active-progress' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'in_progress')" title="قيد العمل">🔄 قيد العمل</button>
-                        <button type="button" class="btn-slot-pill ${isCritical ? 'active-critical' : ''}" onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'critical')" title="عطل طارئ">🚨 عطل</button>
+                        <button type="button" class="btn-slot-pill ${isDone ? 'active-done' : ''}" ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : 'title="إتمام الفحص"'} onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'done')">✅ منجز</button>
+                        <button type="button" class="btn-slot-pill ${isProgress ? 'active-progress' : ''}" ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : 'title="قيد العمل"'} onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'in_progress')">🔄 قيد العمل</button>
+                        <button type="button" class="btn-slot-pill ${isCritical ? 'active-critical' : ''}" ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : 'title="عطل طارئ"'} onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${sh.id}', 'critical')">🚨 عطل</button>
                       </div>
                       ${(isCritical || shData.note) ? `
-                        <input type="text" class="item-note-input" style="font-size: 11px; margin-top: 4px;" placeholder="ملاحظة خاصة بالوردية..." value="${escapeHtml(shData.note || '')}" onchange="setTaskShiftNote('${escapeSingleQuotes(item.rawId)}', '${sh.id}', this.value)">
+                        <input type="text" class="item-note-input" style="font-size: 11px; margin-top: 4px;" ${!editable ? 'readonly' : ''} placeholder="ملاحظة خاصة بالوردية..." value="${escapeHtml(shData.note || '')}" onchange="setTaskShiftNote('${escapeSingleQuotes(item.rawId)}', '${sh.id}', this.value)">
                       ` : ''}
                     </div>
                   `;
@@ -5240,8 +5267,9 @@
               </div>
             `;
           } else {
-            // FOCUSED SINGLE SHIFT VIEW (WITH CROSS-SHIFT AUDIT BADGES)
+            // FOCUSED SINGLE SHIFT VIEW (WITH PERMISSION LOCK INDICATOR)
             const activeData = itemEntry[activeShiftView] || { status: 'pending' };
+            const editable = canEditShift(activeShiftView);
             const lastUpdated = activeData.updatedBy ? 
               `آخر فحص لهذه الوردية: ${escapeHtml(activeData.updatedBy)} (${escapeHtml(activeData.updatedAt || '')})` : 'لم تفحص بعد';
 
@@ -5251,6 +5279,7 @@
                   <span class="item-ar">${escapeHtml(item.ar || item.en)}</span>
                   <span class="item-en">${escapeHtml(item.en)}</span>
                   <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                    ${!editable ? '<span class="read-only-notice">🔒 للعرض والمراقبة فقط</span>' : ''}
                     ${branchShifts.filter(s => s.id !== activeShiftView).map(other => {
                       const othData = itemEntry[other.id] || { status: 'pending' };
                       const othIcon = other.id === 'morning' ? '☀️' : (other.id === 'evening' ? '🌆' : '🌙');
@@ -5265,14 +5294,17 @@
                 </div>
                 <div class="status-group">
                   <button type="button" class="status-pill ${activeData.status === 'done' ? 'active-done' : ''}" 
+                    ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : ''}
                     onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'done')">
                     ✅ منجز
                   </button>
                   <button type="button" class="status-pill ${activeData.status === 'in_progress' ? 'active-progress' : ''}" 
+                    ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : ''}
                     onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'in_progress')">
                     🔄 قيد العمل
                   </button>
                   <button type="button" class="status-pill ${activeData.status === 'critical' ? 'active-critical' : ''}" 
+                    ${!editable ? 'disabled title="مقفلة - للعرض فقط"' : ''}
                     onclick="setTaskShiftStatus('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', 'critical')">
                     🚨 خلل طارئ
                   </button>
@@ -5281,7 +5313,7 @@
               <div class="item-audit">
                 <span>👤 ${lastUpdated}</span>
                 ${activeData.status === 'critical' || activeData.note ? `
-                  <input type="text" class="item-note-input" placeholder="ملاحظة خاصة بالوردية..." 
+                  <input type="text" class="item-note-input" ${!editable ? 'readonly' : ''} placeholder="ملاحظة خاصة بالوردية..." 
                     value="${escapeHtml(activeData.note || '')}" 
                     onchange="setTaskShiftNote('${escapeSingleQuotes(item.rawId)}', '${activeShiftView}', this.value)">
                 ` : ''}
@@ -5292,7 +5324,7 @@
           body.appendChild(row);
         });
 
-        // Temperatures (Multi-Shift Daily Progression)
+        // Temperatures (Multi-Shift Daily Progression with Permission Locking)
         if (sec.temps && sec.temps.length > 0) {
           const tempBox = document.createElement('div');
           tempBox.className = 'temperatures-container';
@@ -5335,14 +5367,16 @@
                   const isAlert = (val !== '' && !isNaN(numVal) && (numVal > conf.max || numVal < conf.min));
                   const shIcon = sh.id === 'morning' ? '☀️' : (sh.id === 'evening' ? '🌆' : '🌙');
                   const who = shTemp.updatedBy ? `${shTemp.updatedBy} (${shTemp.updatedAt || ''})` : 'لم تُسجل';
+                  const editable = canEditShift(sh.id);
 
                   return `
-                    <div class="temp-shift-col ${isAlert ? 'alert' : ''}">
-                      <span class="temp-shift-tag">${shIcon} ${escapeHtml(sh.nameAr)}</span>
+                    <div class="temp-shift-col ${isAlert ? 'alert' : ''} ${!editable ? 'slot-locked' : ''}">
+                      <span class="temp-shift-tag">${shIcon} ${escapeHtml(sh.nameAr)} ${!editable ? '<small style="color: #94a3b8; font-size: 10px;">🔒</small>' : ''}</span>
                       <div class="temp-shift-input-wrap">
                         <input type="number" step="0.1" class="temp-shift-input" 
                           placeholder="--" 
                           value="${val}"
+                          ${!editable ? 'readonly' : ''}
                           onchange="setShiftTemperature('${escapeSingleQuotes(tName)}', '${sh.id}', this.value)">
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">°C</span>
                       </div>
@@ -5366,10 +5400,11 @@
           const savedNote = (state.sectionNotes[sec.id] && typeof state.sectionNotes[sec.id] === 'object') ?
             (state.sectionNotes[sec.id][activeShiftView === 'all' ? currentShiftType : activeShiftView] || '') :
             (state.sectionNotes[sec.id] || '');
+          const editable = canEditShift(activeShiftView === 'all' ? currentShiftType : activeShiftView);
           noteBox.innerHTML = `
             <label>📝 ملاحظات عامة لقسم ${sec.titleAr}:</label>
-            <textarea class="section-notes-textarea" 
-              placeholder="اكتب أي ملاحظات تخص قسم ${escapeHtml(sec.titleAr)}..." 
+            <textarea class="section-notes-textarea" ${!editable ? 'readonly style="background: #f8fafc; cursor: not-allowed;"' : ''}
+              placeholder="${editable ? `اكتب أي ملاحظات تخص قسم ${escapeHtml(sec.titleAr)}...` : 'للقراءة فقط...'}" 
               onchange="setSectionNote('${sec.id}', this.value)">${escapeHtml(savedNote)}</textarea>
           `;
           body.appendChild(noteBox);
@@ -5481,7 +5516,44 @@
       }
     }
 
+    function canEditShift(shiftId) {
+      // 1. General Manager and Branch Managers have full override authority across all shifts
+      if (currentUserRole === 'admin' || currentUserRole === 'branch_manager') {
+        return true;
+      }
+
+      // 2. Floor supervisor can only edit the shift matching the operational time window
+      const shifts = getBranchShifts(currentBranchId);
+      const targetShift = shifts.find(s => s.id === shiftId);
+      if (!targetShift || !targetShift.start || !targetShift.end) {
+        return shiftId === getAutoDetectedShift(currentBranchId);
+      }
+
+      const now = new Date();
+      const curMin = now.getHours() * 60 + now.getMinutes();
+      const [sH, sM] = targetShift.start.split(':').map(Number);
+      const [eH, eM] = targetShift.end.split(':').map(Number);
+
+      // Include a generous 30-minute grace window before shift start and after handover
+      let sMin = (sH * 60 + (sM || 0)) - 30;
+      if (sMin < 0) sMin += 1440;
+      let eMin = (eH * 60 + (eM || 0)) + 30;
+      if (eMin >= 1440) eMin -= 1440;
+
+      if (eMin <= sMin) {
+        return (curMin >= sMin || curMin < eMin);
+      } else {
+        return (curMin >= sMin && curMin < eMin);
+      }
+    }
+
     function setTaskShiftStatus(rawId, shiftId, newStatus) {
+      if (!canEditShift(shiftId)) {
+        const shName = getShiftName(currentBranchId, shiftId);
+        showToast(`🔒 عذراً، (${shName}) مخصصة لمشرفها وللاطلاع فقط. لا يمكن التعديل إلا خلال توقيتها المعتمد أو بحساب الإدارة.`);
+        return;
+      }
+
       if (!state.items[rawId]) state.items[rawId] = {};
       if (!state.items[rawId][shiftId]) state.items[rawId][shiftId] = {};
 
@@ -5502,6 +5574,12 @@
     }
 
     function setTaskShiftNote(rawId, shiftId, noteText) {
+      if (!canEditShift(shiftId)) {
+        showToast('🔒 لا يمكن تعديل ملاحظات وردية أخرى.');
+        renderSections();
+        return;
+      }
+
       if (!state.items[rawId]) state.items[rawId] = {};
       if (!state.items[rawId][shiftId]) state.items[rawId][shiftId] = {};
 
@@ -5512,6 +5590,13 @@
     }
 
     function setShiftTemperature(tempName, shiftId, value) {
+      if (!canEditShift(shiftId)) {
+        const shName = getShiftName(currentBranchId, shiftId);
+        showToast(`🔒 عذراً، تسجيل حرارة (${shName}) مخصص لمشرف تلك الوردية فقط أو للإدارة.`);
+        renderSections();
+        return;
+      }
+
       const parsedVal = typeof value === 'string' ? value.replace(',', '.').trim() : value;
       if (!state.temperatures[tempName]) state.temperatures[tempName] = {};
       
