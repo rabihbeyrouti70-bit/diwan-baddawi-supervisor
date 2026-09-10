@@ -2913,9 +2913,15 @@
         <button class="close-btn" onclick="closeHqOverviewModal()" aria-label="إغلاق النافذة">&times;</button>
       </div>
 
-      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-        نظرة لحظية شاملة على سير العمل ونسب الإنجاز وحالة الثلاجات عبر جميع فروع ديوان ماركت اليوم:
-      </p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+          نظرة لحظية شاملة على سير العمل ونسب الإنجاز وحالة الثلاجات عبر جميع فروع ديوان ماركت اليوم:
+        </p>
+        <span style="background: #ecfdf5; color: #065f46; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #10b981; display: inline-flex; align-items: center; gap: 4px;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
+          مزامنة لحظية مباشرة ⚡
+        </span>
+      </div>
 
       <div id="hqBranchesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px;">
         <!-- Populated dynamically with each branch status card -->
@@ -6732,9 +6738,17 @@
       document.getElementById('hqOverviewModal').classList.add('open');
     }
 
+    let hqFirebaseListeners = [];
+
     function closeHqOverviewModal() {
       document.getElementById('hqOverviewModal').classList.remove('open');
       document.body.classList.remove('modal-open');
+      if (hqFirebaseListeners && hqFirebaseListeners.length > 0) {
+        hqFirebaseListeners.forEach(l => {
+          try { l.ref.off('value', l.callback); } catch (e) {}
+        });
+        hqFirebaseListeners = [];
+      }
     }
 
     function renderHqBranchCardHtml(b, s, isCurrent, isCloud, hasData) {
@@ -6818,11 +6832,20 @@
         return renderHqBranchCardHtml(b, s, isCurrent, false, hasData);
       }).join('');
 
-      // 2. Fetch live cloud status from Firebase (Multi-shift daily_ops)
+      // 2. Live Realtime Streaming from Firebase (WebSockets Multi-shift daily_ops)
       if (firebaseDb) {
+        // Detach prior listeners if re-rendering while open
+        if (hqFirebaseListeners && hqFirebaseListeners.length > 0) {
+          hqFirebaseListeners.forEach(l => {
+            try { l.ref.off('value', l.callback); } catch (e) {}
+          });
+          hqFirebaseListeners = [];
+        }
+
         branches.forEach(b => {
           const path = 'branches/' + b.id + '/daily_ops/' + currentDate;
-          firebaseDb.ref(path).once('value', snapshot => {
+          const ref = firebaseDb.ref(path);
+          const callback = ref.on('value', snapshot => {
             const rawCloudVal = snapshot.val();
             if (rawCloudVal) {
               const cloudVal = typeof deserializeStateFromFirebase === 'function'
@@ -6848,7 +6871,9 @@
                 }
               }
             }
-          }).catch(err => console.warn('HQ live fetch failed for branch', b.id, err));
+          }, err => console.warn('HQ live listen failed for branch', b.id, err));
+
+          hqFirebaseListeners.push({ ref, callback });
         });
       }
     }
