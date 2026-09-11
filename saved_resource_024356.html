@@ -8367,7 +8367,7 @@
         const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
         const statusText = formatLivePresenceTime(lastSeen, false);
         if (statusText.includes('أغلق التطبيق للتو')) return '🔴 [أغلق التطبيق للتو] ';
-        if (d && (d.notificationPermission === 'granted' || !!d.token)) return '📱 [مفعل للتنبيه] ';
+        if (dev && (dev.notificationPermission === 'granted' || !!dev.token)) return '📱 [مفعل للتنبيه] ';
         if (lastSeen) return '🟡 [كان متصلاً] ';
         return '⚪ ';
       };
