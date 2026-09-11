@@ -7511,25 +7511,13 @@
         icon: 'apple-touch-icon.png',
         badge: 'apple-touch-icon.png',
         tag: 'dir_' + directive.id,
-        renotify: true,
+        renotify: false,
         vibrate: [300, 150, 300, 150, 300],
         requireInteraction: true,
         data: { url: window.location.href }
       };
 
-      // 1. Send to Service Worker via postMessage FIRST (guaranteed execution in worker context even in background)
       if ('serviceWorker' in navigator) {
-        if (navigator.serviceWorker.controller) {
-          try {
-            navigator.serviceWorker.controller.postMessage({
-              type: 'SHOW_NOTIFICATION',
-              title: notifTitle,
-              options: notifOptions
-            });
-          } catch (swErr) {
-            console.warn("SW postMessage notice:", swErr);
-          }
-        }
         navigator.serviceWorker.ready.then(reg => {
           return reg.showNotification(notifTitle, notifOptions);
         }).catch(err => {
@@ -8352,37 +8340,6 @@
           console.log("✅ All FCM v1 push notifications dispatched successfully!");
         } catch (fcmV1Err) {
           console.warn("FCM v1 dispatch notice:", fcmV1Err);
-        }
-
-        // 2. Fallback to Legacy FCM key if present
-        const fcmConfig = getFcmConfig();
-        if (fcmConfig && fcmConfig.serverKey && fcmConfig.serverKey.trim()) {
-          const legacyPayload = {
-            registration_ids: tokens,
-            notification: {
-              title: notifTitle,
-              body: bodyText,
-              icon: 'apple-touch-icon.png',
-              sound: 'default'
-            },
-            data: {
-              directiveId: directive.id,
-              title: notifTitle,
-              body: bodyText,
-              priority: directive.priority,
-              senderName: directive.senderName,
-              url: window.location.href
-            },
-            priority: 'high'
-          };
-          fetch('https://fcm.googleapis.com/fcm/send', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'key=' + fcmConfig.serverKey.trim()
-            },
-            body: JSON.stringify(legacyPayload)
-          }).catch(e => {});
         }
       } catch (e) {
         console.warn('FCM dispatch error:', e);
