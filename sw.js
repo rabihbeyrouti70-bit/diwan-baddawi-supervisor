@@ -1,5 +1,15 @@
-// Diwan Market Floor Supervisor - Service Worker
-const CACHE_NAME = 'diwan-supervisor-v4';
+// Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push)
+const CACHE_NAME = 'diwan-supervisor-v5';
+
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSy-diwan-supervisor-default",
+  projectId: "diwan-supervisor",
+  databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  vapidKey: "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU"
+};
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,7 +19,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Handle background notification triggers from client
+// Handle background notification triggers from client page
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, options } = event.data;
@@ -17,7 +27,7 @@ self.addEventListener('message', (event) => {
       self.registration.showNotification(title, {
         icon: 'apple-touch-icon.png',
         badge: 'apple-touch-icon.png',
-        vibrate: [300, 150, 300],
+        vibrate: [300, 150, 300, 150, 300],
         renotify: true,
         requireInteraction: true,
         ...options
@@ -26,7 +36,35 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Handle push events (Web Push / FCM)
+// Firebase messaging background handler
+try {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(DEFAULT_FIREBASE_CONFIG);
+  }
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[sw.js] FCM Background message received: ', payload);
+    const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || '📢 توجيه إداري - ديوان ماركت';
+    const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'وصلك توجيه أو ملاحظة إدارية عاجلة';
+    const options = {
+      body: body,
+      icon: 'apple-touch-icon.png',
+      badge: 'apple-touch-icon.png',
+      vibrate: [300, 150, 300, 150, 300],
+      requireInteraction: true,
+      renotify: true,
+      tag: (payload.data && payload.data.tag) || ('dir_' + Date.now()),
+      data: {
+        url: (payload.data && payload.data.url) || './'
+      }
+    };
+    return self.registration.showNotification(title, options);
+  });
+} catch (e) {
+  console.warn('FCM initialization in sw.js warning:', e);
+}
+
+// Handle generic push events (Web Push / FCM raw push)
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
@@ -42,7 +80,7 @@ self.addEventListener('push', (event) => {
     body: body,
     icon: 'apple-touch-icon.png',
     badge: 'apple-touch-icon.png',
-    vibrate: [300, 150, 300],
+    vibrate: [300, 150, 300, 150, 300],
     renotify: true,
     requireInteraction: true,
     tag: data.tag || ('dir_' + Date.now()),

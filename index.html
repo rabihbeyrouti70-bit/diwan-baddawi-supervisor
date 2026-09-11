@@ -4734,6 +4734,9 @@
           // Request Mobile Phone Notification Permission on login gesture
           requestNotificationPermissionPrompt(false);
           checkNotificationPermissionBanner();
+          if (typeof enableBackgroundSyncKeepAlive === 'function') {
+            enableBackgroundSyncKeepAlive();
+          }
           if ('Notification' in window && Notification.permission === 'granted') {
             if (typeof registerFcmDeviceToken === 'function') {
               registerFcmDeviceToken();
@@ -7376,6 +7379,7 @@
     // Web Audio API chime tone (Synthesized two-tone alert)
     function playDirectiveChime() {
       try {
+        if (typeof enableBackgroundSyncKeepAlive === 'function') enableBackgroundSyncKeepAlive();
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;
         const ctx = new AudioContextClass();
@@ -7440,6 +7444,39 @@
       }
     }
 
+    // Background Audio & Process Keep-Alive Engine
+    let keepAliveContext = null;
+    let keepAliveGain = null;
+    let keepAliveOsc = null;
+
+    function enableBackgroundSyncKeepAlive() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        
+        if (!keepAliveContext) {
+          keepAliveContext = new AudioContextClass();
+        }
+        if (keepAliveContext.state === 'suspended') {
+          keepAliveContext.resume();
+        }
+        
+        if (!keepAliveOsc) {
+          // Inaudible 15Hz oscillator prevents mobile browser from suspending WebSockets & timers in background
+          keepAliveOsc = keepAliveContext.createOscillator();
+          keepAliveGain = keepAliveContext.createGain();
+          keepAliveOsc.frequency.setValueAtTime(15, keepAliveContext.currentTime);
+          keepAliveGain.gain.setValueAtTime(0.0001, keepAliveContext.currentTime);
+          keepAliveOsc.connect(keepAliveGain);
+          keepAliveGain.connect(keepAliveContext.destination);
+          keepAliveOsc.start();
+          console.log('✅ Background audio keep-alive active');
+        }
+      } catch (e) {
+        console.warn('Background keep-alive notice:', e);
+      }
+    }
+
     // Instant Mobile Phone Notification (Background Service Worker + Native Web Notification) & Haptic Vibration
     function triggerDirectiveAlert(directive) {
       if (!directive || !directive.id) return;
@@ -7470,27 +7507,27 @@
         data: { url: window.location.href }
       };
 
-      // 1. Primary path: Service Worker showNotification (reliable on Android Chrome, lock screen & iOS PWA)
+      // 1. Send to Service Worker via postMessage FIRST (guaranteed execution in worker context even in background)
       if ('serviceWorker' in navigator) {
+        if (navigator.serviceWorker.controller) {
+          try {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'SHOW_NOTIFICATION',
+              title: notifTitle,
+              options: notifOptions
+            });
+          } catch (swErr) {
+            console.warn("SW postMessage notice:", swErr);
+          }
+        }
         navigator.serviceWorker.ready.then(reg => {
           return reg.showNotification(notifTitle, notifOptions);
-        }).catch(swErr => {
-          console.warn("SW showNotification failed, trying postMessage / fallback:", swErr);
-          if (navigator.serviceWorker.controller) {
-            try {
-              navigator.serviceWorker.controller.postMessage({
-                type: 'SHOW_NOTIFICATION',
-                title: notifTitle,
-                options: notifOptions
-              });
-            } catch (err) {}
-          }
+        }).catch(err => {
           if ('Notification' in window && Notification.permission === 'granted') {
             try { new Notification(notifTitle, notifOptions); } catch (nErr) {}
           }
         });
       } else if ('Notification' in window && Notification.permission === 'granted') {
-        // Fallback for environments without Service Worker support
         try {
           new Notification(notifTitle, notifOptions);
         } catch (e) {
@@ -7852,6 +7889,16 @@
           list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           const key = 'diwan_directives_' + currentBranchId + '_' + currentDate;
           safeSetItem(key, JSON.stringify(list.slice(0, 30)));
+
+          // Immediately alert any unacknowledged directive targeted to this user
+          list.forEach(d => {
+            if (!d.acknowledged) {
+              if (!d.targetUserId || d.targetUserId === 'all' || (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId)) {
+                triggerDirectiveAlert(d);
+              }
+            }
+          });
+
           checkAndRenderActiveDirectives();
         }
       }, (err) => {
