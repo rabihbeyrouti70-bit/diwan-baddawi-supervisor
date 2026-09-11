@@ -37,6 +37,18 @@
   <!-- Firebase App & Realtime Database SDKs (CDN) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    // Register Service Worker for true background mobile notifications
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js?v=' + Date.now()).then(reg => {
+          console.log('✅ Diwan ServiceWorker active for background notifications:', reg.scope);
+        }).catch(err => {
+          console.warn('ServiceWorker registration error:', err);
+        });
+      });
+    }
+  </script>
 
   <style>
     :root {
@@ -2482,6 +2494,20 @@
       </div>
     </header>
 
+    <!-- NOTIFICATION PERMISSION REQUEST BANNER -->
+    <div id="notifPermissionBanner" class="no-print" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; box-shadow: var(--shadow-sm);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">🔔</span>
+        <div>
+          <strong style="font-size: 13px; color: #92400e; display: block;">تفعيل إشعارات الهاتف الفورية</strong>
+          <span style="font-size: 11.5px; color: #b45309;">اضغط لتفعيل تنبيهات الهاتف عند ورود توجيهات وملاحظات عاجلة من الإدارة</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="requestNotificationPermissionPrompt()" style="background: #d97706; border-color: #b45309; font-weight: 800; font-size: 12px; padding: 6px 14px;">
+        تفعيل الإشعارات الآن 📲
+      </button>
+    </div>
+
     <!-- ACTIVE ADMINISTRATIVE DIRECTIVE ALERT BANNER -->
     <div id="directiveAlertBanner" class="directive-alert-banner no-print" style="display: none;">
       <!-- Populated dynamically via realtime Firebase listener -->
@@ -4640,6 +4666,10 @@
             }
           }
 
+          // Request Mobile Phone Notification Permission on login gesture
+          requestNotificationPermissionPrompt(false);
+          checkNotificationPermissionBanner();
+
           // Auto-detect current shift based on clock time
           const autoShift = getAutoDetectedShift(currentBranchId);
           currentShiftType = autoShift;
@@ -4704,6 +4734,7 @@
       
       populateAuthBranchSelect();
       populateAuthSupervisorSelect();
+      checkNotificationPermissionBanner();
 
       const branchSelect = document.getElementById('authBranchSelect');
       if (branchSelect) {
@@ -5506,6 +5537,7 @@
         listenToFirebaseBranchShifts();
         listenToFirebaseTempRanges();
         listenToFirebaseBranches();
+        listenToBranchDirectives();
         setSyncBadgeStatus('cloud');
         console.log("☁️ Firebase Realtime Database connected successfully:", config.databaseURL);
       } catch (e) {
@@ -7293,7 +7325,34 @@
       }
     }
 
-    // Instant Mobile Phone Notification & Haptic Vibration
+    // Notification Permission Management & Banner
+    function checkNotificationPermissionBanner() {
+      const banner = document.getElementById('notifPermissionBanner');
+      if (!banner) return;
+      if ('Notification' in window && Notification.permission === 'granted') {
+        banner.style.display = 'none';
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function requestNotificationPermissionPrompt(userTriggered = true) {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(perm => {
+          checkNotificationPermissionBanner();
+          if (perm === 'granted') {
+            showToast("🔔 تم تفعيل إشعارات الهاتف بنجاح!");
+          }
+        });
+      } else if (userTriggered && Notification.permission === 'denied') {
+        alert("إشعارات الهاتف مقفلة من إعدادات المتصفح. يرجى الضغط على أيقونة القفل 🔒 بجانب رابط الموقع في المتصفح وتفعيل 'الإشعارات' لتصلك التنبيهات فوراً.");
+      }
+    }
+
+    // Instant Mobile Phone Notification (Background Service Worker + Native Web Notification) & Haptic Vibration
     function triggerDirectiveAlert(directive) {
       if (!directive || !directive.id) return;
       if (alertedDirectiveIds.has(directive.id)) return;
@@ -7307,24 +7366,68 @@
         try { navigator.vibrate([300, 150, 300]); } catch (e) {}
       }
 
-      // Web Notification API (Phone lock-screen / System notification banner)
+      const sender = directive.senderName || 'الإدارة العامة';
+      const pLabel = directive.priority === 'urgent' ? '🚨 [عاجل جداً]' : (directive.priority === 'important' ? '⚠️ [هام]' : '📢 [توجيه]');
+      const bodyText = directive.text ? directive.text.substring(0, 100) : 'ملاحظة صوتية إدارية جديدة 🎙️';
+      const notifTitle = `${pLabel} توجيه إداري من: ${sender}`;
+      const notifOptions = {
+        body: bodyText,
+        icon: 'apple-touch-icon.png',
+        badge: 'apple-touch-icon.png',
+        tag: 'dir_' + directive.id,
+        renotify: true,
+        vibrate: [300, 150, 300],
+        requireInteraction: true,
+        data: { url: window.location.href }
+      };
+
+      // 1. Prioritize Service Worker for true background notifications on lock screen
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title: notifTitle,
+            options: notifOptions
+          });
+        } catch (swErr) {
+          console.warn("SW postMessage failed:", swErr);
+        }
+      }
+
+      // 2. Also trigger standard Notification as direct fallback
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
-          const sender = directive.senderName || 'الإدارة العامة';
-          const pLabel = directive.priority === 'urgent' ? '🚨 [عاجل جداً]' : (directive.priority === 'important' ? '⚠️ [هام]' : '📢 [توجيه]');
-          const bodyText = directive.text ? directive.text.substring(0, 100) : 'ملاحظة صوتية إدارية جديدة 🎙️';
-          new Notification(`${pLabel} توجيه إداري من: ${sender}`, {
-            body: bodyText,
-            icon: 'apple-touch-icon.png',
-            badge: 'apple-touch-icon.png',
-            tag: 'dir_' + directive.id,
-            renotify: true
-          });
+          new Notification(notifTitle, notifOptions);
         } catch (e) {
-          console.warn("Notification trigger failed:", e);
+          // If in mobile browser background where new Notification fails without SW
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(notifTitle, notifOptions);
+            }).catch(err => console.warn("SW showNotification fallback failed:", err));
+          }
         }
       }
     }
+
+    // Wakeup & Reconnection Engine: Re-establish Realtime listeners when phone screen turns on
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (firebaseDb) {
+          try { firebaseDb.goOnline(); } catch (e) {}
+        }
+        listenToBranchDirectives();
+        if (typeof loadStateForCurrentShift === 'function') {
+          loadStateForCurrentShift();
+        }
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (firebaseDb) {
+        try { firebaseDb.goOnline(); } catch (e) {}
+      }
+      listenToBranchDirectives();
+    });
 
     // Voice recording functions
     async function startDirectiveAudioRecording() {
