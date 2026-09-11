@@ -4744,6 +4744,9 @@
               registerFcmDeviceToken();
             }
           }
+          if (typeof syncDeviceActivation === 'function') {
+            syncDeviceActivation();
+          }
 
           // Auto-detect current shift based on clock time
           const autoShift = getAutoDetectedShift(currentBranchId);
@@ -5632,6 +5635,7 @@
         listenToFirebaseBranches();
         listenToBranchDirectives();
         initFirebaseMessaging();
+        initDeviceActivationsTracker();
         setSyncBadgeStatus('cloud');
         console.log("☁️ Firebase Realtime Database connected successfully:", config.databaseURL);
       } catch (e) {
@@ -6861,6 +6865,15 @@
         resetBtn.style.display = (currentUserRole === 'admin') ? 'inline-block' : 'none';
       }
 
+      if (firebaseDb) {
+        firebaseDb.ref('fcm_devices').once('value').then(snap => {
+          const val = snap.val();
+          if (val && typeof val === 'object') {
+            deviceActivationsCache = val;
+            renderSupervisorsList();
+          }
+        }).catch(e => {});
+      }
       renderSupervisorsList();
       document.getElementById('supervisorsModal').classList.add('open');
     }
@@ -6868,6 +6881,88 @@
     function closeSupervisorsModal() {
       document.getElementById('supervisorsModal').classList.remove('open');
       document.body.classList.remove('modal-open');
+    }
+
+    /* ============================================================
+       SUPERVISOR DEVICE ACTIVATION & PRESENCE TRACKING ENGINE
+       ============================================================ */
+    let deviceActivationsCache = {};
+
+    function formatActivationTime(isoString) {
+      if (!isoString) return 'سابقاً';
+      try {
+        const d = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+
+        if (diffMins < 2) return 'نشط الآن 🟢';
+        if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+        if (diffHours < 24) {
+          return 'اليوم ' + d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function syncDeviceActivation() {
+      if (!firebaseDb || !currentUserId) return;
+      try {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const platform = (navigator.userAgent.includes('Android'))
+          ? 'Android 📱'
+          : ((navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad'))
+            ? 'iPhone 🍏'
+            : (isMobile ? 'هاتف محمول 📱' : 'كمبيوتر / لابتوب 💻'));
+
+        const isPwa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const notifStatus = ('Notification' in window) ? Notification.permission : 'unsupported';
+        const hasToken = !!activeFcmToken;
+
+        const record = {
+          userId: currentUserId,
+          userName: currentSupervisor,
+          role: currentUserRole,
+          branchId: currentBranchId,
+          token: activeFcmToken || (deviceActivationsCache[currentUserId] ? deviceActivationsCache[currentUserId].token : ''),
+          hasToken: hasToken,
+          platform: platform,
+          isMobile: isMobile,
+          isPwa: isPwa,
+          notificationPermission: notifStatus,
+          lastActive: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        firebaseDb.ref('fcm_devices/' + currentUserId).update(record);
+        if (currentBranchId && currentBranchId !== 'all') {
+          firebaseDb.ref('branches/' + currentBranchId + '/fcm_tokens/' + currentUserId).update(record);
+        }
+        deviceActivationsCache[currentUserId] = Object.assign({}, deviceActivationsCache[currentUserId] || {}, record);
+      } catch (err) {
+        console.warn('syncDeviceActivation warning:', err);
+      }
+    }
+
+    function initDeviceActivationsTracker() {
+      if (!firebaseDb) return;
+      try {
+        firebaseDb.ref('fcm_devices').on('value', (snap) => {
+          const val = snap.val();
+          if (val && typeof val === 'object') {
+            deviceActivationsCache = val;
+            const modal = document.getElementById('supervisorsModal');
+            if (modal && modal.classList.contains('open')) {
+              renderSupervisorsList();
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('initDeviceActivationsTracker error:', err);
+      }
     }
 
     function renderSupervisorsList() {
@@ -6879,7 +6974,24 @@
         list = list.filter(s => s.branchId === currentBranchId && s.id !== 'admin' && s.role !== 'admin');
       }
 
-      container.innerHTML = list.map(s => {
+      const totalCount = list.length;
+      const activeCount = list.filter(s => {
+        const dev = deviceActivationsCache[s.id];
+        return dev && (dev.notificationPermission === 'granted' || !!dev.token);
+      }).length;
+
+      const summaryBar = `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px;">
+          <span style="font-weight: 800; color: var(--secondary);">
+            📱 حالة تفعيل التطبيق: <strong style="color: #059669;">${activeCount}</strong> من أصل <strong>${totalCount}</strong> مسجلون ومفعلون للتنبيهات
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+            <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block;"></span> مفعّل سحابياً
+          </span>
+        </div>
+      `;
+
+      container.innerHTML = summaryBar + list.map(s => {
         const isAdmin = (s.role === 'admin');
         const isBranchMgr = (s.role === 'branch_manager');
         const branchName = s.branchId === 'all' ? 'جميع الفروع 🌐' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
@@ -6891,17 +7003,52 @@
           roleBadge = '<span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">🏢 مدير فرع</span>';
         }
 
+        const dev = deviceActivationsCache[s.id];
+        let deviceBadge = '';
+
+        if (dev && (dev.token || dev.lastActive)) {
+          const isPushActive = (dev.notificationPermission === 'granted' || !!dev.token);
+          const timeStr = formatActivationTime(dev.lastActive || dev.updatedAt);
+          const platStr = dev.platform || (dev.isMobile ? 'هاتف محمول 📱' : 'جهاز 💻');
+
+          if (isPushActive) {
+            deviceBadge = `
+              <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;" title="المشرف مسجل ومفعّل الإشعارات على جهازه (${escapeHtml(platStr)}) - آخر تواجد: ${timeStr}">
+                <span style="width: 7px; height: 7px; background: #10b981; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px #d1fae5;"></span>
+                🟢 مفعّل على الجهاز (${escapeHtml(platStr)}) • ${timeStr}
+              </span>
+            `;
+          } else {
+            deviceBadge = `
+              <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;" title="المشرف دخل التطبيق (${escapeHtml(platStr)}) ولكن لم يفعّل إذن الإشعارات - آخر تواجد: ${timeStr}">
+                <span style="width: 7px; height: 7px; background: #3b82f6; border-radius: 50%; display: inline-block;"></span>
+                🔵 دخل التطبيق (${escapeHtml(platStr)}) • بانتظار تفعيل الإشعارات
+              </span>
+            `;
+          }
+        } else {
+          deviceBadge = `
+            <span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;" title="لم يقم المشرف بالدخول للتطبيق من هاتفه بعد">
+              <span style="width: 7px; height: 7px; background: #cbd5e1; border-radius: 50%; display: inline-block;"></span>
+              ⚪ غير مفعّل على الهاتف بعد
+            </span>
+          `;
+        }
+
         // Branch manager cannot edit or delete general manager or other branch managers
         const canEdit = (currentUserRole === 'admin') || (!isAdmin && !isBranchMgr);
         const canDelete = !isAdmin && (currentUserRole === 'admin' || !isBranchMgr);
 
         return `
-          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 8px;">
             <div>
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
                 <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
                 ${roleBadge}
                 <span style="background: #f1f5f9; color: var(--text-muted); font-size: 11px; padding: 2px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                ${deviceBadge}
               </div>
             </div>
             <div style="display: flex; gap: 6px;">
@@ -7797,6 +7944,13 @@
       const targetBranch = branchSel ? branchSel.value : 'all';
       const supervisors = getSupervisorsList();
 
+      const getDevIcon = (id) => {
+        const d = deviceActivationsCache[id];
+        if (d && (d.notificationPermission === 'granted' || !!d.token)) return '🟢 📱 ';
+        if (d && d.lastActive) return '🔵 ';
+        return '⚪ ';
+      };
+
       if (currentUserRole === 'admin') {
         supSel.disabled = false;
         if (targetBranch === 'all') {
@@ -7814,7 +7968,8 @@
             allBranchManagers.forEach(bm => {
               const bObj = getBranchById(bm.branchId);
               const branchLabel = bObj ? bObj.nameAr : bm.branchId;
-              html += `<option value="${escapeHtml(bm.id)}">🏢 ${escapeHtml(bm.name)} (${escapeHtml(branchLabel)})</option>`;
+              const icon = getDevIcon(bm.id);
+              html += `<option value="${escapeHtml(bm.id)}">${icon}🏢 ${escapeHtml(bm.name)} (${escapeHtml(branchLabel)})</option>`;
             });
             html += `</optgroup>`;
           }
@@ -7835,7 +7990,8 @@
           if (branchMgrs.length > 0) {
             html += `<optgroup label="🏢 إدارة الفرع (المدراء):">`;
             branchMgrs.forEach(bm => {
-              html += `<option value="${escapeHtml(bm.id)}">🏢 [مدير الفرع] ${escapeHtml(bm.name)}</option>`;
+              const icon = getDevIcon(bm.id);
+              html += `<option value="${escapeHtml(bm.id)}">${icon}🏢 [مدير الفرع] ${escapeHtml(bm.name)}</option>`;
             });
             html += `</optgroup>`;
           }
@@ -7843,7 +7999,8 @@
           if (branchSups.length > 0) {
             html += `<optgroup label="👤 مسؤولو الصالة:">`;
             branchSups.forEach(s => {
-              html += `<option value="${escapeHtml(s.id)}">👤 ${escapeHtml(s.name)}</option>`;
+              const icon = getDevIcon(s.id);
+              html += `<option value="${escapeHtml(s.id)}">${icon}👤 ${escapeHtml(s.name)}</option>`;
             });
             html += `</optgroup>`;
           }
@@ -7856,7 +8013,10 @@
         const branchSups = supervisors.filter(s => s.branchId === currentBranchId && s.role === 'supervisor');
         supSel.innerHTML = `
           <option value="all" selected>👥 كافة مسؤولي الصالة في فرعك</option>
-          ${branchSups.map(s => `<option value="${escapeHtml(s.id)}">👤 ${escapeHtml(s.name)}</option>`).join('')}
+          ${branchSups.map(s => {
+            const icon = getDevIcon(s.id);
+            return `<option value="${escapeHtml(s.id)}">${icon}👤 ${escapeHtml(s.name)}</option>`;
+          }).join('')}
         `;
       }
     }
@@ -8473,6 +8633,9 @@
             };
             firebaseDb.ref('branches/' + currentBranchId + '/fcm_tokens/' + currentUserId).set(tokenData);
             firebaseDb.ref('fcm_devices/' + currentUserId).set(tokenData);
+            if (typeof syncDeviceActivation === 'function') {
+              syncDeviceActivation();
+            }
           }
         }
       } catch (err) {
