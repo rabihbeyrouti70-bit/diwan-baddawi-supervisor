@@ -3195,9 +3195,14 @@
         </div>
 
         <div class="form-group" style="margin-bottom: 12px;">
-          <label for="directiveTargetPhoneInput" style="font-size: 12px; font-weight: 700;">📱 إرسال إلى رقم هاتف محدد (إشعار فوري للهاتف):</label>
-          <input type="tel" id="directiveTargetPhoneInput" class="form-control" placeholder="مثال: 70123456 أو 03123456 (يُعبّأ تلقائياً عند اختيار المشرف)" dir="ltr" style="text-align: right;">
-          <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 3px;">💡 إذا تم إدخال رقم هاتف، سيتم توجيه الإشعار الفوري مباشرة إلى الجهاز المقترن بهذا الرقم.</span>
+          <label for="directiveTargetPhoneInput" style="font-size: 12px; font-weight: 700;">📱 إرسال إلى رقم هاتف محدد (إشعار فوري للهاتف أو واتساب):</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="tel" id="directiveTargetPhoneInput" class="form-control" placeholder="مثال: 70123456 أو 03123456 (يُعبّأ تلقائياً عند اختيار المشرف)" dir="ltr" style="text-align: right;" oninput="onDirectivePhoneInput()">
+            <button type="button" class="btn btn-sm" onclick="sendDirectiveViaWhatsApp()" style="background: #25D366; color: white; border: none; font-weight: 800; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px;" title="إرسال نص التوجيه فوراً لرقم الهاتف عبر واتساب">
+              💬 واتساب
+            </button>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 3px;">💡 يمكنك توجيه الإشعار الفوري لهاتف المشرف، أو إرساله له مباشرة عبر واتساب بضغطة زر واحدة.</span>
         </div>
 
         <div class="form-group" style="margin-bottom: 12px;">
@@ -3250,8 +3255,11 @@
 
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <span style="font-size: 11px; color: var(--text-muted);">🔔 سيتلقى المستهدف إشعاراً فورياً على هاتفه مع نغمة تنبيه واهتزاز.</span>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="btn btn-outline-white btn-sm" onclick="closeAdminDirectiveModal()">إلغاء</button>
+            <button type="button" class="btn btn-sm" onclick="sendDirectiveViaWhatsApp()" style="background: #25D366; color: white; border: none; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;" title="إرسال مباشر عبر واتساب إلى رقم الهاتف">
+              💬 إرسال عبر واتساب
+            </button>
             <button type="button" id="btnSendDirective" class="btn btn-primary btn-sm" onclick="sendDirective()" style="background: #f59e0b; border-color: #d97706; font-weight: 800;">
               🚀 إرسال التوجيه وتنبيه الهاتف فوراً
             </button>
@@ -7903,6 +7911,90 @@
       }
     }
 
+    function onDirectivePhoneInput() {
+      const phoneInp = document.getElementById('directiveTargetPhoneInput');
+      const supSel = document.getElementById('directiveSupervisorSelect');
+      if (!phoneInp || !supSel) return;
+      const val = phoneInp.value.trim();
+      if (!val) return;
+
+      const variants = getPhoneLookupVariants(val);
+      const list = getSupervisorsList();
+      const matched = list.find(s => s.phone && getPhoneLookupVariants(s.phone).some(v => variants.includes(v)));
+      if (matched) {
+        // If matched supervisor exists in dropdown, select them
+        for (let i = 0; i < supSel.options.length; i++) {
+          if (supSel.options[i].value === matched.id) {
+            supSel.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    function formatWhatsAppPhone(phone) {
+      if (!phone) return '';
+      let clean = String(phone).replace(/[^0-9]/g, '');
+      if (clean.startsWith('00961')) clean = clean.substring(2);
+      if (clean.startsWith('0')) clean = '961' + clean.replace(/^0+/, '');
+      else if (!clean.startsWith('961') && (clean.length === 7 || clean.length === 8)) {
+        clean = '961' + clean;
+      }
+      return clean;
+    }
+
+    function sendDirectiveViaWhatsApp(customPhone, customText, customPriority) {
+      const phoneInp = document.getElementById('directiveTargetPhoneInput');
+      const textInp = document.getElementById('directiveInputText');
+      const prioSel = document.getElementById('directivePrioritySelect');
+
+      let phone = customPhone || (phoneInp ? phoneInp.value.trim() : '');
+      const text = (customText !== undefined) ? customText : (textInp ? textInp.value.trim() : '');
+      const priority = customPriority || (prioSel ? prioSel.value : 'urgent');
+
+      // If phone is empty, check if selected supervisor has a phone
+      if (!phone) {
+        const supSel = document.getElementById('directiveSupervisorSelect');
+        if (supSel && supSel.value && supSel.value !== 'all') {
+          const sup = getSupervisorsList().find(s => s.id === supSel.value);
+          if (sup && sup.phone) phone = sup.phone.trim();
+        }
+      }
+
+      if (!phone) {
+        alert("يرجى إدخال رقم الهاتف أولاً لإرسال التوجيه عبر واتساب (مثال: 70123456 أو 03123456).");
+        if (phoneInp) phoneInp.focus();
+        return;
+      }
+
+      const cleanWaPhone = formatWhatsAppPhone(phone);
+      if (!cleanWaPhone || cleanWaPhone.length < 8) {
+        alert("رقم الهاتف غير صالح، يرجى كتابة رقم هاتف صحيح.");
+        return;
+      }
+
+      const pLabel = (priority === 'urgent') ? '🔴 عاجل جداً' : (priority === 'important' ? '🟡 هام' : '🟢 عادي');
+      const bName = (currentBranchId && currentBranchId !== 'all' && getBranchById(currentBranchId))
+        ? getBranchById(currentBranchId).nameAr
+        : 'ديوان ماركت';
+
+      let msg = `*📢 توجيه إداري - ${bName}*\n`;
+      msg += `*المرسل:* ${currentSupervisor} (${currentUserRole === 'admin' ? 'المدير العام' : 'مدير الفرع'})\n`;
+      msg += `*درجة الأهمية:* ${pLabel}\n`;
+      msg += `----------------------------\n`;
+      if (text) {
+        msg += `${text}\n`;
+      }
+      if (directiveAudioBase64) {
+        msg += `🎙️ [توجد ملاحظة صوتية مسجلة في تطبيق المشرف]\n`;
+      }
+      msg += `----------------------------\n`;
+      msg += `🕒 الوقت: ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}`;
+
+      const waUrl = `https://wa.me/${cleanWaPhone}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, '_blank');
+    }
+
     // Send Directive Engine
     async function sendDirective() {
       const branchSel = document.getElementById('directiveBranchSelect');
@@ -8108,15 +8200,21 @@
         if (d.senderId === (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
           return false;
         }
+
+        // Direct user ID match takes highest precedence
         if (d.targetUserId && d.targetUserId !== 'all') {
           if (d.targetUserId === 'all_managers') {
-            if (currentUserRole !== 'branch_manager') return false;
+            return (currentUserRole === 'branch_manager');
           } else if (d.targetUserId === 'all_supervisors') {
-            if (currentUserRole !== 'supervisor') return false;
-          } else {
-            return (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId);
+            return (currentUserRole === 'supervisor');
+          } else if (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId) {
+            return true;
+          } else if (!d.targetPhone) {
+            return false;
           }
         }
+
+        // Target phone matching
         if (d.targetPhone) {
           const curSup = getSupervisorsList().find(s => s.id === (typeof currentUserId !== 'undefined' ? currentUserId : ''));
           if (curSup && curSup.phone) {
@@ -8126,7 +8224,7 @@
               return true;
             }
           }
-          if (currentUserRole !== 'admin' && d.senderId !== (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
+          if (currentUserRole !== 'admin' && d.targetUserId !== (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
             return false;
           }
         }
@@ -8328,7 +8426,12 @@
                   }
                   return '';
                 })()}
-                ${d.targetPhone ? `<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;" dir="ltr">📱 ${escapeHtml(d.targetPhone)}</span>` : ''}
+                ${d.targetPhone ? `
+                  <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;" dir="ltr">📱 ${escapeHtml(d.targetPhone)}</span>
+                  <a href="javascript:void(0)" onclick="sendDirectiveViaWhatsApp('${escapeHtml(d.targetPhone)}', '${escapeHtml(d.text || '').replace(/'/g, "\\'")}', '${escapeHtml(d.priority || 'urgent')}')" class="btn btn-sm" style="background: #25D366; color: white; border: none; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="إرسال التوجيه مباشرة عبر واتساب">
+                    💬 واتساب
+                  </a>
+                ` : ''}
                 <span style="font-size: 11px; color: var(--text-muted);">🕒 ${escapeHtml(d.timeFormatted || '')}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -8715,45 +8818,73 @@
           }
         }
 
-        // 2. Query branch tokens (matching target supervisor or target phone)
+        // 2. Query branch tokens AND global fcm_devices registry
+        const checkItemToken = (item) => {
+          if (!item || !item.token) return;
+          let match = false;
+
+          // Match by phone
+          if (directive.targetPhone) {
+            const pVariants = getPhoneLookupVariants(directive.targetPhone);
+            if (item.phone && getPhoneLookupVariants(item.phone).some(v => pVariants.includes(v))) {
+              match = true;
+            }
+            // Match if supervisor owning this userId has this phone
+            const supsWithPhone = getSupervisorsList().filter(s => s.phone && getPhoneLookupVariants(s.phone).some(v => pVariants.includes(v)));
+            if (supsWithPhone.some(s => s.id === item.userId)) {
+              match = true;
+            }
+          }
+
+          // Match by targetUserId
+          if (directive.targetUserId && directive.targetUserId !== 'all' && directive.targetUserId !== 'all_managers' && directive.targetUserId !== 'all_supervisors') {
+            if (item.userId === directive.targetUserId) {
+              match = true;
+            }
+          }
+
+          // Match role groups
+          if (directive.targetUserId === 'all_managers') {
+            const userObj = getSupervisorsList().find(s => s.id === item.userId);
+            const isMgr = item.role === 'branch_manager' || (item.userId && item.userId.startsWith('mgr_')) || (userObj && userObj.role === 'branch_manager');
+            if (isMgr) match = true;
+          } else if (directive.targetUserId === 'all_supervisors') {
+            const userObj = getSupervisorsList().find(s => s.id === item.userId);
+            const isSup = item.role === 'supervisor' || (userObj && userObj.role === 'supervisor');
+            if (isSup) match = true;
+          } else if (!directive.targetPhone && (!directive.targetUserId || directive.targetUserId === 'all')) {
+            match = true;
+          }
+
+          if (match) {
+            tokensSet.add(item.token);
+          }
+        };
+
         for (const bId of targetBranchIds) {
           const snap = await firebaseDb.ref('branches/' + bId + '/fcm_tokens').once('value');
           const val = snap.val();
-          if (val) {
-            Object.values(val).forEach(item => {
-              if (item && item.token) {
-                if (directive.targetPhone) {
-                  const pVariants = getPhoneLookupVariants(directive.targetPhone);
-                  if (item.phone && getPhoneLookupVariants(item.phone).some(v => pVariants.includes(v))) {
-                    tokensSet.add(item.token);
-                  }
-                } else if (directive.targetUserId === 'all_managers') {
-                  const userObj = getSupervisorsList().find(s => s.id === item.userId);
-                  const isMgr = item.role === 'branch_manager' || (item.userId && item.userId.startsWith('mgr_')) || (userObj && userObj.role === 'branch_manager');
-                  if (isMgr) {
-                    tokensSet.add(item.token);
-                  }
-                } else if (directive.targetUserId === 'all_supervisors') {
-                  const userObj = getSupervisorsList().find(s => s.id === item.userId);
-                  const isSup = item.role === 'supervisor' || (userObj && userObj.role === 'supervisor');
-                  if (isSup) {
-                    tokensSet.add(item.token);
-                  }
-                } else if (directive.targetUserId && directive.targetUserId !== 'all') {
-                  if (item.userId === directive.targetUserId) {
-                    tokensSet.add(item.token);
-                  }
-                } else {
-                  tokensSet.add(item.token);
-                }
-              }
-            });
-          }
+          if (val) Object.values(val).forEach(checkItemToken);
         }
+
+        // Also check global fcm_devices
+        try {
+          const globalSnap = await firebaseDb.ref('fcm_devices').once('value');
+          const globalVal = globalSnap.val();
+          if (globalVal) Object.values(globalVal).forEach(checkItemToken);
+        } catch (e) {}
 
         const tokens = Array.from(tokensSet);
         if (tokens.length === 0) {
           console.log('No registered FCM device tokens found in target branch(es).');
+          if (directive.targetPhone) {
+            showToast("ℹ️ تم حفظ التوجيه! الهاتف لم يفعّل إشعارات المتصفح بعد، يمكنك إرساله له عبر واتساب الآن 💬", 8000);
+            setTimeout(() => {
+              if (confirm("تم تسجيل التوجيه بنجاح، لكن هذا الهاتف لم يقم بتسجيل جهازه في إشعارات التطبيق بعد.\n\nهل تريد إرسال التوجيه إليه مباشرة عبر واتساب (WhatsApp) الآن؟")) {
+                sendDirectiveViaWhatsApp(directive.targetPhone, directive.text, directive.priority);
+              }
+            }, 600);
+          }
           return;
         }
 
