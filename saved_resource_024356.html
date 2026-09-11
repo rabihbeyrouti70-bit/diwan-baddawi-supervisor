@@ -41,10 +41,17 @@
     // Register Service Worker for true background mobile notifications
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=' + Date.now()).then(reg => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
           console.log('✅ Diwan ServiceWorker active for background notifications:', reg.scope);
+          if (reg.update) {
+            reg.update();
+          }
         }).catch(err => {
           console.warn('ServiceWorker registration error:', err);
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('✅ Diwan ServiceWorker controller updated and active');
         });
       });
     }
@@ -2495,16 +2502,16 @@
     </header>
 
     <!-- NOTIFICATION PERMISSION REQUEST BANNER -->
-    <div id="notifPermissionBanner" class="no-print" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; box-shadow: var(--shadow-sm);">
+    <div id="notifPermissionBanner" class="no-print" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; box-shadow: var(--shadow-sm);">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 20px;">🔔</span>
         <div>
-          <strong style="font-size: 13px; color: #92400e; display: block;">تفعيل إشعارات الهاتف الفورية</strong>
-          <span style="font-size: 11.5px; color: #b45309;">اضغط لتفعيل تنبيهات الهاتف عند ورود توجيهات وملاحظات عاجلة من الإدارة</span>
+          <strong style="font-size: 13px; color: #92400e; display: block;">تفعيل إشعارات الهاتف الفورية 📲</strong>
+          <span style="font-size: 11.5px; color: #b45309;">اضغط لتفعيل تنبيهات الهاتف عند ورود توجيهات وملاحظات عاجلة (ولضمان وصول التنبيهات دائماً، يرجى إبقاء المتصفح في الخلفية).</span>
         </div>
       </div>
       <button type="button" class="btn btn-primary btn-sm" onclick="requestNotificationPermissionPrompt()" style="background: #d97706; border-color: #b45309; font-weight: 800; font-size: 12px; padding: 6px 14px;">
-        تفعيل الإشعارات الآن 📲
+        تفعيل الإشعارات الآن 🔔
       </button>
     </div>
 
@@ -7297,7 +7304,7 @@
     let directiveAudioDuration = 0;
     let directiveRecordTimer = null;
     let directiveRecordSeconds = 0;
-    let alertedDirectiveIds = new Set();
+    let alertedDirectiveIds = new Set(safeJsonParse(safeGetItem('diwan_alerted_directives'), []));
     let branchDirectivesRef = null;
     let branchDirectivesCallback = null;
 
@@ -7339,12 +7346,25 @@
     }
 
     function requestNotificationPermissionPrompt(userTriggered = true) {
-      if (!('Notification' in window)) return;
+      if (!('Notification' in window)) {
+        if (userTriggered) alert("المتصفح الحالي لا يدعم إشعارات النظام.");
+        return;
+      }
       if (Notification.permission === 'default') {
         Notification.requestPermission().then(perm => {
           checkNotificationPermissionBanner();
           if (perm === 'granted') {
             showToast("🔔 تم تفعيل إشعارات الهاتف بنجاح!");
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification("✅ تم تفعيل التنبيهات بنجاح", {
+                  body: "ستصلك الآن تنبيهات التوجيهات الإدارية والملاحظات فور ورودها.",
+                  icon: 'apple-touch-icon.png',
+                  badge: 'apple-touch-icon.png',
+                  vibrate: [200, 100, 200]
+                });
+              }).catch(e => {});
+            }
           }
         });
       } else if (userTriggered && Notification.permission === 'denied') {
@@ -7357,13 +7377,14 @@
       if (!directive || !directive.id) return;
       if (alertedDirectiveIds.has(directive.id)) return;
       alertedDirectiveIds.add(directive.id);
+      safeSetItem('diwan_alerted_directives', JSON.stringify(Array.from(alertedDirectiveIds).slice(-50)));
 
       // Play synthesized audio tone
       playDirectiveChime();
 
       // Trigger phone vibration (Android / supported devices)
       if ('vibrate' in navigator) {
-        try { navigator.vibrate([300, 150, 300]); } catch (e) {}
+        try { navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {}
       }
 
       const sender = directive.senderName || 'الإدارة العامة';
@@ -7376,35 +7397,36 @@
         badge: 'apple-touch-icon.png',
         tag: 'dir_' + directive.id,
         renotify: true,
-        vibrate: [300, 150, 300],
+        vibrate: [300, 150, 300, 150, 300],
         requireInteraction: true,
         data: { url: window.location.href }
       };
 
-      // 1. Prioritize Service Worker for true background notifications on lock screen
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        try {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            title: notifTitle,
-            options: notifOptions
-          });
-        } catch (swErr) {
-          console.warn("SW postMessage failed:", swErr);
-        }
-      }
-
-      // 2. Also trigger standard Notification as direct fallback
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // 1. Primary path: Service Worker showNotification (reliable on Android Chrome, lock screen & iOS PWA)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          return reg.showNotification(notifTitle, notifOptions);
+        }).catch(swErr => {
+          console.warn("SW showNotification failed, trying postMessage / fallback:", swErr);
+          if (navigator.serviceWorker.controller) {
+            try {
+              navigator.serviceWorker.controller.postMessage({
+                type: 'SHOW_NOTIFICATION',
+                title: notifTitle,
+                options: notifOptions
+              });
+            } catch (err) {}
+          }
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(notifTitle, notifOptions); } catch (nErr) {}
+          }
+        });
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        // Fallback for environments without Service Worker support
         try {
           new Notification(notifTitle, notifOptions);
         } catch (e) {
-          // If in mobile browser background where new Notification fails without SW
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification(notifTitle, notifOptions);
-            }).catch(err => console.warn("SW showNotification fallback failed:", err));
-          }
+          console.warn("Notification constructor failed:", e);
         }
       }
     }
