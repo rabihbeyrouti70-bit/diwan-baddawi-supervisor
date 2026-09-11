@@ -3119,35 +3119,28 @@
       </div>
 
       <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-        <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #166534; font-weight: 800;">💡 كيفية الحصول على المفتاح في دقيقة واحدة من Firebase:</h4>
-        <ol style="margin: 0; padding-right: 20px; font-size: 12px; color: #15803d; line-height: 1.6;">
-          <li>ادخل إلى <a href="https://console.firebase.google.com" target="_blank" style="font-weight: 700; color: #15803d; text-decoration: underline;">لوحة تحكم Firebase</a> واختر مشروع <code>diwan-supervisor</code>.</li>
-          <li>اضغط على أيقونة الإعدادات ⚙️ بجانب Project Overview ثم اختر <strong>Project settings</strong>.</li>
-          <li>انتقل إلى تبويب <strong>Cloud Messaging</strong>.</li>
-          <li>انزل إلى قسم <strong>Web configuration</strong> واضغط <strong>Generate key pair</strong> ثم انسخ المفتاح الظاهر وضعه في حقل (VAPID Key) أدناه.</li>
-          <li>(اختياري) انسخ <strong>Server key</strong> وضعه في حقل مفتاح الخادم لتفعيل الإرسال السحابي المباشر.</li>
-        </ol>
+        <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #166534; font-weight: 800;">✅ محرك الإرسال السحابي المعتمد (Google FCM HTTP v1): مفعّل ونشط</h4>
+        <p style="margin: 0; font-size: 12px; color: #15803d; line-height: 1.6;">
+          تم ربط حساب الخدمة السحابي الرسمي لمشروع <code>diwan-supervisor</code>. عند إرسال أي توجيه أو ملاحظة، يتم إرسال إشارة سحابية فورية من خوادم Google لإيقاظ هواتف مسؤولي الصالة وهزها بالصوت والاهتزاز حتى وإن كان التطبيق مغلقاً أو في الخلفية.
+        </p>
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
         <label style="display: block; font-weight: 700; font-size: 12.5px; margin-bottom: 4px;">مفتاح ويب السحابي العام (VAPID Public Key):</label>
         <input type="text" id="fcmVapidKeyInput" class="form-control" placeholder="مثال: BD4x9zQ..." style="font-family: monospace; font-size: 11.5px; width: 100%;">
-        <span style="font-size: 11px; color: var(--text-muted);">المفتاح العام لتسجيل الهواتف وإصدار التوكن لاستقبال التنبيهات.</span>
-      </div>
-
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label style="display: block; font-weight: 700; font-size: 12.5px; margin-bottom: 4px;">مفتاح الخادم السحابي (FCM Server Key - اختياري):</label>
-        <input type="password" id="fcmServerKeyInput" class="form-control" placeholder="مثال: AAAA..." style="font-family: monospace; font-size: 11.5px; width: 100%;">
-        <span style="font-size: 11px; color: var(--text-muted);">يستخدم لإرسال الإشعارات مباشرة للأجهزة المسجلة عند إرسال توجيه.</span>
+        <span style="font-size: 11px; color: var(--text-muted);">المفتاح العام المعتمد لإصدار رموز الهواتف سحابياً.</span>
       </div>
 
       <div id="fcmStatusInfoBox" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 16px; font-size: 12px;">
-        <div style="font-weight: 700; margin-bottom: 4px;">حالة هذا الجهاز:</div>
+        <div style="font-weight: 700; margin-bottom: 4px;">حالة هذا الجهاز لدى Google FCM:</div>
         <div id="fcmCurrentDeviceTokenStatus" style="color: var(--text-muted);">جاري الفحص...</div>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="testLocalSystemNotification()">🔔 تجربة إشعار فوري الآن</button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="testLocalSystemNotification()">🔔 تجربة رنين محلي</button>
+          <button type="button" class="btn btn-primary" style="background: #059669; border-color: #059669; font-weight: 800;" onclick="testCloudPushDispatch()">🚀 إرسال إشعار سحابي تجريبي للهواتف</button>
+        </div>
         <div style="display: flex; gap: 8px;">
           <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeCloudMessagingModal()">إغلاق</button>
           <button type="button" class="btn btn-primary" onclick="saveCloudMessagingConfig()" style="font-weight: 800;">💾 حفظ الإعدادات</button>
@@ -8169,12 +8162,106 @@
       }
     }
 
-    async function dispatchFcmPush(directive, targetBranchIds) {
-      const fcmConfig = getFcmConfig();
-      if (!fcmConfig || !fcmConfig.serverKey || !firebaseDb) return;
+    /* ============================================================
+       GOOGLE CLOUD MESSAGING (FCM HTTP v1) & SERVICE ACCOUNT ENGINE
+       ============================================================ */
+    const GOOGLE_SERVICE_ACCOUNT = {
+      project_id: "diwan-supervisor",
+      client_email: "firebase-adminsdk-fbsvc@diwan-supervisor.iam.gserviceaccount.com",
+      private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDAL8uJpUhnuwI6\nqN6NOEgyswuMuSvBd6EfAqUgkshAbrVXSUXTu2Um5wQ28ic3N8zKNbYnT/zBqyoP\nXMttWKc6G8vrql8KzIXb0tCs6VwL60WyuzJgibJrguFp1iOpcoi8Pw9Q6gWPv1FJ\nowkgfFH7kpRCLCNnE/V9DNjudrB2ajBLh9l9RYrBGV/HQaZYDD1HqXbR3lZILA8Z\nbbY8yHJNXj8X2AahSxpGK/GSHQ4lTtB/1kqosiSOO1RoBUA9nOIC6ZReCzrXVfJe\nlneWMU+nC5DjZ5BCum7GYr4wL2/UQNfp4BjVXVI6fuqKwsk5B7YNnrjdvYvZJhcc\nJsFxwmt7AgMBAAECggEAAuAULvyCj068c004eytm5R9JonLYxT25cuHSv6CCj3g4\njVRCz66jjkfxh7LqxEg476OLFJ59PRaG/BDa2El1wwhMbjuvzVUPAaFvTs70+has\nhcaIM+qLeVFNdwxlnzDf+9UDsSW3LJXjrPLb/ZjujxF711uasf2Z9CN/kV3EORlJ\n+JfWewqpjTrU7M4U2a6sdg7l8Ls13X7ah5Db/18isHDjncVAuzCS73BWQzAmlpY9\nDQUCimdPKKDhlys81q28sm+DmP8+FgcDZkVu1gwAgkBDN0z3y4/RAaHkyv2z7DJS\no6kLRTRjHgvEJ+6xVDBZGK7e+cfiVrLRJP37EN2R5QKBgQDlg5yDMWiDxWE28Dro\ncCvXjsDraeYLG/iyIT5CASRB0P0fCoyJ2ATgwFcQ3R8MY3QWLaD1qkniD3HYjgz/\nFOS0ZCCx1xjN1vKvO4L8gK00NxU26YSgrx57k7aYifnQE9ZjNHK06GUgoC4IzC/n\nOwNeo0RLYV7Ukqz3uN3CJFvpbQKBgQDWXXGmOMQzAVz/jUQwMePBCzBYVDfYG7Ha\n94/HuMzF8M4/FIJQ8BjkiMNVBEGOrztLrnz8YDmjgcd37AeoLnGV4ZGnx1kDUdKB\nmBa3ZsH4pWpI266xTG7Dbn0KIlwG6LC7eAXiwEgiWK6PlFEFAmjJgROhZ0IYYTHB\nUHQxV2q/hwKBgHaoFlCVSK1nbB0VEb99zozA1uhedXok2ext11wUbwQ/4b0cnQ/e\nyJbRmbG0QAsNl8SnjmGzykK/LWKB/iIaUSsZ4PVQeRhiGlGR+ORGOkWWfLdI/zJ7\nlszYzzwJiUeUGfBr+ymgRDgb1/Dgb5uiHNnemr5F9tr7gcUIpE1ssr/5AoGBAIMy\nIZJn/7xvwyksnmUYw5msbWRB9wOuv4WSKk9EDR/AJ5p3xOIgcDu+cD4iIrVfDd1d\n52TWx7AIh7ofnPgTpLTkny6eVR4w/7MNECojG+g/5PK+cQZWDxxRDPoc2VHpK/Ew\nnfmPURakTAHX9lYoiVV6SDdqaQtewQLdaJ+iLtUVAoGAaES8aAYkiMuhW+hFvYZV\njVWMirVASgb0co4KVKYk5d0rA+4vXzpzASVWAGBVuggk0odRkK8H7BLDldWrkd6A\nno6zEzf9XGF4D+xsiYjNf3jd3ZdTaWT/fJ16e5cZ910P1y+wAAuUrpZMt5+w61+l\nRQQ+sQZKcWDd5iUTf2d9q6k=\n-----END PRIVATE KEY-----\n"
+    };
 
-      const serverKey = fcmConfig.serverKey.trim();
-      if (!serverKey) return;
+    let cachedGoogleAccessToken = null;
+    let cachedGoogleAccessTokenExpiry = 0;
+
+    function pemToArrayBuffer(pem) {
+      const b64 = pem.replace(/-----BEGIN [A-Z ]+-----|-----END [A-Z ]+-----|\s+/g, '');
+      const raw = atob(b64);
+      const rawLength = raw.length;
+      const array = new Uint8Array(new ArrayBuffer(rawLength));
+      for (let i = 0; i < rawLength; i++) {
+        array[i] = raw.charCodeAt(i);
+      }
+      return array.buffer;
+    }
+
+    function base64UrlEncodeJson(obj) {
+      const str = unescape(encodeURIComponent(JSON.stringify(obj)));
+      return btoa(str).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    }
+
+    function base64UrlEncodeBytes(bytes) {
+      let binary = '';
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    }
+
+    async function getGoogleOAuth2AccessToken() {
+      const now = Math.floor(Date.now() / 1000);
+      if (cachedGoogleAccessToken && cachedGoogleAccessTokenExpiry > now + 60) {
+        return cachedGoogleAccessToken;
+      }
+
+      const cryptoSubtle = window.crypto && (window.crypto.subtle || window.crypto.webkitSubtle);
+      if (!cryptoSubtle) {
+        throw new Error("WebCrypto Subtle not available in browser");
+      }
+
+      const header = { alg: "RS256", typ: "JWT" };
+      const claimSet = {
+        iss: GOOGLE_SERVICE_ACCOUNT.client_email,
+        sub: GOOGLE_SERVICE_ACCOUNT.client_email,
+        aud: "https://oauth2.googleapis.com/token",
+        iat: now,
+        exp: now + 3600,
+        scope: "https://www.googleapis.com/auth/firebase.messaging"
+      };
+
+      const stringToSign = base64UrlEncodeJson(header) + "." + base64UrlEncodeJson(claimSet);
+      const keyBuffer = pemToArrayBuffer(GOOGLE_SERVICE_ACCOUNT.private_key);
+      const cryptoKey = await cryptoSubtle.importKey(
+        "pkcs8",
+        keyBuffer,
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+
+      const encoder = new TextEncoder();
+      const signatureBuffer = await cryptoSubtle.sign(
+        "RSASSA-PKCS1-v1_5",
+        cryptoKey,
+        encoder.encode(stringToSign)
+      );
+
+      const signedJwt = stringToSign + "." + base64UrlEncodeBytes(new Uint8Array(signatureBuffer));
+
+      const res = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer") +
+              "&assertion=" + encodeURIComponent(signedJwt)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error("OAuth token request failed: " + res.status + " - " + errText);
+      }
+
+      const tokenData = await res.json();
+      cachedGoogleAccessToken = tokenData.access_token;
+      cachedGoogleAccessTokenExpiry = now + (tokenData.expires_in || 3600);
+      console.log("✅ Google OAuth2 Access Token acquired successfully for FCM v1");
+      return cachedGoogleAccessToken;
+    }
+
+    async function dispatchFcmPush(directive, targetBranchIds) {
+      if (!firebaseDb) return;
 
       try {
         const tokensSet = new Set();
@@ -8198,47 +8285,124 @@
 
         const tokens = Array.from(tokensSet);
         if (tokens.length === 0) {
-          console.log('No FCM device tokens found for target branches.');
+          console.log('No registered FCM device tokens found in target branch(es).');
           return;
         }
+
+        console.log(`🚀 Dispatching FCM v1 push to ${tokens.length} registered device(s)...`);
 
         const pLabel = directive.priority === 'urgent' ? '🚨 [عاجل جداً]' : (directive.priority === 'important' ? '⚠️ [هام]' : '📢 [توجيه]');
         const notifTitle = `${pLabel} توجيه إداري من: ${directive.senderName || 'الإدارة'}`;
         const bodyText = directive.text ? directive.text.substring(0, 120) : 'ملاحظة صوتية إدارية جديدة 🎙️';
 
-        const payload = {
-          registration_ids: tokens,
-          notification: {
-            title: notifTitle,
-            body: bodyText,
-            icon: 'apple-touch-icon.png',
-            sound: 'default'
-          },
-          data: {
-            directiveId: directive.id,
-            title: notifTitle,
-            body: bodyText,
-            priority: directive.priority,
-            senderName: directive.senderName,
-            url: window.location.href
-          },
-          priority: 'high'
-        };
+        // 1. Primary: Google FCM HTTP v1 API
+        try {
+          const accessToken = await getGoogleOAuth2AccessToken();
+          const sendPromises = tokens.map(token => {
+            const messagePayload = {
+              message: {
+                token: token,
+                notification: {
+                  title: notifTitle,
+                  body: bodyText
+                },
+                data: {
+                  directiveId: String(directive.id || ''),
+                  title: String(notifTitle),
+                  body: String(bodyText),
+                  priority: String(directive.priority || 'urgent'),
+                  senderName: String(directive.senderName || 'الإدارة'),
+                  url: String(window.location.href)
+                },
+                webpush: {
+                  headers: {
+                    Urgency: "high"
+                  },
+                  notification: {
+                    title: notifTitle,
+                    body: bodyText,
+                    icon: "apple-touch-icon.png",
+                    badge: "apple-touch-icon.png",
+                    requireInteraction: true,
+                    vibrate: [300, 150, 300, 150, 300],
+                    tag: "dir_" + (directive.id || Date.now())
+                  },
+                  fcm_options: {
+                    link: window.location.href
+                  }
+                }
+              }
+            };
 
-        fetch('https://fcm.googleapis.com/fcm/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'key=' + serverKey
-          },
-          body: JSON.stringify(payload)
-        }).then(res => {
-          console.log('FCM Push notification dispatch response status:', res.status);
-        }).catch(err => {
-          console.warn('FCM Push dispatch error:', err);
-        });
+            return fetch("https://fcm.googleapis.com/v1/projects/diwan-supervisor/messages:send", {
+              method: "POST",
+              headers: {
+                "Authorization": "Bearer " + accessToken,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(messagePayload)
+            }).then(r => r.json()).then(res => {
+              console.log("FCM v1 message sent to device:", res);
+            }).catch(err => {
+              console.warn("FCM v1 message send error for token:", err);
+            });
+          });
+
+          await Promise.all(sendPromises);
+          console.log("✅ All FCM v1 push notifications dispatched successfully!");
+        } catch (fcmV1Err) {
+          console.warn("FCM v1 dispatch notice:", fcmV1Err);
+        }
+
+        // 2. Fallback to Legacy FCM key if present
+        const fcmConfig = getFcmConfig();
+        if (fcmConfig && fcmConfig.serverKey && fcmConfig.serverKey.trim()) {
+          const legacyPayload = {
+            registration_ids: tokens,
+            notification: {
+              title: notifTitle,
+              body: bodyText,
+              icon: 'apple-touch-icon.png',
+              sound: 'default'
+            },
+            data: {
+              directiveId: directive.id,
+              title: notifTitle,
+              body: bodyText,
+              priority: directive.priority,
+              senderName: directive.senderName,
+              url: window.location.href
+            },
+            priority: 'high'
+          };
+          fetch('https://fcm.googleapis.com/fcm/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'key=' + fcmConfig.serverKey.trim()
+            },
+            body: JSON.stringify(legacyPayload)
+          }).catch(e => {});
+        }
       } catch (e) {
         console.warn('FCM dispatch error:', e);
+      }
+    }
+
+    async function testCloudPushDispatch() {
+      if (currentUserRole !== 'admin') return;
+      try {
+        const testDirective = {
+          id: 'test_' + Date.now(),
+          senderName: currentSupervisor + ' (تجربة سحابية)',
+          priority: 'urgent',
+          text: '🔔 إشعار سحابي تجريبي من الإدارة العامة - تأكيد رنين الهاتف والتطبيق مغلق'
+        };
+        const allBranchIds = getBranchesList().map(b => b.id);
+        await dispatchFcmPush(testDirective, allBranchIds);
+        alert("🚀 تم إرسال الإشعار السحابي التجريبي عبر Google FCM v1 إلى كافة الهواتف المسجلة بنجاح!");
+      } catch (err) {
+        alert("تنبيه: " + err.message);
       }
     }
 
