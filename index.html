@@ -2903,6 +2903,11 @@
             </select>
           </div>
 
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="inputSupervisorPhone">📱 رقم الهاتف (لإرسال التوجيهات والإشعارات الفورية للهاتف):</label>
+            <input type="tel" id="inputSupervisorPhone" class="form-control" placeholder="مثال: 70123456 أو 03123456 أو +96170123456" dir="ltr" style="text-align: right;">
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
             <div class="form-group">
               <label id="labelSupervisorPin">رمز PIN (4 أرقام):</label>
@@ -3183,10 +3188,16 @@
           </div>
           <div class="form-group">
             <label for="directiveSupervisorSelect" style="font-size: 12px; font-weight: 700;">👤 المستلم في الفرع:</label>
-            <select id="directiveSupervisorSelect" class="form-control">
+            <select id="directiveSupervisorSelect" class="form-control" onchange="onDirectiveSupervisorChange()">
               <!-- Populated dynamically -->
             </select>
           </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="directiveTargetPhoneInput" style="font-size: 12px; font-weight: 700;">📱 إرسال إلى رقم هاتف محدد (إشعار فوري للهاتف):</label>
+          <input type="tel" id="directiveTargetPhoneInput" class="form-control" placeholder="مثال: 70123456 أو 03123456 (يُعبّأ تلقائياً عند اختيار المشرف)" dir="ltr" style="text-align: right;">
+          <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 3px;">💡 إذا تم إدخال رقم هاتف، سيتم توجيه الإشعار الفوري مباشرة إلى الجهاز المقترن بهذا الرقم.</span>
         </div>
 
         <div class="form-group" style="margin-bottom: 12px;">
@@ -4249,18 +4260,18 @@
     // قائمة المشرفين الافتراضية مع هاشات SHA-256 المشفرة وتخصيص الفروع
     const DEFAULT_SUPERVISORS = [
       // General Manager (علي عبد العال - المدير العام لكل الفروع - PIN: 9900)
-      { id: 'admin', name: 'علي عبد العال (Ali Abd El-Aal) - المدير العام', role: 'admin', branchId: 'all', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' },
+      { id: 'admin', name: 'علي عبد العال (Ali Abd El-Aal) - المدير العام', role: 'admin', branchId: 'all', phone: '', pinHash: '21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8' },
 
       // Branch Managers (مديرو الفروع المستقلون)
-      { id: 'mgr_noueiery', name: 'مدير فرع النويري', role: 'branch_manager', branchId: 'noueiery', pinHash: 'fe675fe7aaee830b6fed09b64e034f84dcbdaeb429d9cccd4ebb90e15af8dd71' },
-      { id: 'mgr_khaldeh', name: 'مدير فرع خلدة', role: 'branch_manager', branchId: 'khaldeh', pinHash: '6c94e35ccc352d4e9ef0b99562cff995a5741ce8de8ad11b568892934daee366' },
-      { id: 'mgr_tariq', name: 'مدير فرع طريق الجديدة', role: 'branch_manager', branchId: 'tariq_jdideh', pinHash: '7a24738c1004bcc250f2e527aeab5e3b1891d00a5146a54b2e8c20df84a8c09d' },
-      { id: 'mgr_hamra', name: 'مدير فرع الحمرا', role: 'branch_manager', branchId: 'hamra', pinHash: 'd49030599e25e8522a2eac92f91f6e7bff2e56c9af06f879671a5166242d9a32' },
-      { id: 'mgr_baddawi', name: 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
+      { id: 'mgr_noueiery', name: 'مدير فرع النويري', role: 'branch_manager', branchId: 'noueiery', phone: '', pinHash: 'fe675fe7aaee830b6fed09b64e034f84dcbdaeb429d9cccd4ebb90e15af8dd71' },
+      { id: 'mgr_khaldeh', name: 'مدير فرع خلدة', role: 'branch_manager', branchId: 'khaldeh', phone: '', pinHash: '6c94e35ccc352d4e9ef0b99562cff995a5741ce8de8ad11b568892934daee366' },
+      { id: 'mgr_tariq', name: 'مدير فرع طريق الجديدة', role: 'branch_manager', branchId: 'tariq_jdideh', phone: '', pinHash: '7a24738c1004bcc250f2e527aeab5e3b1891d00a5146a54b2e8c20df84a8c09d' },
+      { id: 'mgr_hamra', name: 'مدير فرع الحمرا', role: 'branch_manager', branchId: 'hamra', phone: '', pinHash: 'd49030599e25e8522a2eac92f91f6e7bff2e56c9af06f879671a5166242d9a32' },
+      { id: 'mgr_baddawi', name: 'أحمد بدرة (Ahmad Badrah) - مدير فرع البداوي', role: 'branch_manager', branchId: 'baddawi', phone: '', pinHash: '79830ce5b6d9c51eea67ac4027dc78d07c08b95d625d41e63d92df892618d841' },
 
       // Floor Supervisors (مسؤولو الصالة الافتراضيون)
-      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'baddawi', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
-      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'baddawi', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
+      { id: 'sup_issa', name: 'عيسى ورور (Issa Warwar)', role: 'supervisor', branchId: 'baddawi', phone: '', pinHash: '15fc36b3e80b9d7f87f7dc90cd7a2845c5d8501c30f03379fcf14154f1680380' },
+      { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'baddawi', phone: '', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
     ];
 
     let currentUserRole = 'supervisor';
@@ -4318,6 +4329,10 @@
               // Only assign default pinHash if user has no pinHash at all
               if (!existing.pinHash) {
                 existing.pinHash = ds.pinHash;
+                needsUpdate = true;
+              }
+              if (existing.phone === undefined) {
+                existing.phone = ds.phone || '';
                 needsUpdate = true;
               }
             } else {
@@ -6902,6 +6917,7 @@
                 <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
                 ${roleBadge}
                 <span style="background: #f1f5f9; color: var(--text-muted); font-size: 11px; padding: 2px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
+                ${s.phone ? `<span style="background: #e0f2fe; color: #0284c7; font-size: 11px; padding: 2px 6px; border-radius: 4px;" dir="ltr">📱 ${escapeHtml(s.phone)}</span>` : ''}
               </div>
             </div>
             <div style="display: flex; gap: 6px;">
@@ -6941,6 +6957,8 @@
       }
       document.getElementById('inputSupervisorPin').value = '';
       document.getElementById('inputSupervisorPinConfirm').value = '';
+      const phoneInputAdd = document.getElementById('inputSupervisorPhone');
+      if (phoneInputAdd) phoneInputAdd.value = '';
       document.getElementById('labelSupervisorPin').innerText = 'رمز PIN (4 أرقام):';
       document.getElementById('supervisorFormError').innerText = '';
       const formContainer = document.getElementById('supervisorFormContainer');
@@ -6976,6 +6994,8 @@
       }
       document.getElementById('editSupervisorId').value = sup.id;
       document.getElementById('inputSupervisorName').value = sup.name;
+      const phoneInputEdit = document.getElementById('inputSupervisorPhone');
+      if (phoneInputEdit) phoneInputEdit.value = sup.phone || '';
       document.getElementById('inputSupervisorPin').value = '';
       document.getElementById('inputSupervisorPinConfirm').value = '';
       document.getElementById('labelSupervisorPin').innerText = 'رمز PIN الجديد (اتركه فارغاً للإبقاء على الرمز الحالي):';
@@ -6996,6 +7016,8 @@
       if (branchInput) branchInput.disabled = false;
       const roleInput = document.getElementById('inputSupervisorRole');
       if (roleInput) roleInput.disabled = false;
+      const phoneInputCancel = document.getElementById('inputSupervisorPhone');
+      if (phoneInputCancel) phoneInputCancel.value = '';
     }
 
     async function saveSupervisorForm() {
@@ -7007,6 +7029,8 @@
       const name = document.getElementById('inputSupervisorName').value.trim();
       const pin = document.getElementById('inputSupervisorPin').value.trim();
       const confirmPin = document.getElementById('inputSupervisorPinConfirm').value.trim();
+      const phoneInput = document.getElementById('inputSupervisorPhone');
+      const phone = phoneInput ? phoneInput.value.trim() : '';
       const branchInput = document.getElementById('inputSupervisorBranch');
       let branchId = branchInput ? branchInput.value : 'all';
       const roleInput = document.getElementById('inputSupervisorRole');
@@ -7060,6 +7084,7 @@
           name: name,
           role: role,
           branchId: branchId,
+          phone: phone,
           salt: salt,
           pinHash: hash
         });
@@ -7075,6 +7100,7 @@
 
         const oldName = list[idx].name;
         list[idx].name = name;
+        list[idx].phone = phone;
         if (id === 'admin') {
           list[idx].role = 'admin';
           list[idx].branchId = 'all';
@@ -7112,6 +7138,9 @@
         saveSupervisorsList(list);
         cancelSupervisorForm();
         renderSupervisorsList();
+        if (typeof registerFcmDeviceToken === 'function') {
+          registerFcmDeviceToken();
+        }
         showToast("✅ تم تحديث بيانات المشرف بنجاح!");
       }
     }
@@ -7788,6 +7817,7 @@
 
     function onDirectiveBranchChange() {
       populateDirectiveSupervisorSelect();
+      onDirectiveSupervisorChange();
     }
 
     function populateDirectiveSupervisorSelect() {
@@ -7798,15 +7828,27 @@
       const supervisors = getSupervisorsList();
 
       if (targetBranch === 'all') {
-        supSel.innerHTML = '<option value="all" selected>👥 كافة المشرفين ومسؤولي الصالة في كل الفروع</option>';
+        supSel.innerHTML = '<option value="all" data-phone="" selected>👥 كافة المشرفين ومسؤولي الصالة في كل الفروع</option>';
         supSel.disabled = true;
       } else {
         supSel.disabled = false;
         const branchSups = supervisors.filter(s => s.branchId === targetBranch && s.role === 'supervisor');
         supSel.innerHTML = `
-          <option value="all" selected>👥 كافة مسؤولي الصالة في هذا الفرع</option>
-          ${branchSups.map(s => `<option value="${escapeHtml(s.id)}">👤 ${escapeHtml(s.name)}</option>`).join('')}
+          <option value="all" data-phone="" selected>👥 كافة مسؤولي الصالة في هذا الفرع</option>
+          ${branchSups.map(s => `<option value="${escapeHtml(s.id)}" data-phone="${escapeHtml(s.phone || '')}">👤 ${escapeHtml(s.name)}${s.phone ? ' (📱 ' + escapeHtml(s.phone) + ')' : ''}</option>`).join('')}
         `;
+      }
+      onDirectiveSupervisorChange();
+    }
+
+    function onDirectiveSupervisorChange() {
+      const supSel = document.getElementById('directiveSupervisorSelect');
+      const phoneInp = document.getElementById('directiveTargetPhoneInput');
+      if (!supSel || !phoneInp) return;
+      const selectedOption = supSel.options[supSel.selectedIndex];
+      if (selectedOption) {
+        const ph = selectedOption.getAttribute('data-phone') || '';
+        phoneInp.value = ph;
       }
     }
 
@@ -7816,11 +7858,22 @@
       const supSel = document.getElementById('directiveSupervisorSelect');
       const prioSel = document.getElementById('directivePrioritySelect');
       const textInp = document.getElementById('directiveInputText');
+      const phoneInp = document.getElementById('directiveTargetPhoneInput');
       const errBox = document.getElementById('directiveFormError');
       const sendBtn = document.getElementById('btnSendDirective');
 
       const targetBranch = branchSel ? branchSel.value : 'all';
       const targetUser = supSel ? supSel.value : 'all';
+      let targetPhone = phoneInp ? phoneInp.value.trim() : '';
+
+      // If targetPhone is empty but targetUser was chosen, fetch their registered phone
+      if (!targetPhone && targetUser && targetUser !== 'all') {
+        const foundSup = getSupervisorsList().find(s => s.id === targetUser);
+        if (foundSup && foundSup.phone) {
+          targetPhone = foundSup.phone.trim();
+        }
+      }
+
       const priority = prioSel ? prioSel.value : 'urgent';
       const text = textInp ? textInp.value.trim() : '';
 
@@ -7843,6 +7896,7 @@
         id: dirId,
         branchId: targetBranch,
         targetUserId: targetUser,
+        targetPhone: targetPhone,
         senderRole: currentUserRole,
         senderName: currentSupervisor,
         senderId: (typeof currentUserId !== 'undefined' ? currentUserId : 'admin'),
@@ -7891,6 +7945,7 @@
 
       cancelDirectiveAudioRecording();
       if (textInp) textInp.value = '';
+      if (phoneInp) phoneInp.value = '';
       switchDirectiveTab('log');
       renderDirectivesHistoryList();
       checkAndRenderActiveDirectives();
@@ -7976,11 +8031,24 @@
         });
       }
 
-      // Filter active unacknowledged directives targeting this branch / supervisor
+      // Filter active unacknowledged directives targeting this branch / supervisor / phone
       const active = directives.find(d => {
         if (d.acknowledged) return false;
         if (d.targetUserId && d.targetUserId !== 'all') {
           return (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId);
+        }
+        if (d.targetPhone) {
+          const curSup = getSupervisorsList().find(s => s.id === (typeof currentUserId !== 'undefined' ? currentUserId : ''));
+          if (curSup && curSup.phone) {
+            const myVariants = getPhoneLookupVariants(curSup.phone);
+            const targetVariants = getPhoneLookupVariants(d.targetPhone);
+            if (myVariants.some(v => targetVariants.includes(v))) {
+              return true;
+            }
+          }
+          if (currentUserRole !== 'admin' && d.senderId !== (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
+            return false;
+          }
         }
         return true;
       });
@@ -8166,6 +8234,7 @@
                 <span style="font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #f1f5f9;">${pLabel}</span>
                 ${bName ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">🏢 ${escapeHtml(bName)}</span>` : ''}
                 <strong style="font-size: 13px; color: var(--secondary);">من: ${escapeHtml(d.senderName)}</strong>
+                ${d.targetPhone ? `<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;" dir="ltr">📱 ${escapeHtml(d.targetPhone)}</span>` : ''}
                 <span style="font-size: 11px; color: var(--text-muted);">🕒 ${escapeHtml(d.timeFormatted || '')}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -8348,6 +8417,37 @@
       }
     }
 
+    function normalizePhoneNumber(phone) {
+      if (!phone) return '';
+      let clean = String(phone).replace(/[^0-9]/g, '');
+      if (clean.startsWith('00961')) clean = clean.substring(2);
+      return clean;
+    }
+
+    function getPhoneLookupVariants(phone) {
+      const norm = normalizePhoneNumber(phone);
+      if (!norm) return [];
+      const variants = new Set();
+      variants.add(norm);
+      if (norm.startsWith('961')) {
+        const local = norm.substring(3);
+        if (local) {
+          variants.add(local);
+          variants.add('0' + local);
+        }
+      } else if (norm.startsWith('0')) {
+        const withoutZero = norm.replace(/^0+/, '');
+        if (withoutZero) {
+          variants.add(withoutZero);
+          variants.add('961' + withoutZero);
+        }
+      } else {
+        variants.add('0' + norm);
+        variants.add('961' + norm);
+      }
+      return Array.from(variants);
+    }
+
     async function registerFcmDeviceToken() {
       if (!fcmMessaging || !('serviceWorker' in navigator)) return;
       if (Notification.permission !== 'granted') return;
@@ -8367,18 +8467,31 @@
           activeFcmToken = token;
           console.log('✅ FCM Device Token active:', token.substring(0, 15) + '...');
           
-          // Save token to Firebase under this branch and user
+          // Save token to Firebase under this branch, user and phone index
           if (firebaseDb && currentBranchId && currentUserId) {
+            const sups = getSupervisorsList();
+            const myUser = sups.find(s => s.id === currentUserId);
+            const userPhone = (myUser && myUser.phone) ? myUser.phone.trim() : '';
+
             const tokenData = {
               token: token,
               userId: currentUserId,
               userName: currentSupervisor,
               role: currentUserRole,
               branchId: currentBranchId,
+              phone: userPhone,
               updatedAt: new Date().toISOString()
             };
             firebaseDb.ref('branches/' + currentBranchId + '/fcm_tokens/' + currentUserId).set(tokenData);
             firebaseDb.ref('fcm_devices/' + currentUserId).set(tokenData);
+
+            // Index device token by phone number variants for instant phone routing
+            if (userPhone) {
+              const variants = getPhoneLookupVariants(userPhone);
+              variants.forEach(variant => {
+                firebaseDb.ref('fcm_phones/' + variant).set(tokenData);
+              });
+            }
           }
         }
       } catch (err) {
@@ -8489,13 +8602,38 @@
 
       try {
         const tokensSet = new Set();
+
+        // 1. Direct phone number routing via fcm_phones index
+        if (directive.targetPhone) {
+          const phoneVariants = getPhoneLookupVariants(directive.targetPhone);
+          console.log('🔍 Searching FCM tokens for target phone variants:', phoneVariants);
+          for (const v of phoneVariants) {
+            try {
+              const snap = await firebaseDb.ref('fcm_phones/' + v).once('value');
+              const val = snap.val();
+              if (val && val.token) {
+                tokensSet.add(val.token);
+                console.log('📱 Found active FCM token for phone variant:', v);
+              }
+            } catch (err) {
+              console.warn('Error querying fcm_phones variant', v, err);
+            }
+          }
+        }
+
+        // 2. Query branch tokens (matching target supervisor or target phone)
         for (const bId of targetBranchIds) {
           const snap = await firebaseDb.ref('branches/' + bId + '/fcm_tokens').once('value');
           const val = snap.val();
           if (val) {
             Object.values(val).forEach(item => {
               if (item && item.token) {
-                if (directive.targetUserId && directive.targetUserId !== 'all') {
+                if (directive.targetPhone) {
+                  const pVariants = getPhoneLookupVariants(directive.targetPhone);
+                  if (item.phone && getPhoneLookupVariants(item.phone).some(v => pVariants.includes(v))) {
+                    tokensSet.add(item.token);
+                  }
+                } else if (directive.targetUserId && directive.targetUserId !== 'all') {
                   if (item.userId === directive.targetUserId) {
                     tokensSet.add(item.token);
                   }
