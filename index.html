@@ -5576,9 +5576,14 @@
        FIREBASE INTEGRATION
        ============================================================ */
     const DEFAULT_FIREBASE_CONFIG = {
-      apiKey: "AIzaSy-diwan-supervisor-default",
-      projectId: "diwan-supervisor",
+      apiKey: "AIzaSyDuDHYCRHkqN3I62MXLq0dmrIk8j1cnn6o",
+      authDomain: "diwan-supervisor.firebaseapp.com",
       databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "diwan-supervisor",
+      storageBucket: "diwan-supervisor.firebasestorage.app",
+      messagingSenderId: "448081001183",
+      appId: "1:448081001183:web:e06b7d9662b6258d92c76a",
+      measurementId: "G-9KT2QL3FJ4",
       vapidKey: "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU"
     };
 
@@ -5589,7 +5594,19 @@
         try {
           const parsed = JSON.parse(configStr);
           if (parsed && parsed.databaseURL) {
-            config = parsed;
+            if (!parsed.apiKey || parsed.apiKey.includes('default')) {
+              parsed.apiKey = DEFAULT_FIREBASE_CONFIG.apiKey;
+            }
+            if (!parsed.messagingSenderId) {
+              parsed.messagingSenderId = DEFAULT_FIREBASE_CONFIG.messagingSenderId;
+            }
+            if (!parsed.appId) {
+              parsed.appId = DEFAULT_FIREBASE_CONFIG.appId;
+            }
+            if (!parsed.vapidKey) {
+              parsed.vapidKey = DEFAULT_FIREBASE_CONFIG.vapidKey;
+            }
+            config = Object.assign({}, DEFAULT_FIREBASE_CONFIG, parsed);
           }
         } catch (e) {
           console.warn("Custom firebase config parse error:", e);

@@ -1,13 +1,18 @@
 // Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push)
-const CACHE_NAME = 'diwan-supervisor-v5';
+const CACHE_NAME = 'diwan-supervisor-v6';
 
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSy-diwan-supervisor-default",
-  projectId: "diwan-supervisor",
+  apiKey: "AIzaSyDuDHYCRHkqN3I62MXLq0dmrIk8j1cnn6o",
+  authDomain: "diwan-supervisor.firebaseapp.com",
   databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "diwan-supervisor",
+  storageBucket: "diwan-supervisor.firebasestorage.app",
+  messagingSenderId: "448081001183",
+  appId: "1:448081001183:web:e06b7d9662b6258d92c76a",
+  measurementId: "G-9KT2QL3FJ4",
   vapidKey: "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU"
 };
 
