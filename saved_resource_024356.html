@@ -2238,7 +2238,110 @@
     .print-header, .print-signatures {
       display: none;
     }
-  </style>
+  
+    /* ============================================================
+       ADMINISTRATIVE DIRECTIVES & REALTIME NOTIFICATIONS
+       ============================================================ */
+    .directive-alert-banner {
+      margin-bottom: 16px;
+      animation: bannerSlideDown 0.3s ease-out;
+    }
+    @keyframes bannerSlideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .directive-banner-card {
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      position: relative;
+      border: 2px solid transparent;
+      color: white;
+    }
+    .directive-banner-card.urgent {
+      background: linear-gradient(135deg, #b91c1c, #991b1b);
+      border-color: #f87171;
+      animation: pulseUrgentBanner 2s infinite;
+    }
+    .directive-banner-card.important {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-color: #fcd34d;
+    }
+    .directive-banner-card.normal {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #7dd3fc;
+    }
+    @keyframes pulseUrgentBanner {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+    }
+    .directive-pulse-badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+    .directive-text-content {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: pre-wrap;
+    }
+    .directive-audio-player-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .btn-ack-directive {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    }
+    .btn-ack-directive:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+    .directive-tab-btn {
+      background: none;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .directive-tab-btn.active {
+      color: #d97706;
+      border-bottom-color: #d97706;
+    }
+</style>
 </head>
 <body>
 
@@ -2373,10 +2476,16 @@
             🖨️ طباعة
           </button>
 
+          <button id="btnHeaderDirectives" class="btn btn-outline-white btn-sm" onclick="openAdminDirectiveModal()" style="display: none; color: #d97706; border-color: #f59e0b;" title="التوجيهات والملاحظات الإدارية">📢 التوجيهات</button>
           <button class="btn btn-outline-white btn-sm" onclick="lockApp()" title="قفل الجلسة (خروج)">🔒 قفل</button>
         </div>
       </div>
     </header>
+
+    <!-- ACTIVE ADMINISTRATIVE DIRECTIVE ALERT BANNER -->
+    <div id="directiveAlertBanner" class="directive-alert-banner no-print" style="display: none;">
+      <!-- Populated dynamically via realtime Firebase listener -->
+    </div>
 
     <!-- GENERAL MANAGER CENTRAL CONTROL PANEL -->
     <div id="adminExecutivePanel" class="admin-executive-card no-print" style="display: none;">
@@ -2414,6 +2523,11 @@
           <span class="btn-text">إدارة الفروع والمواقع</span>
           <span class="btn-sub">إضافة وتعديل فروع ديوان ماركت</span>
         </button>
+        <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
+          <span class="btn-icon">📢</span>
+          <span class="btn-text">التوجيهات والرسائل الإدارية</span>
+          <span class="btn-sub">إرسال توجيه فوري (نصي / صوتي)</span>
+        </button>
       </div>
     </div>
 
@@ -2436,6 +2550,11 @@
           <span class="btn-icon">🕒</span>
           <span class="btn-text">ورديات فرعك</span>
           <span class="btn-sub">متابعة وتخصيص ورديات الفرع</span>
+        </button>
+        <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
+          <span class="btn-icon">📢</span>
+          <span class="btn-text">توجيه لمشرفي الفرع</span>
+          <span class="btn-sub">إرسال ملاحظة (نصية / صوتية)</span>
         </button>
       </div>
     </div>
@@ -2942,6 +3061,117 @@
 
       <div style="display: flex; justify-content: flex-end;">
         <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHqOverviewModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMINISTRATIVE DIRECTIVES MODAL (TEXT & VOICE WITH INSTANT MOBILE PUSH) -->
+  <div class="modal-overlay" id="adminDirectiveModal" role="dialog" aria-modal="true" aria-labelledby="adminDirectiveModalTitle">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">📢</span>
+          <div>
+            <h3 class="modal-title" id="adminDirectiveModalTitle">إرسال توجيه / ملاحظة إدارية فورية</h3>
+            <span id="directiveSenderRolePill" style="font-size: 11px; color: var(--text-muted);">بصفتك: المدير العام</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeAdminDirectiveModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 16px;">
+        <button type="button" id="tabBtnNewDirective" class="directive-tab-btn active" onclick="switchDirectiveTab('new')">
+          ✍️ توجيه جديد (نصي / صوتي)
+        </button>
+        <button type="button" id="tabBtnDirectivesLog" class="directive-tab-btn" onclick="switchDirectiveTab('log')">
+          📋 سجل التوجيهات وحالة القراءة
+        </button>
+      </div>
+
+      <!-- TAB 1: NEW DIRECTIVE FORM -->
+      <div id="directiveNewTabContent">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" id="directiveBranchSelectGroup">
+            <label for="directiveBranchSelect" style="font-size: 12px; font-weight: 700;">🏢 الفرع المستهدف:</label>
+            <select id="directiveBranchSelect" class="form-control" onchange="onDirectiveBranchChange()">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="directiveSupervisorSelect" style="font-size: 12px; font-weight: 700;">👤 المستلم في الفرع:</label>
+            <select id="directiveSupervisorSelect" class="form-control">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="directivePrioritySelect" style="font-size: 12px; font-weight: 700;">🚨 درجة الأهمية والتنبيه:</label>
+          <select id="directivePrioritySelect" class="form-control">
+            <option value="urgent" selected>🔴 عاجل جداً وطارئ (تنبيه صوتي واهتزاز وإشعار هاتف)</option>
+            <option value="important">🟡 هام (تنبيه إداري ملفت)</option>
+            <option value="normal">🟢 عادي / إرشادي روتيني</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="directiveInputText" style="font-size: 12px; font-weight: 700;">✍️ نص الملاحظة والتوجيه الإداري:</label>
+          <textarea id="directiveInputText" class="form-control" rows="3" placeholder="اكتب هنا التوجيه أو التعليمات المطلوبة من مسؤول الصالة أو الفرع..."></textarea>
+        </div>
+
+        <!-- VOICE NOTE RECORDING SECTION -->
+        <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 13px; font-weight: 800; color: var(--secondary);">🎙️ إضافة تسجيل صوتي (ملاحظة صوتية):</span>
+            <span id="directiveRecordStatus" style="font-size: 11px; color: var(--text-muted);">اختياري</span>
+          </div>
+
+          <div id="directiveRecordControls" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button type="button" id="btnStartRecord" class="btn btn-outline-white btn-sm" onclick="startDirectiveAudioRecording()" style="color: #b91c1c; border-color: #f87171; font-weight: 700;">
+              🔴 بدء التسجيل الصوتي
+            </button>
+            <button type="button" id="btnStopRecord" class="btn btn-primary btn-sm" onclick="stopDirectiveAudioRecording()" style="display: none; background: #b91c1c; border-color: #991b1b; font-weight: 700;">
+              ⏹️ إنهاء وحفظ التسجيل
+            </button>
+            <button type="button" id="btnCancelRecord" class="btn btn-outline-white btn-sm" onclick="cancelDirectiveAudioRecording()" style="display: none; color: #64748b;">
+              ❌ إلغاء
+            </button>
+            <span id="directiveRecordTimer" style="display: none; font-size: 14px; font-weight: 800; color: #b91c1c; font-family: monospace;">00:00</span>
+          </div>
+
+          <!-- AUDIO PREVIEW CONTAINER -->
+          <div id="directiveAudioPreviewContainer" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <audio id="directiveAudioPreview" controls style="height: 36px; flex: 1;"></audio>
+              <button type="button" class="btn btn-outline-white btn-sm" onclick="cancelDirectiveAudioRecording()" style="color: #dc2626; border-color: #fca5a5;" title="حذف التسجيل">
+                🗑️ حذف
+              </button>
+            </div>
+            <span style="font-size: 11px; color: #059669; font-weight: 700; display: block; margin-top: 4px;">✅ تم تسجيل الملاحظة الصوتية بنجاح وهي جاهزة للإرسال</span>
+          </div>
+        </div>
+
+        <div id="directiveFormError" style="color: #dc2626; font-size: 12px; font-weight: 700; margin-bottom: 10px;"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <span style="font-size: 11px; color: var(--text-muted);">🔔 سيتلقى المستهدف إشعاراً فورياً على هاتفه مع نغمة تنبيه واهتزاز.</span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="closeAdminDirectiveModal()">إلغاء</button>
+            <button type="button" id="btnSendDirective" class="btn btn-primary btn-sm" onclick="sendDirective()" style="background: #f59e0b; border-color: #d97706; font-weight: 800;">
+              🚀 إرسال التوجيه وتنبيه الهاتف فوراً
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: DIRECTIVES LOG & READ RECEIPTS -->
+      <div id="directiveLogTabContent" style="display: none;">
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+          متابعة حالة استلام التوجيهات المرسلة اليوم وتأكيد التنفيذ من مسؤولي الصالة:
+        </p>
+        <div id="directivesLogContainer" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Populated dynamically -->
+        </div>
       </div>
     </div>
   </div>
@@ -4319,6 +4549,7 @@
           const btnShifts = document.getElementById('btnManageShifts');
           const btnBranches = document.getElementById('btnManageBranches');
           const btnHq = document.getElementById('btnHqOverview');
+          const btnDirHead = document.getElementById('btnHeaderDirectives');
           const adminSwitcher = document.getElementById('adminBranchSwitcher');
 
           const execPanel = document.getElementById('adminExecutivePanel');
@@ -4330,6 +4561,7 @@
             if (btnShifts) btnShifts.style.display = 'inline-flex';
             if (btnBranches) btnBranches.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
+            if (btnDirHead) btnDirHead.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
               populateHeaderBranchSelect();
@@ -4345,6 +4577,7 @@
             if (btnShifts) btnShifts.style.display = 'inline-flex';
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
+            if (btnDirHead) btnDirHead.style.display = 'inline-flex';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) {
@@ -4359,10 +4592,13 @@
             if (btnShifts) btnShifts.style.display = 'none';
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
+            if (btnDirHead) btnDirHead.style.display = 'none';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) bmPanel.style.display = 'none';
           }
+
+          listenToBranchDirectives();
 
           updateBranchUI();
 
@@ -4517,11 +4753,13 @@
       const btnShifts = document.getElementById('btnManageShifts');
       const btnBranches = document.getElementById('btnManageBranches');
       const btnHq = document.getElementById('btnHqOverview');
+      const btnDirHead = document.getElementById('btnHeaderDirectives');
       const adminSwitcher = document.getElementById('adminBranchSwitcher');
       if (btnManage) btnManage.style.display = 'none';
       if (btnShifts) btnShifts.style.display = 'none';
       if (btnBranches) btnBranches.style.display = 'none';
       if (btnHq) btnHq.style.display = 'none';
+      if (btnDirHead) btnDirHead.style.display = 'none';
       if (adminSwitcher) adminSwitcher.style.display = 'none';
       const execPanel = document.getElementById('adminExecutivePanel');
       const bmPanel = document.getElementById('branchManagerPanel');
@@ -4555,6 +4793,7 @@
       
       initFirebaseIfConfigured();
       loadStateForCurrentShift();
+      listenToBranchDirectives();
       renderAll();
       updatePrintHeader();
     });
@@ -6829,6 +7068,7 @@
       }
       renderAll();
       const b = getBranchById(currentBranchId);
+      listenToBranchDirectives();
       showToast("🏢 تم الانتقال إلى: " + b.nameAr);
     }
 
@@ -7015,6 +7255,549 @@
         try { broadcastChannel.close(); } catch (e) {}
       }
     });
+
+    /* ============================================================
+       REALTIME DIRECTIVES & MOBILE NOTIFICATIONS ENGINE (TEXT & VOICE)
+       ============================================================ */
+    let directiveMediaRecorder = null;
+    let directiveAudioChunks = [];
+    let directiveAudioBase64 = null;
+    let directiveAudioDuration = 0;
+    let directiveRecordTimer = null;
+    let directiveRecordSeconds = 0;
+    let alertedDirectiveIds = new Set();
+    let branchDirectivesRef = null;
+    let branchDirectivesCallback = null;
+
+    // Web Audio API chime tone (Synthesized two-tone alert)
+    function playDirectiveChime() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        const now = ctx.currentTime;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(784, now); // G5
+        osc.frequency.setValueAtTime(1046.5, now + 0.14); // C6
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      } catch (e) {
+        console.warn("Chime audio note failed:", e);
+      }
+    }
+
+    // Instant Mobile Phone Notification & Haptic Vibration
+    function triggerDirectiveAlert(directive) {
+      if (!directive || !directive.id) return;
+      if (alertedDirectiveIds.has(directive.id)) return;
+      alertedDirectiveIds.add(directive.id);
+
+      // Play synthesized audio tone
+      playDirectiveChime();
+
+      // Trigger phone vibration (Android / supported devices)
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate([300, 150, 300]); } catch (e) {}
+      }
+
+      // Web Notification API (Phone lock-screen / System notification banner)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const sender = directive.senderName || 'الإدارة العامة';
+          const pLabel = directive.priority === 'urgent' ? '🚨 [عاجل جداً]' : (directive.priority === 'important' ? '⚠️ [هام]' : '📢 [توجيه]');
+          const bodyText = directive.text ? directive.text.substring(0, 100) : 'ملاحظة صوتية إدارية جديدة 🎙️';
+          new Notification(`${pLabel} توجيه إداري من: ${sender}`, {
+            body: bodyText,
+            icon: 'apple-touch-icon.png',
+            badge: 'apple-touch-icon.png',
+            tag: 'dir_' + directive.id,
+            renotify: true
+          });
+        } catch (e) {
+          console.warn("Notification trigger failed:", e);
+        }
+      }
+    }
+
+    // Voice recording functions
+    async function startDirectiveAudioRecording() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          alert("متصفحك لا يدعم تسجيل الصوت المباشر.");
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        directiveAudioChunks = [];
+        directiveAudioBase64 = null;
+        
+        let mimeType = 'audio/webm';
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+          mimeType = 'audio/ogg';
+        }
+
+        directiveMediaRecorder = new MediaRecorder(stream, { mimeType });
+        directiveMediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) directiveAudioChunks.push(e.data);
+        };
+        directiveMediaRecorder.onstop = () => {
+          const audioBlob = new Blob(directiveAudioChunks, { type: mimeType });
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            directiveAudioBase64 = reader.result;
+            directiveAudioDuration = directiveRecordSeconds;
+            const previewAudio = document.getElementById('directiveAudioPreview');
+            const previewContainer = document.getElementById('directiveAudioPreviewContainer');
+            if (previewAudio && previewContainer) {
+              previewAudio.src = directiveAudioBase64;
+              previewContainer.style.display = 'block';
+            }
+          };
+          reader.readAsDataURL(audioBlob);
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        directiveMediaRecorder.start(250);
+        directiveRecordSeconds = 0;
+        updateDirectiveRecordUi(true);
+
+        directiveRecordTimer = setInterval(() => {
+          directiveRecordSeconds++;
+          const secStr = String(directiveRecordSeconds % 60).padStart(2, '0');
+          const minStr = String(Math.floor(directiveRecordSeconds / 60)).padStart(2, '0');
+          const timerEl = document.getElementById('directiveRecordTimer');
+          if (timerEl) timerEl.innerText = `${minStr}:${secStr}`;
+          if (directiveRecordSeconds >= 90) { // Max 90s limit
+            stopDirectiveAudioRecording();
+          }
+        }, 1000);
+      } catch (err) {
+        console.error('Audio record error:', err);
+        alert("يرجى إعطاء صلاحية الميكروفون للموقع من إعدادات المتصفح لتتمكن من تسجيل الملاحظة الصوتية.");
+      }
+    }
+
+    function stopDirectiveAudioRecording() {
+      if (directiveRecordTimer) {
+        clearInterval(directiveRecordTimer);
+        directiveRecordTimer = null;
+      }
+      if (directiveMediaRecorder && directiveMediaRecorder.state === 'recording') {
+        directiveMediaRecorder.stop();
+      }
+      updateDirectiveRecordUi(false);
+    }
+
+    function cancelDirectiveAudioRecording() {
+      if (directiveRecordTimer) {
+        clearInterval(directiveRecordTimer);
+        directiveRecordTimer = null;
+      }
+      if (directiveMediaRecorder && directiveMediaRecorder.state === 'recording') {
+        directiveMediaRecorder.stop();
+      }
+      directiveAudioBase64 = null;
+      directiveAudioChunks = [];
+      directiveRecordSeconds = 0;
+      updateDirectiveRecordUi(false);
+      const previewContainer = document.getElementById('directiveAudioPreviewContainer');
+      const previewAudio = document.getElementById('directiveAudioPreview');
+      if (previewAudio) previewAudio.src = '';
+      if (previewContainer) previewContainer.style.display = 'none';
+    }
+
+    function updateDirectiveRecordUi(isRecording) {
+      const btnStart = document.getElementById('btnStartRecord');
+      const btnStop = document.getElementById('btnStopRecord');
+      const btnCancel = document.getElementById('btnCancelRecord');
+      const timerEl = document.getElementById('directiveRecordTimer');
+      const statusEl = document.getElementById('directiveRecordStatus');
+
+      if (isRecording) {
+        if (btnStart) btnStart.style.display = 'none';
+        if (btnStop) btnStop.style.display = 'inline-flex';
+        if (btnCancel) btnCancel.style.display = 'inline-flex';
+        if (timerEl) {
+          timerEl.style.display = 'inline-block';
+          timerEl.innerText = '00:00';
+        }
+        if (statusEl) {
+          statusEl.innerText = '🔴 جارٍ التسجيل الآن...';
+          statusEl.style.color = '#b91c1c';
+          statusEl.style.fontWeight = '700';
+        }
+      } else {
+        if (btnStart) btnStart.style.display = 'inline-flex';
+        if (btnStop) btnStop.style.display = 'none';
+        if (btnCancel) btnCancel.style.display = 'none';
+        if (timerEl) timerEl.style.display = 'none';
+        if (statusEl) {
+          statusEl.innerText = directiveAudioBase64 ? '🎙️ يوجد تسجيل صوتي' : 'اختياري';
+          statusEl.style.color = directiveAudioBase64 ? '#059669' : 'var(--text-muted)';
+        }
+      }
+    }
+
+    // Modal UI & Dropdown management
+    function openAdminDirectiveModal() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، إرسال التوجيهات الإدارية مخصص للإدارة ومديري الفروع فقط.");
+        return;
+      }
+
+      // Request notification permission if not yet prompted
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      const rolePill = document.getElementById('directiveSenderRolePill');
+      if (rolePill) {
+        rolePill.innerText = (currentUserRole === 'admin')
+          ? `بصفتك: المدير العام (${currentSupervisor})`
+          : `بصفتك: مدير الفرع (${currentSupervisor})`;
+      }
+
+      populateDirectiveBranchSelect();
+      populateDirectiveSupervisorSelect();
+      cancelDirectiveAudioRecording();
+
+      const textInp = document.getElementById('directiveInputText');
+      if (textInp) textInp.value = '';
+      const prioSel = document.getElementById('directivePrioritySelect');
+      if (prioSel) prioSel.value = 'urgent';
+      const errBox = document.getElementById('directiveFormError');
+      if (errBox) errBox.innerText = '';
+
+      switchDirectiveTab('new');
+      renderDirectivesHistoryList();
+
+      document.body.classList.add('modal-open');
+      const modal = document.getElementById('adminDirectiveModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeAdminDirectiveModal() {
+      cancelDirectiveAudioRecording();
+      const modal = document.getElementById('adminDirectiveModal');
+      if (modal) modal.classList.remove('open');
+      document.body.classList.remove('modal-open');
+    }
+
+    function switchDirectiveTab(tab) {
+      const btnNew = document.getElementById('tabBtnNewDirective');
+      const btnLog = document.getElementById('tabBtnDirectivesLog');
+      const contentNew = document.getElementById('directiveNewTabContent');
+      const contentLog = document.getElementById('directiveLogTabContent');
+
+      if (tab === 'new') {
+        if (btnNew) btnNew.classList.add('active');
+        if (btnLog) btnLog.classList.remove('active');
+        if (contentNew) contentNew.style.display = 'block';
+        if (contentLog) contentLog.style.display = 'none';
+      } else {
+        if (btnNew) btnNew.classList.remove('active');
+        if (btnLog) btnLog.classList.add('active');
+        if (contentNew) contentNew.style.display = 'none';
+        if (contentLog) contentLog.style.display = 'block';
+        renderDirectivesHistoryList();
+      }
+    }
+
+    function populateDirectiveBranchSelect() {
+      const branchSel = document.getElementById('directiveBranchSelect');
+      if (!branchSel) return;
+      const branches = getBranchesList();
+
+      if (currentUserRole === 'admin') {
+        branchSel.innerHTML = `
+          <option value="all" selected>🌐 جميع فروع ديوان ماركت (تعميم مركزي)</option>
+          ${branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)} (${escapeHtml(b.location)})</option>`).join('')}
+        `;
+        branchSel.disabled = false;
+      } else {
+        const myBranch = getBranchById(currentBranchId);
+        branchSel.innerHTML = `<option value="${escapeHtml(currentBranchId)}" selected>${escapeHtml(myBranch ? myBranch.nameAr : currentBranchId)}</option>`;
+        branchSel.disabled = true;
+      }
+    }
+
+    function onDirectiveBranchChange() {
+      populateDirectiveSupervisorSelect();
+    }
+
+    function populateDirectiveSupervisorSelect() {
+      const supSel = document.getElementById('directiveSupervisorSelect');
+      const branchSel = document.getElementById('directiveBranchSelect');
+      if (!supSel) return;
+      const targetBranch = branchSel ? branchSel.value : 'all';
+      const supervisors = getSupervisorsList();
+
+      if (targetBranch === 'all') {
+        supSel.innerHTML = '<option value="all" selected>👥 كافة المشرفين ومسؤولي الصالة في كل الفروع</option>';
+        supSel.disabled = true;
+      } else {
+        supSel.disabled = false;
+        const branchSups = supervisors.filter(s => s.branchId === targetBranch && s.role === 'supervisor');
+        supSel.innerHTML = `
+          <option value="all" selected>👥 كافة مسؤولي الصالة في هذا الفرع</option>
+          ${branchSups.map(s => `<option value="${escapeHtml(s.id)}">👤 ${escapeHtml(s.name)}</option>`).join('')}
+        `;
+      }
+    }
+
+    // Send Directive Engine
+    async function sendDirective() {
+      const branchSel = document.getElementById('directiveBranchSelect');
+      const supSel = document.getElementById('directiveSupervisorSelect');
+      const prioSel = document.getElementById('directivePrioritySelect');
+      const textInp = document.getElementById('directiveInputText');
+      const errBox = document.getElementById('directiveFormError');
+      const sendBtn = document.getElementById('btnSendDirective');
+
+      const targetBranch = branchSel ? branchSel.value : 'all';
+      const targetUser = supSel ? supSel.value : 'all';
+      const priority = prioSel ? prioSel.value : 'urgent';
+      const text = textInp ? textInp.value.trim() : '';
+
+      if (!text && !directiveAudioBase64) {
+        if (errBox) errBox.innerText = 'يرجى كتابة نص للتوجيه أو تسجيل ملاحظة صوتية واحدة على الأقل.';
+        return;
+      }
+
+      if (errBox) errBox.innerText = '';
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerText = '⏳ جارٍ الإرسال والتنبيه...';
+      }
+
+      const dirId = 'dir_' + Date.now();
+      const now = new Date();
+      const timeFormatted = 'اليوم ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+      const directiveObj = {
+        id: dirId,
+        branchId: targetBranch,
+        targetUserId: targetUser,
+        senderRole: currentUserRole,
+        senderName: currentSupervisor,
+        senderId: (typeof currentUserId !== 'undefined' ? currentUserId : 'admin'),
+        priority: priority,
+        text: text,
+        audioBase64: directiveAudioBase64 || '',
+        audioDuration: directiveAudioDuration || 0,
+        createdAt: now.toISOString(),
+        timeFormatted: timeFormatted,
+        acknowledged: false,
+        acknowledgedBy: '',
+        acknowledgedAt: ''
+      };
+
+      // Determine target branches to dispatch to
+      const targetBranchIds = (targetBranch === 'all')
+        ? getBranchesList().map(b => b.id)
+        : [targetBranch];
+
+      // Save locally & push to Firebase
+      targetBranchIds.forEach(bId => {
+        const key = 'diwan_directives_' + bId + '_' + currentDate;
+        const curList = safeJsonParse(safeGetItem(key), []);
+        curList.unshift(directiveObj);
+        safeSetItem(key, JSON.stringify(curList.slice(0, 30)));
+
+        if (firebaseDb) {
+          firebaseDb.ref('branches/' + bId + '/directives/' + dirId)
+            .set(directiveObj)
+            .catch(e => console.warn('Firebase directive push failed for branch', bId, e));
+        }
+      });
+
+      // Show toast & refresh banner if sender is in target branch
+      showToast("🚀 تم إرسال التوجيه الإداري وتنبيه المستلمين فوراً!");
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerText = '🚀 إرسال التوجيه وتنبيه الهاتف فوراً';
+      }
+
+      cancelDirectiveAudioRecording();
+      if (textInp) textInp.value = '';
+      switchDirectiveTab('log');
+      renderDirectivesHistoryList();
+      checkAndRenderActiveDirectives();
+    }
+
+    // Realtime Directives Listener for the active branch
+    function listenToBranchDirectives() {
+      if (branchDirectivesRef && branchDirectivesCallback) {
+        try { branchDirectivesRef.off('value', branchDirectivesCallback); } catch (e) {}
+      }
+
+      // Check local cache first
+      checkAndRenderActiveDirectives();
+
+      if (!firebaseDb) return;
+      const path = 'branches/' + currentBranchId + '/directives';
+      branchDirectivesRef = firebaseDb.ref(path);
+
+      branchDirectivesCallback = branchDirectivesRef.on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          const list = Object.values(val);
+          // Sort by creation date descending
+          list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          const key = 'diwan_directives_' + currentBranchId + '_' + currentDate;
+          safeSetItem(key, JSON.stringify(list.slice(0, 30)));
+          checkAndRenderActiveDirectives();
+        }
+      }, (err) => {
+        console.warn('Branch directives listen error:', err);
+      });
+    }
+
+    // Display Active Directive Banner
+    function checkAndRenderActiveDirectives() {
+      const bannerContainer = document.getElementById('directiveAlertBanner');
+      if (!bannerContainer) return;
+
+      const key = 'diwan_directives_' + currentBranchId + '_' + currentDate;
+      const directives = safeJsonParse(safeGetItem(key), []);
+
+      // Filter active unacknowledged directives targeting this branch / supervisor
+      const active = directives.find(d => {
+        if (d.acknowledged) return false;
+        if (d.targetUserId && d.targetUserId !== 'all') {
+          return (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId);
+        }
+        return true;
+      });
+
+      if (!active) {
+        bannerContainer.style.display = 'none';
+        bannerContainer.innerHTML = '';
+        return;
+      }
+
+      // Trigger instant audio & phone notification for newly arrived directive
+      triggerDirectiveAlert(active);
+
+      const pClass = active.priority || 'urgent';
+      const pLabel = (pClass === 'urgent')
+        ? '🚨 توجيه إداري عاجل جداً'
+        : (pClass === 'important' ? '⚠️ توجيه إداري هام' : '📢 ملاحظة إدارية');
+      const senderTitle = (active.senderRole === 'admin') ? 'المدير العام' : 'مدير الفرع';
+
+      bannerContainer.style.display = 'block';
+      bannerContainer.innerHTML = `
+        <div class="directive-banner-card ${pClass}">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="directive-pulse-badge">${pLabel}</span>
+              <span style="font-weight: 800; font-size: 13.5px;">من: ${escapeHtml(active.senderName)} (${senderTitle})</span>
+              <span style="font-size: 11px; opacity: 0.85;">🕒 ${escapeHtml(active.timeFormatted || '')}</span>
+            </div>
+            <button type="button" class="btn-ack-directive" onclick="acknowledgeDirective('${escapeHtml(active.id)}')">
+              ✔️ تم الاطلاع والتنفيذ
+            </button>
+          </div>
+          ${active.text ? `<div class="directive-text-content">${escapeHtml(active.text)}</div>` : ''}
+          ${active.audioBase64 ? `
+            <div class="directive-audio-player-wrap">
+              <span style="font-size: 12px; font-weight: 700;">🎙️ استماع للملاحظة الصوتية (${active.audioDuration || 0} ثانية):</span>
+              <audio controls src="${active.audioBase64}" style="height: 32px; flex: 1; max-width: 320px;"></audio>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Acknowledge Directive (Read Receipt)
+    function acknowledgeDirective(dirId) {
+      const nowStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      const key = 'diwan_directives_' + currentBranchId + '_' + currentDate;
+      const list = safeJsonParse(safeGetItem(key), []);
+
+      const idx = list.findIndex(d => d.id === dirId);
+      if (idx !== -1) {
+        list[idx].acknowledged = true;
+        list[idx].acknowledgedBy = currentSupervisor;
+        list[idx].acknowledgedAt = 'اليوم ' + nowStr;
+        safeSetItem(key, JSON.stringify(list));
+      }
+
+      // Sync acknowledgment to Firebase
+      if (firebaseDb) {
+        firebaseDb.ref('branches/' + currentBranchId + '/directives/' + dirId + '/acknowledged').set(true);
+        firebaseDb.ref('branches/' + currentBranchId + '/directives/' + dirId + '/acknowledgedBy').set(currentSupervisor);
+        firebaseDb.ref('branches/' + currentBranchId + '/directives/' + dirId + '/acknowledgedAt').set('اليوم ' + nowStr);
+      }
+
+      showToast("✅ تم تأكيد استلام التوجيه وإخطار الإدارة بنجاح!");
+      checkAndRenderActiveDirectives();
+    }
+
+    // Directives History Log in Modal
+    function renderDirectivesHistoryList() {
+      const container = document.getElementById('directivesLogContainer');
+      if (!container) return;
+
+      const key = 'diwan_directives_' + currentBranchId + '_' + currentDate;
+      const list = safeJsonParse(safeGetItem(key), []);
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">
+            لا توجد توجيهات مسجلة اليوم لهذا الفرع حتى الآن 📭
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(d => {
+        const isAck = d.acknowledged;
+        const pLabel = (d.priority === 'urgent')
+          ? '🔴 عاجل'
+          : (d.priority === 'important' ? '🟡 هام' : '🟢 عادي');
+
+        return `
+          <div style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 12px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+              <div>
+                <span style="font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #f1f5f9;">${pLabel}</span>
+                <strong style="font-size: 13px; color: var(--secondary); margin-right: 6px;">من: ${escapeHtml(d.senderName)}</strong>
+                <span style="font-size: 11px; color: var(--text-muted);">🕒 ${escapeHtml(d.timeFormatted || '')}</span>
+              </div>
+              <div>
+                ${isAck ? `
+                  <span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">
+                    ✅ تم الاطلاع بواسطة: ${escapeHtml(d.acknowledgedBy || 'المشرف')} (${escapeHtml(d.acknowledgedAt || '')})
+                  </span>
+                ` : `
+                  <span style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">
+                    ⏳ قيد الانتظار (لم يؤكد بعد)
+                  </span>
+                `}
+              </div>
+            </div>
+            ${d.text ? `<div style="font-size: 13px; color: var(--text); background: #f8fafc; padding: 8px 10px; border-radius: 6px; margin: 6px 0;">${escapeHtml(d.text)}</div>` : ''}
+            ${d.audioBase64 ? `
+              <div style="margin-top: 6px;">
+                <audio controls src="${d.audioBase64}" style="height: 30px; width: 100%; max-width: 280px;"></audio>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
   </script>
 </body>
 </html>
