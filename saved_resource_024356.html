@@ -34,9 +34,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Firebase App & Realtime Database SDKs (CDN) -->
+  <!-- Firebase App, Realtime Database & Cloud Messaging SDKs (CDN) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
   <script>
     // Register Service Worker for true background mobile notifications
     if ('serviceWorker' in navigator) {
@@ -2561,6 +2562,11 @@
           <span class="btn-text">التوجيهات والرسائل الإدارية</span>
           <span class="btn-sub">إرسال توجيه فوري (نصي / صوتي)</span>
         </button>
+        <button type="button" class="admin-grid-btn" onclick="openCloudMessagingModal()" style="border-color: #3b82f6;">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-text">إعدادات الإشعارات السحابية (Push)</span>
+          <span class="btn-sub">ربط FCM لإرسال التنبيه والتطبيق مغلق</span>
+        </button>
       </div>
     </div>
 
@@ -3094,6 +3100,58 @@
 
       <div style="display: flex; justify-content: flex-end;">
         <button class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHqOverviewModal()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOUD MESSAGING & WEB PUSH (FCM) CONFIGURATION MODAL -->
+  <div class="modal-overlay" id="cloudMessagingModal" role="dialog" aria-modal="true" aria-labelledby="cloudMessagingModalTitle">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">⚡</span>
+          <div>
+            <h3 class="modal-title" id="cloudMessagingModalTitle">إعدادات الإشعارات السحابية الفورية (Push)</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">إرسال التنبيهات للهواتف حتى وإن كان المتصفح مغلقاً كلياً</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeCloudMessagingModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #166534; font-weight: 800;">💡 كيفية الحصول على المفتاح في دقيقة واحدة من Firebase:</h4>
+        <ol style="margin: 0; padding-right: 20px; font-size: 12px; color: #15803d; line-height: 1.6;">
+          <li>ادخل إلى <a href="https://console.firebase.google.com" target="_blank" style="font-weight: 700; color: #15803d; text-decoration: underline;">لوحة تحكم Firebase</a> واختر مشروع <code>diwan-supervisor</code>.</li>
+          <li>اضغط على أيقونة الإعدادات ⚙️ بجانب Project Overview ثم اختر <strong>Project settings</strong>.</li>
+          <li>انتقل إلى تبويب <strong>Cloud Messaging</strong>.</li>
+          <li>انزل إلى قسم <strong>Web configuration</strong> واضغط <strong>Generate key pair</strong> ثم انسخ المفتاح الظاهر وضعه في حقل (VAPID Key) أدناه.</li>
+          <li>(اختياري) انسخ <strong>Server key</strong> وضعه في حقل مفتاح الخادم لتفعيل الإرسال السحابي المباشر.</li>
+        </ol>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 700; font-size: 12.5px; margin-bottom: 4px;">مفتاح ويب السحابي العام (VAPID Public Key):</label>
+        <input type="text" id="fcmVapidKeyInput" class="form-control" placeholder="مثال: BD4x9zQ..." style="font-family: monospace; font-size: 11.5px; width: 100%;">
+        <span style="font-size: 11px; color: var(--text-muted);">المفتاح العام لتسجيل الهواتف وإصدار التوكن لاستقبال التنبيهات.</span>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label style="display: block; font-weight: 700; font-size: 12.5px; margin-bottom: 4px;">مفتاح الخادم السحابي (FCM Server Key - اختياري):</label>
+        <input type="password" id="fcmServerKeyInput" class="form-control" placeholder="مثال: AAAA..." style="font-family: monospace; font-size: 11.5px; width: 100%;">
+        <span style="font-size: 11px; color: var(--text-muted);">يستخدم لإرسال الإشعارات مباشرة للأجهزة المسجلة عند إرسال توجيه.</span>
+      </div>
+
+      <div id="fcmStatusInfoBox" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 16px; font-size: 12px;">
+        <div style="font-weight: 700; margin-bottom: 4px;">حالة هذا الجهاز:</div>
+        <div id="fcmCurrentDeviceTokenStatus" style="color: var(--text-muted);">جاري الفحص...</div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="testLocalSystemNotification()">🔔 تجربة إشعار فوري الآن</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeCloudMessagingModal()">إغلاق</button>
+          <button type="button" class="btn btn-primary" onclick="saveCloudMessagingConfig()" style="font-weight: 800;">💾 حفظ الإعدادات</button>
+        </div>
       </div>
     </div>
   </div>
@@ -4676,6 +4734,11 @@
           // Request Mobile Phone Notification Permission on login gesture
           requestNotificationPermissionPrompt(false);
           checkNotificationPermissionBanner();
+          if ('Notification' in window && Notification.permission === 'granted') {
+            if (typeof registerFcmDeviceToken === 'function') {
+              registerFcmDeviceToken();
+            }
+          }
 
           // Auto-detect current shift based on clock time
           const autoShift = getAutoDetectedShift(currentBranchId);
@@ -5545,6 +5608,7 @@
         listenToFirebaseTempRanges();
         listenToFirebaseBranches();
         listenToBranchDirectives();
+        initFirebaseMessaging();
         setSyncBadgeStatus('cloud');
         console.log("☁️ Firebase Realtime Database connected successfully:", config.databaseURL);
       } catch (e) {
@@ -7365,6 +7429,9 @@
                 });
               }).catch(e => {});
             }
+            if (typeof registerFcmDeviceToken === 'function') {
+              registerFcmDeviceToken();
+            }
           }
         });
       } else if (userTriggered && Notification.permission === 'denied') {
@@ -7746,6 +7813,9 @@
         }
       });
 
+      // Dispatch FCM Push notification to recipients' devices if configured
+      dispatchFcmPush(directiveObj, targetBranchIds);
+
       // Show toast & refresh banner if sender is in target branch
       showToast("🚀 تم إرسال التوجيه الإداري وتنبيه المستلمين فوراً!");
       if (sendBtn) {
@@ -7921,6 +7991,257 @@
           </div>
         `;
       }).join('');
+    }
+
+    /* ============================================================
+       FIREBASE CLOUD MESSAGING (FCM) & WEB PUSH INTEGRATION
+       ============================================================ */
+    let fcmMessaging = null;
+    let activeFcmToken = null;
+
+    function getFcmConfig() {
+      const local = safeJsonParse(safeGetItem('diwan_fcm_config'), null);
+      if (local && (local.vapidKey || local.serverKey)) return local;
+      return {
+        vapidKey: '',
+        serverKey: ''
+      };
+    }
+
+    function initFirebaseMessaging() {
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !firebaseDb) return;
+      if (typeof firebase.messaging !== 'function') return;
+
+      try {
+        if (!fcmMessaging) {
+          fcmMessaging = firebase.messaging();
+
+          // Handle foreground FCM push message
+          fcmMessaging.onMessage((payload) => {
+            console.log('⚡ FCM foreground message arrived:', payload);
+            const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || '📢 توجيه إداري';
+            const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
+            triggerDirectiveAlert({
+              id: (payload.data && payload.data.directiveId) || ('dir_' + Date.now()),
+              senderName: (payload.data && payload.data.senderName) || 'الإدارة',
+              priority: (payload.data && payload.data.priority) || 'urgent',
+              text: body
+            });
+          });
+        }
+
+        // Listen for cloud VAPID configuration from Firebase Realtime Database config/fcm
+        firebaseDb.ref('config/fcm').on('value', (snap) => {
+          const val = snap.val();
+          if (val && val.vapidKey) {
+            const cur = getFcmConfig();
+            cur.vapidKey = val.vapidKey;
+            if (val.serverKey) cur.serverKey = val.serverKey;
+            safeSetItem('diwan_fcm_config', JSON.stringify(cur));
+            registerFcmDeviceToken();
+          }
+        });
+
+        // Register device token if permission is already granted
+        if (Notification.permission === 'granted') {
+          registerFcmDeviceToken();
+        }
+      } catch (err) {
+        console.warn('FCM Messaging initialization warning:', err);
+      }
+    }
+
+    async function registerFcmDeviceToken() {
+      if (!fcmMessaging || !('serviceWorker' in navigator)) return;
+      if (Notification.permission !== 'granted') return;
+
+      const fcmConfig = getFcmConfig();
+      const vapidKey = fcmConfig.vapidKey ? fcmConfig.vapidKey.trim() : '';
+
+      try {
+        const swReg = await navigator.serviceWorker.ready;
+        const tokenOptions = { serviceWorkerRegistration: swReg };
+        if (vapidKey) {
+          tokenOptions.vapidKey = vapidKey;
+        }
+
+        const token = await fcmMessaging.getToken(tokenOptions);
+        if (token) {
+          activeFcmToken = token;
+          console.log('✅ FCM Device Token active:', token.substring(0, 15) + '...');
+          
+          // Save token to Firebase under this branch and user
+          if (firebaseDb && currentBranchId && currentUserId) {
+            const tokenData = {
+              token: token,
+              userId: currentUserId,
+              userName: currentSupervisor,
+              role: currentUserRole,
+              branchId: currentBranchId,
+              updatedAt: new Date().toISOString()
+            };
+            firebaseDb.ref('branches/' + currentBranchId + '/fcm_tokens/' + currentUserId).set(tokenData);
+            firebaseDb.ref('fcm_devices/' + currentUserId).set(tokenData);
+          }
+        }
+      } catch (err) {
+        console.warn('FCM Token registration notice (VAPID key check):', err);
+      }
+    }
+
+    async function dispatchFcmPush(directive, targetBranchIds) {
+      const fcmConfig = getFcmConfig();
+      if (!fcmConfig || !fcmConfig.serverKey || !firebaseDb) return;
+
+      const serverKey = fcmConfig.serverKey.trim();
+      if (!serverKey) return;
+
+      try {
+        const tokensSet = new Set();
+        for (const bId of targetBranchIds) {
+          const snap = await firebaseDb.ref('branches/' + bId + '/fcm_tokens').once('value');
+          const val = snap.val();
+          if (val) {
+            Object.values(val).forEach(item => {
+              if (item && item.token) {
+                if (directive.targetUserId && directive.targetUserId !== 'all') {
+                  if (item.userId === directive.targetUserId) {
+                    tokensSet.add(item.token);
+                  }
+                } else {
+                  tokensSet.add(item.token);
+                }
+              }
+            });
+          }
+        }
+
+        const tokens = Array.from(tokensSet);
+        if (tokens.length === 0) {
+          console.log('No FCM device tokens found for target branches.');
+          return;
+        }
+
+        const pLabel = directive.priority === 'urgent' ? '🚨 [عاجل جداً]' : (directive.priority === 'important' ? '⚠️ [هام]' : '📢 [توجيه]');
+        const notifTitle = `${pLabel} توجيه إداري من: ${directive.senderName || 'الإدارة'}`;
+        const bodyText = directive.text ? directive.text.substring(0, 120) : 'ملاحظة صوتية إدارية جديدة 🎙️';
+
+        const payload = {
+          registration_ids: tokens,
+          notification: {
+            title: notifTitle,
+            body: bodyText,
+            icon: 'apple-touch-icon.png',
+            sound: 'default'
+          },
+          data: {
+            directiveId: directive.id,
+            title: notifTitle,
+            body: bodyText,
+            priority: directive.priority,
+            senderName: directive.senderName,
+            url: window.location.href
+          },
+          priority: 'high'
+        };
+
+        fetch('https://fcm.googleapis.com/fcm/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'key=' + serverKey
+          },
+          body: JSON.stringify(payload)
+        }).then(res => {
+          console.log('FCM Push notification dispatch response status:', res.status);
+        }).catch(err => {
+          console.warn('FCM Push dispatch error:', err);
+        });
+      } catch (e) {
+        console.warn('FCM dispatch error:', e);
+      }
+    }
+
+    function openCloudMessagingModal() {
+      if (currentUserRole !== 'admin') {
+        alert("إعدادات الإشعارات السحابية مخصصة للمدير العام فقط.");
+        return;
+      }
+      const cfg = getFcmConfig();
+      const vapidInp = document.getElementById('fcmVapidKeyInput');
+      const serverInp = document.getElementById('fcmServerKeyInput');
+      if (vapidInp) vapidInp.value = cfg.vapidKey || '';
+      if (serverInp) serverInp.value = cfg.serverKey || '';
+
+      const statusBox = document.getElementById('fcmCurrentDeviceTokenStatus');
+      if (statusBox) {
+        if (activeFcmToken) {
+          statusBox.innerHTML = `<span style="color: #059669; font-weight: 700;">✅ الجهاز مسجل سحابياً بنجاح:</span> <code style="font-size: 11px; word-break: break-all;">${activeFcmToken.substring(0, 25)}...</code>`;
+        } else if (cfg.vapidKey) {
+          statusBox.innerHTML = `<span style="color: #d97706; font-weight: 700;">⏳ تم حفظ المفتاح العام، بانتظار استلام التوكن من خوادم Google...</span>`;
+        } else {
+          statusBox.innerHTML = `<span style="color: #64748b;">لم يتم إدخال مفتاح VAPID Key بعد. أدخل المفتاح من Firebase Console لتمكين وصول الإشعارات والتطبيق مغلق.</span>`;
+        }
+      }
+
+      const modal = document.getElementById('cloudMessagingModal');
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeCloudMessagingModal() {
+      const modal = document.getElementById('cloudMessagingModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function saveCloudMessagingConfig() {
+      if (currentUserRole !== 'admin') return;
+      const vapidInp = document.getElementById('fcmVapidKeyInput');
+      const serverInp = document.getElementById('fcmServerKeyInput');
+
+      const vapidKey = vapidInp ? vapidInp.value.trim() : '';
+      const serverKey = serverInp ? serverInp.value.trim() : '';
+
+      const cfg = {
+        vapidKey: vapidKey,
+        serverKey: serverKey,
+        updatedAt: new Date().toISOString()
+      };
+
+      safeSetItem('diwan_fcm_config', JSON.stringify(cfg));
+
+      if (firebaseDb) {
+        firebaseDb.ref('config/fcm').set(cfg).then(() => {
+          showToast("⚡ تم حفظ ومزامنة إعدادات الإشعارات السحابية بنجاح!");
+        }).catch(err => {
+          console.warn("Firebase config sync warning:", err);
+          showToast("💾 تم حفظ الإعدادات محلياً.");
+        });
+      } else {
+        showToast("💾 تم حفظ الإعدادات محلياً.");
+      }
+
+      registerFcmDeviceToken();
+      closeCloudMessagingModal();
+    }
+
+    function testLocalSystemNotification() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification("🔔 تجربة إشعار ديوان ماركت", {
+            body: "هكذا يظهر تنبيه التوجيهات الإدارية على شاشة القفل والهاتف!",
+            icon: 'apple-touch-icon.png',
+            badge: 'apple-touch-icon.png',
+            vibrate: [300, 150, 300, 150, 300],
+            tag: 'test_' + Date.now(),
+            requireInteraction: true
+          });
+          showToast("📲 تم إرسال الإشعار التجريبي لشاشة هاتفك!");
+        }).catch(e => {
+          alert("تعذر إظهار الإشعار: " + e.message);
+        });
+      } else {
+        alert("المتصفح لا يدعم Service Worker.");
+      }
     }
 
   </script>
