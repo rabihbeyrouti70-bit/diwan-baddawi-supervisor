@@ -2472,6 +2472,12 @@
             <span id="syncStatusText">متزامن لحظياً</span>
           </div>
 
+          <!-- BACKGROUND KEEP-ALIVE TOGGLE (حل المزامنة مع إطفاء الشاشة) -->
+          <button id="btnBgKeepAlive" type="button" class="btn btn-outline-white btn-sm" onclick="toggleBackgroundKeepAlive()" style="font-size: 11px; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.25); color: #e2e8f0;" title="إبقاء التطبيق فعالاً ومتصلاً في الخلفية حتى لو أُطفئت شاشة الهاتف">
+            <span id="bgKeepAliveDot" style="width: 7px; height: 7px; background: #cbd5e1; border-radius: 50%;"></span>
+            <span id="bgKeepAliveText">وضع الخلفية: معطل ⚪</span>
+          </button>
+
           <!-- ADMIN QUICK BRANCH SWITCHER -->
           <div id="adminBranchSwitcher" style="display: none; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 8px;">
             <span style="font-size: 12px; color: white; font-weight: 700;">🏢 الفرع:</span>
@@ -4760,6 +4766,13 @@
           if (typeof enableBackgroundSyncKeepAlive === 'function') {
             enableBackgroundSyncKeepAlive();
           }
+          if (localStorage.getItem('diwan_bg_keepalive') === 'true') {
+            if (typeof startBackgroundKeepAlive === 'function') {
+              startBackgroundKeepAlive();
+            }
+          } else if (typeof updateBackgroundKeepAliveUI === 'function') {
+            updateBackgroundKeepAliveUI();
+          }
           if ('Notification' in window && Notification.permission === 'granted') {
             if (typeof registerFcmDeviceToken === 'function') {
               registerFcmDeviceToken();
@@ -4826,6 +4839,9 @@
         dateInput.title = '🔒 يرجى تسجيل الدخول أولاً';
       }
       populateShiftSelect(currentBranchId);
+      if (typeof updateBackgroundKeepAliveUI === 'function') {
+        updateBackgroundKeepAliveUI();
+      }
       // STRICT: Always lock on reload/open
       document.body.classList.remove('auth-passed');
       const overlay = document.getElementById('authOverlay');
@@ -4900,6 +4916,9 @@
 
       const presStrip = document.getElementById('managerLivePresenceStrip');
       if (presStrip) presStrip.style.display = 'none';
+      if (typeof stopBackgroundKeepAlive === 'function') {
+        stopBackgroundKeepAlive();
+      }
       if (typeof markPresenceOffline === 'function') {
         markPresenceOffline();
       }
@@ -7272,6 +7291,135 @@
       }
     }
 
+
+    /* ============================================================
+       BACKGROUND AUDIO KEEP-ALIVE ENGINE (الحل الثاني: المزامنة مع إطفاء الشاشة)
+       ============================================================ */
+    let bgAudioElement = null;
+    let isBackgroundKeepAliveActive = false;
+
+    function createSilentWavDataUri() {
+      const sampleRate = 8000;
+      const numSamples = 8000; // 1 second of silence
+      const buffer = new ArrayBuffer(44 + numSamples);
+      const view = new DataView(buffer);
+
+      // "RIFF" chunk
+      view.setUint32(0, 0x52494646, false);
+      view.setUint32(4, 36 + numSamples, true);
+      view.setUint32(8, 0x57415645, false); // "WAVE"
+
+      // "fmt " chunk
+      view.setUint32(12, 0x666d7420, false);
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM format
+      view.setUint16(22, 1, true); // Mono channel
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate, true); // Byte rate
+      view.setUint16(32, 1, true); // Block align
+      view.setUint16(34, 8, true); // 8-bit samples
+
+      // "data" chunk
+      view.setUint32(36, 0x64617461, false);
+      view.setUint32(40, numSamples, true);
+
+      // Fill with 8-bit PCM silence (128)
+      const bytes = new Uint8Array(buffer, 44);
+      bytes.fill(128);
+
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      return URL.createObjectURL(blob);
+    }
+
+    function initBackgroundKeepAliveAudio() {
+      if (!bgAudioElement) {
+        bgAudioElement = document.createElement('audio');
+        bgAudioElement.setAttribute('playsinline', '');
+        bgAudioElement.setAttribute('loop', '');
+        bgAudioElement.setAttribute('preload', 'auto');
+        bgAudioElement.style.display = 'none';
+        bgAudioElement.volume = 0.01;
+        document.body.appendChild(bgAudioElement);
+      }
+    }
+
+    function updateBackgroundKeepAliveUI() {
+      const btn = document.getElementById('btnBgKeepAlive');
+      const dot = document.getElementById('bgKeepAliveDot');
+      const text = document.getElementById('bgKeepAliveText');
+      if (!btn || !dot || !text) return;
+
+      if (isBackgroundKeepAliveActive) {
+        btn.style.background = 'rgba(16, 185, 129, 0.22)';
+        btn.style.borderColor = '#6ee7b7';
+        btn.style.color = '#ffffff';
+        dot.style.background = '#10b981';
+        dot.className = 'pulse-dot';
+        text.innerHTML = 'وضع الخلفية: نشط 🟢';
+      } else {
+        btn.style.background = 'rgba(255, 255, 255, 0.08)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        btn.style.color = '#e2e8f0';
+        dot.style.background = '#cbd5e1';
+        dot.className = '';
+        text.innerHTML = 'وضع الخلفية: معطل ⚪';
+      }
+    }
+
+    function startBackgroundKeepAlive() {
+      try {
+        initBackgroundKeepAliveAudio();
+        if (!bgAudioElement.src) {
+          bgAudioElement.src = createSilentWavDataUri();
+        }
+        const playPromise = bgAudioElement.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            isBackgroundKeepAliveActive = true;
+            localStorage.setItem('diwan_bg_keepalive', 'true');
+            updateBackgroundKeepAliveUI();
+            if ('mediaSession' in navigator) {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'ديوان ماركت - وضع العمل المستمر ⚡',
+                artist: currentSupervisor || 'مشرف الصالة',
+                album: 'المزامنة الحية والتوجيهات',
+                artwork: [
+                  { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+                ]
+              });
+              navigator.mediaSession.playbackState = 'playing';
+            }
+            showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً حتى لو طُفئت شاشة الهاتف');
+          }).catch(err => {
+            console.warn('Silent audio play blocked (needs user click):', err);
+          });
+        }
+      } catch (e) {
+        console.warn('startBackgroundKeepAlive error:', e);
+      }
+    }
+
+    function stopBackgroundKeepAlive() {
+      isBackgroundKeepAliveActive = false;
+      localStorage.setItem('diwan_bg_keepalive', 'false');
+      if (bgAudioElement) {
+        try { bgAudioElement.pause(); } catch (e) {}
+      }
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
+      updateBackgroundKeepAliveUI();
+      showToast('⚪ تم إيقاف وضع الخلفية');
+    }
+
+    function toggleBackgroundKeepAlive() {
+      if (isBackgroundKeepAliveActive) {
+        stopBackgroundKeepAlive();
+      } else {
+        startBackgroundKeepAlive();
+      }
+    }
+
     function initLivePresenceEngine() {
       if (!firebaseDb) return;
       try {
@@ -7322,14 +7470,19 @@
           }
         });
 
-        // Document tab visibility listener for instant presence toggle
+        // Document tab visibility listener (with Background Keep-Alive support)
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') {
             if (document.body.classList.contains('auth-passed')) {
               markPresenceOnline();
             }
           } else {
-            markPresenceOffline();
+            // If background keep-alive is active, keep presence alive even when screen turns off
+            if (isBackgroundKeepAliveActive && document.body.classList.contains('auth-passed')) {
+              markPresenceOnline();
+            } else {
+              markPresenceOffline();
+            }
           }
         });
 
@@ -7342,9 +7495,10 @@
           markPresenceOffline();
         });
 
-        // Heartbeat pulse every 10 seconds while visible and logged in
+        // Heartbeat pulse every 10 seconds while visible OR when background keep-alive is active
         setInterval(() => {
-          if (firebaseDb && currentUserId && document.visibilityState === 'visible' && document.body.classList.contains('auth-passed')) {
+          const shouldPulse = (document.visibilityState === 'visible' || isBackgroundKeepAliveActive);
+          if (firebaseDb && currentUserId && shouldPulse && document.body.classList.contains('auth-passed')) {
             firebaseDb.ref('presence/' + currentUserId).update({
               online: true,
               lastSeen: firebase.database.ServerValue.TIMESTAMP
