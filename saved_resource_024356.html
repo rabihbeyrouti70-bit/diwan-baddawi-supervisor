@@ -5575,7 +5575,8 @@
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "AIzaSy-diwan-supervisor-default",
       projectId: "diwan-supervisor",
-      databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app"
+      databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app",
+      vapidKey: "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU"
     };
 
     function initFirebaseIfConfigured() {
@@ -7999,11 +8000,16 @@
     let fcmMessaging = null;
     let activeFcmToken = null;
 
+    const DEFAULT_FCM_VAPID_KEY = "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU";
+
     function getFcmConfig() {
       const local = safeJsonParse(safeGetItem('diwan_fcm_config'), null);
-      if (local && (local.vapidKey || local.serverKey)) return local;
+      if (local && (local.vapidKey || local.serverKey)) {
+        if (!local.vapidKey) local.vapidKey = DEFAULT_FCM_VAPID_KEY;
+        return local;
+      }
       return {
-        vapidKey: '',
+        vapidKey: DEFAULT_FCM_VAPID_KEY,
         serverKey: ''
       };
     }
@@ -8029,6 +8035,16 @@
             });
           });
         }
+
+        // Auto-sync default VAPID key to Firebase RTDB config/fcm if not set yet
+        firebaseDb.ref('config/fcm/vapidKey').once('value').then(snap => {
+          if (!snap.val()) {
+            firebaseDb.ref('config/fcm').update({
+              vapidKey: DEFAULT_FCM_VAPID_KEY,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }).catch(e => {});
 
         // Listen for cloud VAPID configuration from Firebase Realtime Database config/fcm
         firebaseDb.ref('config/fcm').on('value', (snap) => {

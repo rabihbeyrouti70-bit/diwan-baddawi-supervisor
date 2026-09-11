@@ -5,7 +5,8 @@ importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-comp
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSy-diwan-supervisor-default",
   projectId: "diwan-supervisor",
-  databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://diwan-supervisor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  vapidKey: "BOD0MQjfHfGqbhj_X8ysumjNmA7--HdGL24u3mk_gTHsw9l54RP98cB0kvv2EGQpQdMM0MGW1hnqwIYthrgiyGU"
 };
 
 try {
