@@ -7827,14 +7827,65 @@
       const targetBranch = branchSel ? branchSel.value : 'all';
       const supervisors = getSupervisorsList();
 
-      if (targetBranch === 'all') {
-        supSel.innerHTML = '<option value="all" data-phone="" selected>👥 كافة المشرفين ومسؤولي الصالة في كل الفروع</option>';
-        supSel.disabled = true;
-      } else {
+      if (currentUserRole === 'admin') {
         supSel.disabled = false;
-        const branchSups = supervisors.filter(s => s.branchId === targetBranch && s.role === 'supervisor');
+        if (targetBranch === 'all') {
+          // Central broadcast across all branches
+          const allBranchManagers = supervisors.filter(s => s.role === 'branch_manager' || (s.id && s.id.startsWith('mgr_')));
+          
+          let html = `
+            <option value="all" data-phone="" selected>🌐 كافة الموظفين والمسؤولين والمدراء في كل الفروع</option>
+            <option value="all_managers" data-phone="">👔 كافة مديري الفروع فقط (في جميع الفروع)</option>
+            <option value="all_supervisors" data-phone="">👤 كافة مسؤولي الصالة فقط (في جميع الفروع)</option>
+          `;
+
+          if (allBranchManagers.length > 0) {
+            html += `<optgroup label="🏢 إرسال لمدير فرع محدد:">`;
+            allBranchManagers.forEach(bm => {
+              const bObj = getBranchById(bm.branchId);
+              const branchLabel = bObj ? bObj.nameAr : bm.branchId;
+              html += `<option value="${escapeHtml(bm.id)}" data-branch="${escapeHtml(bm.branchId)}" data-phone="${escapeHtml(bm.phone || '')}">🏢 ${escapeHtml(bm.name)} (${escapeHtml(branchLabel)})${bm.phone ? ' (📱 ' + escapeHtml(bm.phone) + ')' : ''}</option>`;
+            });
+            html += `</optgroup>`;
+          }
+
+          supSel.innerHTML = html;
+        } else {
+          // Admin targeting a specific branch
+          const bObj = getBranchById(targetBranch);
+          const branchName = bObj ? bObj.nameAr : targetBranch;
+          const branchUsers = supervisors.filter(s => s.branchId === targetBranch && s.id !== 'admin' && s.role !== 'admin');
+          const branchMgrs = branchUsers.filter(s => s.role === 'branch_manager' || (s.id && s.id.startsWith('mgr_')));
+          const branchSups = branchUsers.filter(s => s.role === 'supervisor');
+
+          let html = `
+            <option value="all" data-phone="" selected>👥 كافة موظفي ${escapeHtml(branchName)} (المدير ومسؤولو الصالة)</option>
+          `;
+
+          if (branchMgrs.length > 0) {
+            html += `<optgroup label="🏢 إدارة الفرع (المدراء):">`;
+            branchMgrs.forEach(bm => {
+              html += `<option value="${escapeHtml(bm.id)}" data-branch="${escapeHtml(bm.branchId)}" data-phone="${escapeHtml(bm.phone || '')}">🏢 [مدير الفرع] ${escapeHtml(bm.name)}${bm.phone ? ' (📱 ' + escapeHtml(bm.phone) + ')' : ''}</option>`;
+            });
+            html += `</optgroup>`;
+          }
+
+          if (branchSups.length > 0) {
+            html += `<optgroup label="👤 مسؤولو الصالة:">`;
+            branchSups.forEach(s => {
+              html += `<option value="${escapeHtml(s.id)}" data-branch="${escapeHtml(s.branchId)}" data-phone="${escapeHtml(s.phone || '')}">👤 ${escapeHtml(s.name)}${s.phone ? ' (📱 ' + escapeHtml(s.phone) + ')' : ''}</option>`;
+            });
+            html += `</optgroup>`;
+          }
+
+          supSel.innerHTML = html;
+        }
+      } else {
+        // Branch Manager sending within their own branch
+        supSel.disabled = false;
+        const branchSups = supervisors.filter(s => s.branchId === currentBranchId && s.role === 'supervisor');
         supSel.innerHTML = `
-          <option value="all" data-phone="" selected>👥 كافة مسؤولي الصالة في هذا الفرع</option>
+          <option value="all" data-phone="" selected>👥 كافة مسؤولي الصالة في فرعك</option>
           ${branchSups.map(s => `<option value="${escapeHtml(s.id)}" data-phone="${escapeHtml(s.phone || '')}">👤 ${escapeHtml(s.name)}${s.phone ? ' (📱 ' + escapeHtml(s.phone) + ')' : ''}</option>`).join('')}
         `;
       }
@@ -7912,9 +7963,22 @@
       };
 
       // Determine target branches to dispatch to
-      const targetBranchIds = (targetBranch === 'all')
-        ? getBranchesList().map(b => b.id)
-        : [targetBranch];
+      let targetBranchIds = [];
+      if (targetBranch === 'all') {
+        if (targetUser && targetUser !== 'all' && targetUser !== 'all_managers' && targetUser !== 'all_supervisors') {
+          // If a specific manager or supervisor was selected while 'all' branches was chosen, route to their branch!
+          const targetSupObj = getSupervisorsList().find(s => s.id === targetUser);
+          if (targetSupObj && targetSupObj.branchId && targetSupObj.branchId !== 'all') {
+            targetBranchIds = [targetSupObj.branchId];
+          } else {
+            targetBranchIds = getBranchesList().map(b => b.id);
+          }
+        } else {
+          targetBranchIds = getBranchesList().map(b => b.id);
+        }
+      } else {
+        targetBranchIds = [targetBranch];
+      }
 
       // Save locally & push to Firebase
       targetBranchIds.forEach(bId => {
@@ -7993,7 +8057,14 @@
           if (bId === currentBranchId || (currentUserRole === 'admin' && currentBranchId === 'all')) {
             list.forEach(d => {
               if (!d.acknowledged) {
-                if (!d.targetUserId || d.targetUserId === 'all' || (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId)) {
+                if (d.senderId === (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
+                  return; // Don't alarm the sender themselves
+                }
+                if (d.targetUserId === 'all_managers') {
+                  if (currentUserRole === 'branch_manager') triggerDirectiveAlert(d);
+                } else if (d.targetUserId === 'all_supervisors') {
+                  if (currentUserRole === 'supervisor') triggerDirectiveAlert(d);
+                } else if (!d.targetUserId || d.targetUserId === 'all' || (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId)) {
                   triggerDirectiveAlert(d);
                 }
               }
@@ -8034,8 +8105,17 @@
       // Filter active unacknowledged directives targeting this branch / supervisor / phone
       const active = directives.find(d => {
         if (d.acknowledged) return false;
+        if (d.senderId === (typeof currentUserId !== 'undefined' ? currentUserId : '')) {
+          return false;
+        }
         if (d.targetUserId && d.targetUserId !== 'all') {
-          return (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId);
+          if (d.targetUserId === 'all_managers') {
+            if (currentUserRole !== 'branch_manager') return false;
+          } else if (d.targetUserId === 'all_supervisors') {
+            if (currentUserRole !== 'supervisor') return false;
+          } else {
+            return (typeof currentUserId !== 'undefined' && currentUserId === d.targetUserId);
+          }
         }
         if (d.targetPhone) {
           const curSup = getSupervisorsList().find(s => s.id === (typeof currentUserId !== 'undefined' ? currentUserId : ''));
@@ -8234,6 +8314,20 @@
                 <span style="font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #f1f5f9;">${pLabel}</span>
                 ${bName ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">🏢 ${escapeHtml(bName)}</span>` : ''}
                 <strong style="font-size: 13px; color: var(--secondary);">من: ${escapeHtml(d.senderName)}</strong>
+                ${(() => {
+                  if (d.targetUserId === 'all_managers') {
+                    return '<span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">👔 مديري الفروع</span>';
+                  } else if (d.targetUserId === 'all_supervisors') {
+                    return '<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">👤 مسؤولي الصالة</span>';
+                  } else if (d.targetUserId && d.targetUserId !== 'all') {
+                    const tSup = getSupervisorsList().find(s => s.id === d.targetUserId);
+                    if (tSup) {
+                      const isMgr = tSup.role === 'branch_manager' || (tSup.id && tSup.id.startsWith('mgr_'));
+                      return `<span style="background: #fdf2f8; color: #9d174d; border: 1px solid #fbcfe8; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">${isMgr ? '🏢 المدير:' : '👤 إلى:'} ${escapeHtml(tSup.name)}</span>`;
+                    }
+                  }
+                  return '';
+                })()}
                 ${d.targetPhone ? `<span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;" dir="ltr">📱 ${escapeHtml(d.targetPhone)}</span>` : ''}
                 <span style="font-size: 11px; color: var(--text-muted);">🕒 ${escapeHtml(d.timeFormatted || '')}</span>
               </div>
@@ -8631,6 +8725,18 @@
                 if (directive.targetPhone) {
                   const pVariants = getPhoneLookupVariants(directive.targetPhone);
                   if (item.phone && getPhoneLookupVariants(item.phone).some(v => pVariants.includes(v))) {
+                    tokensSet.add(item.token);
+                  }
+                } else if (directive.targetUserId === 'all_managers') {
+                  const userObj = getSupervisorsList().find(s => s.id === item.userId);
+                  const isMgr = item.role === 'branch_manager' || (item.userId && item.userId.startsWith('mgr_')) || (userObj && userObj.role === 'branch_manager');
+                  if (isMgr) {
+                    tokensSet.add(item.token);
+                  }
+                } else if (directive.targetUserId === 'all_supervisors') {
+                  const userObj = getSupervisorsList().find(s => s.id === item.userId);
+                  const isSup = item.role === 'supervisor' || (userObj && userObj.role === 'supervisor');
+                  if (isSup) {
                     tokensSet.add(item.token);
                   }
                 } else if (directive.targetUserId && directive.targetUserId !== 'all') {
