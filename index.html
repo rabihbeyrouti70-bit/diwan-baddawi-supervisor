@@ -2361,6 +2361,10 @@
       color: #d97706;
       border-bottom-color: #d97706;
     }
+    @keyframes toastSlideIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 </head>
 <body>
@@ -2519,6 +2523,23 @@
     <!-- ACTIVE ADMINISTRATIVE DIRECTIVE ALERT BANNER -->
     <div id="directiveAlertBanner" class="directive-alert-banner no-print" style="display: none;">
       <!-- Populated dynamically via realtime Firebase listener -->
+    </div>
+
+    <!-- REALTIME SUPERVISORS PRESENCE RADAR (FOR MANAGERS) -->
+    <div id="managerLivePresenceStrip" class="no-print" style="display: none; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="pulse-dot" style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,0.25);"></span>
+          <strong style="font-size: 13.5px; color: #0f172a;">رادار المزامنة الحَيّة لتواجد المشرفين (Live Presence):</strong>
+          <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
+        </div>
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
+          👥 إدارة وتفاصيل المشرفين
+        </button>
+      </div>
+      <div id="managerLivePresenceList" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <span style="font-size: 12px; color: var(--text-muted);">جارٍ رصد تواجد المشرفين...</span>
+      </div>
     </div>
 
     <!-- GENERAL MANAGER CENTRAL CONTROL PANEL -->
@@ -4877,6 +4898,12 @@
 
       currentUserRole = 'supervisor';
 
+      const presStrip = document.getElementById('managerLivePresenceStrip');
+      if (presStrip) presStrip.style.display = 'none';
+      if (typeof markPresenceOffline === 'function') {
+        markPresenceOffline();
+      }
+
       const dateInput = document.getElementById('shiftDateInput');
       if (dateInput) {
         dateInput.disabled = true;
@@ -6887,6 +6914,9 @@
       // Live pulse timer: re-render presence & relative times every 2 seconds while modal is open
       if (supervisorsModalLiveInterval) clearInterval(supervisorsModalLiveInterval);
       supervisorsModalLiveInterval = setInterval(() => {
+        if (currentUserRole === 'admin' || currentUserRole === 'branch_manager') {
+          updateManagerLivePresenceStrip();
+        }
         const modal = document.getElementById('supervisorsModal');
         if (modal && modal.classList.contains('open')) {
           renderSupervisorsList();
@@ -6912,29 +6942,50 @@
     let deviceActivationsCache = {};
     let livePresenceCache = {};
     let supervisorsModalLiveInterval = null;
+    let managerPresenceLiveInterval = null;
+    let prevOnlineStatusMap = {};
+    let hasInitializedPresenceMap = false;
+
+    function isUserReallyOnline(userId) {
+      if (!userId) return false;
+      const pres = livePresenceCache[userId];
+      if (!pres || pres.online !== true) return false;
+
+      // If marked online, but lastSeen is older than 25 seconds (missed heartbeats), treat as disconnected
+      const timeMs = (typeof pres.lastSeen === 'number') ? pres.lastSeen : (pres.lastSeen ? new Date(pres.lastSeen).getTime() : 0);
+      const now = Date.now();
+      if (timeMs && (now - timeMs > 25000)) {
+        return false;
+      }
+      return true;
+    }
 
     function formatLivePresenceTime(lastSeen, online) {
-      const timeMs = (typeof lastSeen === 'number') ? lastSeen : (lastSeen ? new Date(lastSeen).getTime() : 0);
-      const now = Date.now();
-      const diffMs = timeMs ? (now - timeMs) : Infinity;
-      const diffMins = Math.floor(diffMs / 60000);
-
-      // If marked online but no heartbeat for > 3 minutes, treat as disconnected
-      if (online && diffMins <= 3) {
+      if (online) {
         return 'متصل حَيّاً الآن 🟢';
       }
       if (!lastSeen) {
         return 'غير متصل ⚪';
       }
-      if (diffMins < 1) return 'كان متصلاً قبل لحظات 🟡';
-      if (diffMins < 60) return `غير متصل (منذ ${diffMins} د)`;
-      const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) {
+      try {
+        const timeMs = (typeof lastSeen === 'number') ? lastSeen : new Date(lastSeen).getTime();
+        const now = Date.now();
+        const diffMs = now - timeMs;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+
+        if (diffSecs < 60) return 'أغلق التطبيق للتو 🔴';
+        if (diffMins < 60) return `غير متصل (منذ ${diffMins} د)`;
+        if (diffHours < 24) {
+          const d = new Date(timeMs);
+          return `غير متصل (اليوم ${d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })})`;
+        }
         const d = new Date(timeMs);
-        return `غير متصل (اليوم ${d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })})`;
+        return `غير متصل (${d.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' })})`;
+      } catch (e) {
+        return 'غير متصل ⚪';
       }
-      const d = new Date(timeMs);
-      return `غير متصل (${d.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' })})`;
     }
 
     function formatActivationTime(isoString) {
@@ -6962,6 +7013,229 @@
       if (navigator.userAgent.includes('Android')) return 'Android 📱';
       if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) return 'iPhone 🍏';
       return isMobile ? 'هاتف محمول 📱' : 'كمبيوتر / لابتوب 💻';
+    }
+
+    function showPresenceAlertToast(message, type) {
+      let toastContainer = document.getElementById('presenceToastContainer');
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'presenceToastContainer';
+        toastContainer.style.cssText = 'position: fixed; top: 16px; left: 16px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; max-width: 400px; pointer-events: none;';
+        document.body.appendChild(toastContainer);
+      }
+
+      const toast = document.createElement('div');
+      const isOnline = (type === 'online');
+      toast.style.cssText = `
+        background: ${isOnline ? '#064e3b' : '#1e293b'};
+        color: #ffffff;
+        border: 1.5px solid ${isOnline ? '#34d399' : '#f87171'};
+        padding: 10px 14px;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: auto;
+        animation: toastSlideIn 0.3s ease;
+        transition: all 0.3s ease;
+      `;
+      toast.innerHTML = `
+        <span style="font-size: 16px;">${isOnline ? '🟢' : '🔴'}</span>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4500);
+    }
+
+    function markPresenceOnline() {
+      if (!firebaseDb || !currentUserId) return;
+      try {
+        try { firebaseDb.goOnline(); } catch (e) {}
+
+        const myPresenceRef = firebaseDb.ref('presence/' + currentUserId);
+        myPresenceRef.onDisconnect().update({
+          online: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        myPresenceRef.update({
+          online: true,
+          userId: currentUserId,
+          userName: currentSupervisor,
+          role: currentUserRole,
+          branchId: currentBranchId,
+          platform: getDevicePlatformString(),
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).catch(() => {});
+      } catch (err) {
+        console.warn('markPresenceOnline warning:', err);
+      }
+    }
+
+    function markPresenceOffline() {
+      if (!firebaseDb || !currentUserId) return;
+      const now = Date.now();
+
+      // 1. Immediately update in-memory cache
+      if (livePresenceCache[currentUserId]) {
+        livePresenceCache[currentUserId].online = false;
+        livePresenceCache[currentUserId].lastSeen = now;
+      }
+
+      // 2. Realtime Database WebSocket update
+      try {
+        firebaseDb.ref('presence/' + currentUserId).update({
+          online: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).catch(() => {});
+      } catch (e) {}
+
+      // 3. Guaranteed REST keepalive fetch (survives tab close and browser exit)
+      try {
+        let dbUrl = '';
+        if (firebaseDb.app && firebaseDb.app.options && firebaseDb.app.options.databaseURL) {
+          dbUrl = firebaseDb.app.options.databaseURL;
+        } else if (typeof DEFAULT_FIREBASE_CONFIG !== 'undefined' && DEFAULT_FIREBASE_CONFIG.databaseURL) {
+          dbUrl = DEFAULT_FIREBASE_CONFIG.databaseURL;
+        }
+        if (dbUrl) {
+          const endpoint = dbUrl.replace(/\/$/, '') + '/presence/' + encodeURIComponent(currentUserId) + '.json';
+          const payload = JSON.stringify({
+            online: false,
+            userId: currentUserId,
+            userName: currentSupervisor,
+            role: currentUserRole,
+            branchId: currentBranchId,
+            platform: getDevicePlatformString(),
+            lastSeen: now
+          });
+
+          if (window.fetch) {
+            fetch(endpoint, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.warn('markPresenceOffline REST warning:', err);
+      }
+    }
+
+    function updateManagerLivePresenceStrip() {
+      const strip = document.getElementById('managerLivePresenceStrip');
+      const listContainer = document.getElementById('managerLivePresenceList');
+      const countBadge = document.getElementById('livePresenceOnlineCountBadge');
+      if (!strip || !listContainer) return;
+
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        strip.style.display = 'none';
+        return;
+      }
+      strip.style.display = 'block';
+
+      let list = getSupervisorsList();
+      if (currentUserRole === 'branch_manager') {
+        list = list.filter(s => s.branchId === currentBranchId && s.id !== 'admin' && s.role !== 'admin');
+      }
+
+      const onlineSupervisors = list.filter(s => isUserReallyOnline(s.id));
+      if (countBadge) {
+        countBadge.innerText = `${onlineSupervisors.length} متصل الآن من ${list.length}`;
+      }
+
+      if (list.length === 0) {
+        listContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">لا يوجد مشرفون مسجلون.</span>';
+        return;
+      }
+
+      listContainer.innerHTML = list.map(s => {
+        const isOnline = isUserReallyOnline(s.id);
+        const pres = livePresenceCache[s.id];
+        const dev = deviceActivationsCache[s.id];
+        const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
+        const statusText = formatLivePresenceTime(lastSeen, isOnline);
+        const platStr = (pres && pres.platform) || (dev && dev.platform) || '';
+        const branchName = s.branchId === 'all' ? 'جميع الفروع' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
+
+        if (isOnline) {
+          return `
+            <div style="background: #ecfdf5; border: 1.5px solid #6ee7b7; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(16,185,129,0.15);">
+              <span class="pulse-dot" style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
+              <strong style="font-size: 12px; color: #065f46;">${escapeHtml(s.name)}</strong>
+              <span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
+              ${platStr ? `<span style="font-size: 10.5px; color: #047857;">• ${escapeHtml(platStr)}</span>` : ''}
+              <span style="font-size: 10.5px; font-weight: 800; color: #059669;">[متصل الآن]</span>
+            </div>
+          `;
+        } else {
+          const isJustClosed = statusText.includes('أغلق التطبيق للتو');
+          const borderClr = isJustClosed ? '#fca5a5' : '#e2e8f0';
+          const bgClr = isJustClosed ? '#fef2f2' : '#f8fafc';
+          const textClr = isJustClosed ? '#b91c1c' : '#64748b';
+
+          return `
+            <div style="background: ${bgClr}; border: 1px solid ${borderClr}; border-radius: 999px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; opacity: ${isJustClosed ? '1' : '0.85'};">
+              <span style="width: 6.5px; height: 6.5px; background: ${isJustClosed ? '#ef4444' : '#94a3b8'}; border-radius: 50%;"></span>
+              <span style="font-size: 11.5px; font-weight: 600; color: ${textClr};">${escapeHtml(s.name)}</span>
+              <span style="font-size: 10.5px; color: ${textClr};">(${escapeHtml(statusText)})</span>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+
+    function handlePresenceStateChange(newPresenceMap) {
+      if (!newPresenceMap || typeof newPresenceMap !== 'object') return;
+      livePresenceCache = newPresenceMap;
+
+      const isManager = (currentUserRole === 'admin' || currentUserRole === 'branch_manager');
+      const supervisors = getSupervisorsList();
+
+      if (isManager && hasInitializedPresenceMap) {
+        supervisors.forEach(s => {
+          if (s.id === currentUserId) return;
+          if (currentUserRole === 'branch_manager' && s.branchId !== currentBranchId) return;
+
+          const wasOnline = !!prevOnlineStatusMap[s.id];
+          const isNowOnline = isUserReallyOnline(s.id);
+
+          if (wasOnline && !isNowOnline) {
+            const branchName = s.branchId === 'all' ? 'جميع الفروع' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
+            showPresenceAlertToast(`تنبيه: المشرف "${s.name}" (${branchName}) أغلق التطبيق الآن`, 'offline');
+          } else if (!wasOnline && isNowOnline) {
+            const branchName = s.branchId === 'all' ? 'جميع الفروع' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
+            const plat = (newPresenceMap[s.id] && newPresenceMap[s.id].platform) || '';
+            showPresenceAlertToast(`تنبيه: المشرف "${s.name}" (${branchName}) متصل الآن حَيّاً ${plat ? `• ${plat}` : ''}`, 'online');
+          }
+        });
+      }
+
+      supervisors.forEach(s => {
+        prevOnlineStatusMap[s.id] = isUserReallyOnline(s.id);
+      });
+      hasInitializedPresenceMap = true;
+
+      updateManagerLivePresenceStrip();
+      const sModal = document.getElementById('supervisorsModal');
+      if (sModal && sModal.classList.contains('open')) {
+        renderSupervisorsList();
+      }
+      const dModal = document.getElementById('adminDirectiveModal');
+      if (dModal && dModal.classList.contains('open')) {
+        populateDirectiveSupervisorSelect();
+      }
     }
 
     function syncDeviceActivation() {
@@ -6992,21 +7266,7 @@
         }
         deviceActivationsCache[currentUserId] = Object.assign({}, deviceActivationsCache[currentUserId] || {}, record);
 
-        // Update live presence node and register server-side onDisconnect
-        const myPresenceRef = firebaseDb.ref('presence/' + currentUserId);
-        myPresenceRef.onDisconnect().update({
-          online: false,
-          lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
-        myPresenceRef.update({
-          online: true,
-          userId: currentUserId,
-          userName: currentSupervisor,
-          role: currentUserRole,
-          branchId: currentBranchId,
-          platform: platform,
-          lastSeen: firebase.database.ServerValue.TIMESTAMP
-        });
+        markPresenceOnline();
       } catch (err) {
         console.warn('syncDeviceActivation warning:', err);
       }
@@ -7037,25 +7297,8 @@
             }
           }
 
-          if (isConnected && currentUserId) {
-            const myPresenceRef = firebaseDb.ref('presence/' + currentUserId);
-
-            // Server-side onDisconnect trigger
-            myPresenceRef.onDisconnect().update({
-              online: false,
-              lastSeen: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            // Mark online
-            myPresenceRef.update({
-              online: true,
-              userId: currentUserId,
-              userName: currentSupervisor,
-              role: currentUserRole,
-              branchId: currentBranchId,
-              platform: getDevicePlatformString(),
-              lastSeen: firebase.database.ServerValue.TIMESTAMP
-            });
+          if (isConnected && currentUserId && document.body.classList.contains('auth-passed')) {
+            markPresenceOnline();
           }
         });
 
@@ -7063,15 +7306,7 @@
         firebaseDb.ref('presence').on('value', (snap) => {
           const val = snap.val();
           if (val && typeof val === 'object') {
-            livePresenceCache = val;
-            const sModal = document.getElementById('supervisorsModal');
-            if (sModal && sModal.classList.contains('open')) {
-              renderSupervisorsList();
-            }
-            const dModal = document.getElementById('adminDirectiveModal');
-            if (dModal && dModal.classList.contains('open')) {
-              populateDirectiveSupervisorSelect();
-            }
+            handlePresenceStateChange(val);
           }
         });
 
@@ -7089,32 +7324,41 @@
 
         // Document tab visibility listener for instant presence toggle
         document.addEventListener('visibilitychange', () => {
-          if (firebaseDb && currentUserId) {
-            const isVisible = (document.visibilityState === 'visible');
-            if (isVisible) {
-              try { firebaseDb.goOnline(); } catch (e) {}
-              firebaseDb.ref('presence/' + currentUserId).update({
-                online: true,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
-              }).catch(() => {});
-            } else {
-              firebaseDb.ref('presence/' + currentUserId).update({
-                online: false,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
-              }).catch(() => {});
+          if (document.visibilityState === 'visible') {
+            if (document.body.classList.contains('auth-passed')) {
+              markPresenceOnline();
             }
+          } else {
+            markPresenceOffline();
           }
         });
 
-        // Periodic live presence pulse every 15 seconds
+        // Pagehide and beforeunload for guaranteed close detection
+        window.addEventListener('pagehide', () => {
+          markPresenceOffline();
+        });
+
+        window.addEventListener('beforeunload', () => {
+          markPresenceOffline();
+        });
+
+        // Heartbeat pulse every 10 seconds while visible and logged in
         setInterval(() => {
-          if (firebaseDb && currentUserId && document.visibilityState === 'visible') {
+          if (firebaseDb && currentUserId && document.visibilityState === 'visible' && document.body.classList.contains('auth-passed')) {
             firebaseDb.ref('presence/' + currentUserId).update({
               online: true,
               lastSeen: firebase.database.ServerValue.TIMESTAMP
             }).catch(() => {});
           }
-        }, 15000);
+        }, 10000);
+
+        // Periodic live presence strip pulse every 2 seconds for fresh relative times
+        if (managerPresenceLiveInterval) clearInterval(managerPresenceLiveInterval);
+        managerPresenceLiveInterval = setInterval(() => {
+          if (currentUserRole === 'admin' || currentUserRole === 'branch_manager') {
+            updateManagerLivePresenceStrip();
+          }
+        }, 2000);
 
       } catch (err) {
         console.warn('initLivePresenceEngine warning:', err);
@@ -7125,7 +7369,7 @@
       initLivePresenceEngine();
     }
 
-    function renderSupervisorsList() {
+        function renderSupervisorsList() {
       const container = document.getElementById('supervisorsListContainer');
       let list = getSupervisorsList();
 
@@ -7135,10 +7379,7 @@
       }
 
       const totalCount = list.length;
-      const onlineCount = list.filter(s => {
-        const pres = livePresenceCache[s.id];
-        return pres && pres.online === true && (Date.now() - (pres.lastSeen || 0) < 180000);
-      }).length;
+      const onlineCount = list.filter(s => isUserReallyOnline(s.id)).length;
       const pushCount = list.filter(s => {
         const dev = deviceActivationsCache[s.id];
         return dev && (dev.notificationPermission === 'granted' || !!dev.token);
@@ -7174,7 +7415,7 @@
 
         const pres = livePresenceCache[s.id];
         const dev = deviceActivationsCache[s.id];
-        const isOnline = (pres && pres.online === true && (Date.now() - (pres.lastSeen || 0) < 180000));
+        const isOnline = isUserReallyOnline(s.id);
         const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
         const statusText = formatLivePresenceTime(lastSeen, isOnline);
         const platStr = (pres && pres.platform) || (dev && dev.platform) || '';
@@ -7532,6 +7773,9 @@
       if (headerSelect) headerSelect.value = currentBranchId;
       populateExecutiveBranchSelect();
       document.title = 'ديوان ماركت – ' + b.nameAr + ' | نظام متابعة الصالة';
+      if (typeof updateManagerLivePresenceStrip === 'function') {
+        updateManagerLivePresenceStrip();
+      }
     }
 
     function openHqOverviewModal() {
@@ -8116,12 +8360,15 @@
       const supervisors = getSupervisorsList();
 
       const getDevIcon = (id) => {
-        const pres = livePresenceCache[id];
-        const isOnline = (pres && pres.online === true && (Date.now() - (pres.lastSeen || 0) < 180000));
+        const isOnline = isUserReallyOnline(id);
         if (isOnline) return '🟢 [متصل حَيّاً الآن] ';
-        const d = deviceActivationsCache[id];
+        const pres = livePresenceCache[id];
+        const dev = deviceActivationsCache[id];
+        const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
+        const statusText = formatLivePresenceTime(lastSeen, false);
+        if (statusText.includes('أغلق التطبيق للتو')) return '🔴 [أغلق التطبيق للتو] ';
         if (d && (d.notificationPermission === 'granted' || !!d.token)) return '📱 [مفعل للتنبيه] ';
-        if (pres && pres.lastSeen) return '🟡 [كان متصلاً] ';
+        if (lastSeen) return '🟡 [كان متصلاً] ';
         return '⚪ ';
       };
 
