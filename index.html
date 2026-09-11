@@ -8727,13 +8727,15 @@
         }
       }
 
+      document.body.classList.add('modal-open');
       const modal = document.getElementById('cloudMessagingModal');
-      if (modal) modal.classList.add('active');
+      if (modal) modal.classList.add('open');
     }
 
     function closeCloudMessagingModal() {
       const modal = document.getElementById('cloudMessagingModal');
-      if (modal) modal.classList.remove('active');
+      if (modal) modal.classList.remove('open');
+      document.body.classList.remove('modal-open');
     }
 
     function saveCloudMessagingConfig() {
