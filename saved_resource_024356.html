@@ -3792,6 +3792,10 @@
     }
 
     function saveBranchForm() {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، إدارة وإضافة الفروع مخصصة للمدير العام فقط.");
+        return;
+      }
       const id = document.getElementById('editBranchId').value;
       const nameAr = document.getElementById('inputBranchNameAr').value.trim();
       const nameEn = document.getElementById('inputBranchNameEn').value.trim();
@@ -3856,6 +3860,10 @@
     }
 
     function deleteBranch(id) {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، حذف الفروع مخصص للمدير العام فقط.");
+        return;
+      }
       const list = getBranchesList();
       if (list.length <= 1) {
         alert("لا يمكن حذف هذا الفرع! يجب أن تحتوي المنظومة على فرع واحد على الأقل.");
@@ -3879,6 +3887,10 @@
     }
 
     function resetBranchesToDefault() {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، استعادة الفروع الافتراضية مخصصة للمدير العام فقط.");
+        return;
+      }
       if (!confirm("هل تريد بالتأكيد استعادة الفروع الخمسة الأصلية؟ سيتم إلغاء أي فروع مخصصة تمت إضافتها.")) {
         return;
       }
@@ -4378,6 +4390,20 @@
           document.getElementById('authPinInput').value = '';
           errorBox.innerText = '';
           
+          // Date input permission management
+          const dateInput = document.getElementById('shiftDateInput');
+          if (dateInput) {
+            if (currentUserRole === 'admin' || currentUserRole === 'branch_manager') {
+              dateInput.disabled = false;
+              dateInput.style.opacity = '1';
+              dateInput.title = 'تغيير تاريخ عرض العمليات (صلاحية الإدارة)';
+            } else {
+              dateInput.disabled = true;
+              dateInput.style.opacity = '0.7';
+              dateInput.title = '🔒 تاريخ اليوم ثابت لمسؤول الصالة';
+            }
+          }
+
           // Auto-detect current shift based on clock time
           const autoShift = getAutoDetectedShift(currentBranchId);
           currentShiftType = autoShift;
@@ -4428,6 +4454,12 @@
     }
 
     function checkAuthOnLoad() {
+      const dateInput = document.getElementById('shiftDateInput');
+      if (dateInput) {
+        dateInput.disabled = true;
+        dateInput.style.opacity = '0.7';
+        dateInput.title = '🔒 يرجى تسجيل الدخول أولاً';
+      }
       populateShiftSelect(currentBranchId);
       // STRICT: Always lock on reload/open
       document.body.classList.remove('auth-passed');
@@ -4497,6 +4529,13 @@
       if (bmPanel) bmPanel.style.display = 'none';
 
       currentUserRole = 'supervisor';
+
+      const dateInput = document.getElementById('shiftDateInput');
+      if (dateInput) {
+        dateInput.disabled = true;
+        dateInput.style.opacity = '0.7';
+        dateInput.value = currentDate;
+      }
 
       document.body.classList.remove('auth-passed');
       document.getElementById('authOverlay').classList.remove('unlocked');
@@ -4859,8 +4898,16 @@
     }
 
     function saveShiftForm() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، إدارة الورديات مخصصة للإدارة ومديري الفروع فقط.");
+        return;
+      }
       const filter = document.getElementById('shiftsBranchFilter');
       const branchId = filter ? filter.value : currentBranchId;
+      if (currentUserRole === 'branch_manager' && branchId !== currentBranchId) {
+        alert("عذراً، مدير الفرع يمكنه إدارة ورديات فرعه فقط.");
+        return;
+      } 
       const editId = document.getElementById('editShiftId').value;
       const name = document.getElementById('inputShiftName').value.trim();
       const start = document.getElementById('inputShiftStart').value;
@@ -4910,6 +4957,14 @@
     }
 
     function deleteShift(branchId, shiftId) {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، إدارة الورديات مخصصة للإدارة ومديري الفروع فقط.");
+        return;
+      }
+      if (currentUserRole === 'branch_manager' && branchId !== currentBranchId) {
+        alert("عذراً، مدير الفرع يمكنه حذف ورديات فرعه فقط.");
+        return;
+      }
       const shifts = getBranchShifts(branchId);
       if (shifts.length <= 1) {
         alert("لا يمكن حذف هذه الوردية! يجب أن يحتوي الفرع على وردية واحدة على الأقل.");
@@ -5597,9 +5652,11 @@
                       النطاق الآمن: <strong style="color: ${conf.isCustom ? 'var(--primary)' : 'var(--secondary)'};">${conf.min}°C إلى ${conf.max}°C</strong>
                       ${conf.isCustom ? '<span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800;">مخصص</span>' : ''}
                     </span>
-                    <button type="button" class="btn-range-edit" onclick="openTempRangeModal('${escapeSingleQuotes(tName)}')" title="تعديل النطاق الآمن لهذه الثلاجة">
-                      ⚙️ تحديد النطاق
-                    </button>
+                    ${(currentUserRole === 'admin' || currentUserRole === 'branch_manager') ? `
+                      <button type="button" class="btn-range-edit" onclick="openTempRangeModal('${escapeSingleQuotes(tName)}')" title="تعديل النطاق الآمن لهذه الثلاجة (صلاحية الإدارة)">
+                        ⚙️ تحديد النطاق
+                      </button>
+                    ` : ''}
                   </div>
                 </div>
               </div>
@@ -5983,6 +6040,10 @@
     }
 
     function openTempRangeModal(tName) {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        showToast('🔒 تعديل النطاق الآمن لدرجات الحرارة مخصص للإدارة فقط.');
+        return;
+      }
       const conf = getTempConfig(tName);
       const b = getBranchById(currentBranchId);
       document.getElementById('editTempTargetName').value = tName;
@@ -6009,6 +6070,10 @@
     }
 
     function saveCustomTempRange() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert('عذراً، تعديل درجات الحرارة مخصص للإدارة ومديري الفروع فقط.');
+        return;
+      }
       const tName = document.getElementById('editTempTargetName').value;
       const minVal = parseFloat(document.getElementById('inputTempMin').value);
       const maxVal = parseFloat(document.getElementById('inputTempMax').value);
@@ -6039,6 +6104,10 @@
     }
 
     function resetTempRangeToDefault() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert('عذراً، استعادة النطاق الافتراضي مخصصة للإدارة فقط.');
+        return;
+      }
       const tName = document.getElementById('editTempTargetName').value;
       const defaultConf = TEMP_CONFIGS[tName];
       if (!defaultConf) return;
@@ -6123,6 +6192,12 @@
     }
 
     function onDateChange() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        showToast("🔒 تغيير تاريخ العمليات مخصص للإدارة العامة ومدير الفرع فقط.");
+        const dateInput = document.getElementById('shiftDateInput');
+        if (dateInput) dateInput.value = currentDate;
+        return;
+      }
       currentDate = document.getElementById('shiftDateInput').value;
       loadStateForCurrentShift();
       if (firebaseDb) listenToFirebaseShift();
@@ -6134,7 +6209,8 @@
       const b = getBranchById(currentBranchId);
       const meta = document.getElementById('printMeta');
       if (meta) {
-        meta.innerText = `الفرع: ${b.nameAr} | التاريخ: ${currentDate} | الوردية: ${SHIFT_NAMES[currentShiftType]} | المشرف المسؤول: ${currentSupervisor}`;
+        const shName = getShiftName(currentBranchId, currentShiftType);
+        meta.innerText = `الفرع: ${b.nameAr} | التاريخ: ${currentDate} | الوردية: ${shName} | المشرف المسؤول: ${currentSupervisor}`;
       }
     }
 
@@ -6194,7 +6270,12 @@
     }
 
     function submitHandover() {
-      if (!confirm("هل أنت متأكد من إنهاء وتسليم ورديتك الحالية؟\nسيتم حفظ وتجميد السجل وترحيل المهام المعلقة للمشرف التالي.")) {
+      const s = calculateStats(state.items);
+      let confirmMsg = "هل أنت متأكد من إنهاء وتسليم ورديتك الحالية؟\nسيتم حفظ وتجميد السجل وترحيل المهام المعلقة للمشرف التالي.";
+      if (s.percentage < 30) {
+        confirmMsg = `⚠️ تنبيه هام:\nنسبة الإنجاز في هذه الوردية منخفضة جداً (${s.percentage}% فقط - تم إنجاز ${s.done} من أصل ${s.total} مهمة).\n\nهل أنت متأكد تماماً من إنهاء وتسليم الوردية بهذه النسبة؟`;
+      }
+      if (!confirm(confirmMsg)) {
         return;
       }
       const notesArea = document.getElementById('handoverModalNotes');
@@ -6428,9 +6509,9 @@
       const container = document.getElementById('supervisorsListContainer');
       let list = getSupervisorsList();
 
-      // If branch_manager, only show users belonging to this branch
+      // If branch_manager, only show floor supervisors belonging to this branch (hide admin accounts)
       if (currentUserRole === 'branch_manager') {
-        list = list.filter(s => s.branchId === currentBranchId || s.id === 'admin');
+        list = list.filter(s => s.branchId === currentBranchId && s.id !== 'admin' && s.role !== 'admin');
       }
 
       container.innerHTML = list.map(s => {
@@ -6553,6 +6634,10 @@
     }
 
     async function saveSupervisorForm() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة فقط.");
+        return;
+      }
       const id = document.getElementById('editSupervisorId').value;
       const name = document.getElementById('inputSupervisorName').value.trim();
       const pin = document.getElementById('inputSupervisorPin').value.trim();
@@ -6565,6 +6650,14 @@
 
       // Strict security: Branch Managers can ONLY add/edit floor supervisors to their own branch
       if (currentUserRole === 'branch_manager') {
+        const curList = getSupervisorsList();
+        if (id) {
+          const targetSup = curList.find(s => s.id === id);
+          if (targetSup && (targetSup.role === 'admin' || targetSup.role === 'branch_manager' || targetSup.branchId !== currentBranchId)) {
+            errBox.innerText = 'عذراً، يمكن لمدير الفرع تعديل مسؤولي صالة فرعه فقط.';
+            return;
+          }
+        }
         branchId = currentBranchId;
         role = 'supervisor';
       }
@@ -6659,6 +6752,10 @@
     }
 
     function deleteSupervisor(id) {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة فقط.");
+        return;
+      }
       let list = getSupervisorsList();
       const sup = list.find(s => s.id === id);
       if (!sup) {
@@ -6668,6 +6765,11 @@
 
       if (sup.role === 'admin' || sup.id === 'admin') {
         alert("لا يمكن حذف حساب المدير العام الرئيسي!");
+        return;
+      }
+
+      if (currentUserRole === 'branch_manager' && (sup.branchId !== currentBranchId || sup.role !== 'supervisor')) {
+        alert("عذراً، يمكن لمدير الفرع حذف مسؤولي صالة فرعه فقط.");
         return;
       }
 
@@ -6714,6 +6816,10 @@
     }
 
     function onAdminSwitchBranch(newBranchId) {
+      if (currentUserRole !== 'admin') {
+        alert("عذراً، الانتقال بين الفروع مخصص للمدير العام فقط.");
+        return;
+      }
       currentBranchId = newBranchId;
       updateBranchUI();
       loadStateForCurrentShift();
