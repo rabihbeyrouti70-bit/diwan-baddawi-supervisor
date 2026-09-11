@@ -7710,15 +7710,33 @@
       const errBox = document.getElementById('directiveFormError');
       if (errBox) errBox.innerText = '';
 
+      listenToBranchDirectives();
       switchDirectiveTab('new');
       renderDirectivesHistoryList();
 
       document.body.classList.add('modal-open');
       const modal = document.getElementById('adminDirectiveModal');
       if (modal) modal.classList.add('open');
+
+      if (directiveModalLiveInterval) clearInterval(directiveModalLiveInterval);
+      directiveModalLiveInterval = setInterval(() => {
+        const m = document.getElementById('adminDirectiveModal');
+        if (m && m.classList.contains('open')) {
+          renderDirectivesHistoryList();
+        } else {
+          clearInterval(directiveModalLiveInterval);
+          directiveModalLiveInterval = null;
+        }
+      }, 2000);
     }
 
+    let directiveModalLiveInterval = null;
+
     function closeAdminDirectiveModal() {
+      if (directiveModalLiveInterval) {
+        clearInterval(directiveModalLiveInterval);
+        directiveModalLiveInterval = null;
+      }
       cancelDirectiveAudioRecording();
       const modal = document.getElementById('adminDirectiveModal');
       if (modal) modal.classList.remove('open');
@@ -7841,14 +7859,17 @@
 
       // Save locally & push to Firebase
       targetBranchIds.forEach(bId => {
+        const branchDirectiveObj = Object.assign({}, directiveObj, { branchId: bId });
         const key = 'diwan_directives_' + bId + '_' + currentDate;
         const curList = safeJsonParse(safeGetItem(key), []);
-        curList.unshift(directiveObj);
+        curList.unshift(branchDirectiveObj);
         safeSetItem(key, JSON.stringify(curList.slice(0, 30)));
+        if (!memoryDirectivesCache[bId]) memoryDirectivesCache[bId] = [];
+        memoryDirectivesCache[bId].unshift(branchDirectiveObj);
 
         if (firebaseDb) {
           firebaseDb.ref('branches/' + bId + '/directives/' + dirId)
-            .set(directiveObj)
+            .set(branchDirectiveObj)
             .catch(e => console.warn('Firebase directive push failed for branch', bId, e));
         }
       });
@@ -8001,10 +8022,35 @@
     // Acknowledge Directive (Read Receipt)
     function acknowledgeDirective(dirId, branchId) {
       const nowStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-      const bId = branchId || currentBranchId;
-      const key = 'diwan_directives_' + bId + '_' + currentDate;
-      const list = memoryDirectivesCache[bId] || safeJsonParse(safeGetItem(key), []);
+      // Resolve acknowledging branch: user's branch takes precedence, then branchId, then search
+      let bId = (currentBranchId && currentBranchId !== 'all') ? currentBranchId : (branchId && branchId !== 'all' ? branchId : null);
 
+      if (!bId) {
+        const branches = getBranchesList();
+        for (const b of branches) {
+          const list = memoryDirectivesCache[b.id] || safeJsonParse(safeGetItem('diwan_directives_' + b.id + '_' + currentDate), []);
+          if (list.some(d => d.id === dirId)) {
+            bId = b.id;
+            break;
+          }
+        }
+      }
+
+      if (!bId) bId = currentBranchId;
+
+      // 1. Update in memory cache
+      if (memoryDirectivesCache[bId]) {
+        const item = memoryDirectivesCache[bId].find(d => d.id === dirId);
+        if (item) {
+          item.acknowledged = true;
+          item.acknowledgedBy = currentSupervisor;
+          item.acknowledgedAt = 'اليوم ' + nowStr;
+        }
+      }
+
+      // 2. Update in localStorage
+      const key = 'diwan_directives_' + bId + '_' + currentDate;
+      const list = safeJsonParse(safeGetItem(key), []);
       const idx = list.findIndex(d => d.id === dirId);
       if (idx !== -1) {
         list[idx].acknowledged = true;
@@ -8013,12 +8059,14 @@
         safeSetItem(key, JSON.stringify(list));
       }
 
-      // Sync acknowledgment to Firebase in realtime
+      // 3. Sync acknowledgment to Firebase in realtime
       if (firebaseDb && bId && bId !== 'all') {
         firebaseDb.ref('branches/' + bId + '/directives/' + dirId).update({
           acknowledged: true,
           acknowledgedBy: currentSupervisor,
           acknowledgedAt: 'اليوم ' + nowStr
+        }).then(() => {
+          console.log('✅ Acknowledgment synced to Firebase for branch:', bId);
         }).catch(e => console.warn('Acknowledge sync failed:', e));
       }
 
@@ -8037,16 +8085,15 @@
 
       if (filterContainer) {
         if (currentUserRole === 'admin') {
-          const currentFilterVal = document.getElementById('directiveLogBranchFilterSelect')
-            ? document.getElementById('directiveLogBranchFilterSelect').value
-            : 'all';
-
-          filterContainer.innerHTML = `
-            <select id="directiveLogBranchFilterSelect" class="form-control" style="font-size: 11.5px; padding: 3px 8px; width: auto; font-weight: 700;" onchange="renderDirectivesHistoryList()">
-              <option value="all" ${currentFilterVal === 'all' ? 'selected' : ''}>🌐 كافة الفروع</option>
-              ${branches.map(b => `<option value="${b.id}" ${currentFilterVal === b.id ? 'selected' : ''}>${escapeHtml(b.nameAr)}</option>`).join('')}
-            </select>
-          `;
+          let sel = document.getElementById('directiveLogBranchFilterSelect');
+          if (!sel) {
+            filterContainer.innerHTML = `
+              <select id="directiveLogBranchFilterSelect" class="form-control" style="font-size: 11.5px; padding: 3px 8px; width: auto; font-weight: 700;" onchange="renderDirectivesHistoryList()">
+                <option value="all">🌐 كافة الفروع</option>
+                ${branches.map(b => `<option value="${b.id}">${escapeHtml(b.nameAr)}</option>`).join('')}
+              </select>
+            `;
+          }
         } else {
           filterContainer.innerHTML = '';
         }
