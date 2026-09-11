@@ -1790,338 +1790,458 @@
        SURGICAL & DEEP MOBILE RESPONSIVE ENGINE (Smartphones & Tablets)
        ============================================================ */
     @media (max-width: 768px) {
-      /* Safe Area & Container */
+      /* ============================================================
+         SURGICAL MOBILE RESPONSIVE ENGINE (ديوان ماركت للهواتف الذكية)
+         ============================================================ */
+
+      /* 1. VIEWPORT & SAFE AREA */
       body {
-        padding-bottom: max(50px, env(safe-area-inset-bottom));
-        -webkit-text-size-adjust: 100%;
+        padding-bottom: max(65px, env(safe-area-inset-bottom)) !important;
+        -webkit-text-size-adjust: 100% !important;
+        overflow-x: hidden !important;
       }
       .app-container {
-        padding: 8px 10px;
+        padding: 6px 8px 20px 8px !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
       }
 
-      /* 1. TOP HEADER (STICKY ON MOBILE) */
+      /* 2. SMART MOBILE TOP HEADER (COMPACT & ERGONOMIC) */
       .top-header {
-        position: sticky;
-        top: 0;
-        z-index: 500;
-        padding: 8px 10px;
-        margin-bottom: 10px;
-        border-radius: 0 0 16px 16px;
-        margin-left: -10px;
-        margin-right: -10px;
-        width: calc(100% + 20px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 500 !important;
+        padding: 8px 10px 10px 10px !important;
+        margin-bottom: 10px !important;
+        border-radius: 0 0 16px 16px !important;
+        margin-left: -8px !important;
+        margin-right: -8px !important;
+        width: calc(100% + 16px) !important;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
       }
       .header-content {
-        gap: 6px;
+        gap: 6px !important;
+        width: 100% !important;
       }
       .brand-center-block {
-        gap: 10px;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        gap: 8px !important;
+      }
+      .brand-logo-wrap {
+        display: flex !important;
+        align-items: center !important;
       }
       .brand-logo {
-        height: 36px !important;
-        border-radius: 8px;
+        height: 32px !important;
+        width: auto !important;
+        border-radius: 6px !important;
+      }
+      .brand-text-wrap {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+      }
+      .brand-heading {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
       }
       .brand-name-ar {
-        font-size: 16.5px !important;
+        font-size: 15px !important;
+        font-weight: 900 !important;
+        color: #ffffff !important;
+      }
+      .brand-dot {
+        color: rgba(255, 255, 255, 0.5) !important;
       }
       .brand-branch-pill {
-        font-size: 11px !important;
-        padding: 2px 8px !important;
+        font-size: 10.5px !important;
+        padding: 1.5px 7px !important;
+        background: rgba(16, 185, 129, 0.25) !important;
+        border: 1px solid rgba(52, 211, 153, 0.4) !important;
+        border-radius: 999px !important;
+        color: #a7f3d0 !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
       }
-      .brand-subheading span.en {
-        font-size: 10px !important;
+      .brand-subheading {
+        display: none !important; /* Keeps header slim and prevents line clutter on small phones */
       }
 
-      /* Horizontal Action Bar with smooth momentum swipe */
+      /* 3. HEADER ACTIONS TOOLBAR WITH SMOOTH MOMENTUM SWIPE */
       .header-actions {
-        width: 100%;
+        width: 100% !important;
         display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 6px;
-        padding: 2px 2px 4px 2px;
-        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 5px !important;
+        padding: 2px 0 4px 0 !important;
       }
       .header-actions::-webkit-scrollbar {
-        display: none;
+        display: none !important;
+      }
+            .btn-full-text {
+        display: none !important;
+      }
+      .btn-mobile-text {
+        display: inline !important;
       }
       .header-actions .btn {
-        flex-shrink: 0;
-        white-space: nowrap;
-        font-size: 11.5px !important;
-        font-weight: 800;
-        padding: 6px 12px !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        padding: 5px 11px !important;
         border-radius: 999px !important;
-        min-height: 34px;
-        touch-action: manipulation;
+        min-height: 36px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        touch-action: manipulation !important;
+        transition: transform 0.1s ease, background 0.1s ease !important;
       }
       .header-actions .btn:active {
-        transform: scale(0.95);
+        transform: scale(0.93) !important;
       }
       .sync-badge {
-        flex-shrink: 0;
-        padding: 6px 10px;
-        font-size: 11px;
-        border-radius: 999px;
+        flex-shrink: 0 !important;
+        padding: 4px 9px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        border-radius: 999px !important;
+        min-height: 36px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+      }
+      #btnBgKeepAlive {
+        flex-shrink: 0 !important;
+        min-height: 36px !important;
       }
       #adminBranchSwitcher {
         flex-shrink: 0 !important;
-        padding: 4px 8px !important;
+        padding: 2px 6px !important;
         border-radius: 999px !important;
+        min-height: 36px !important;
       }
       #headerBranchSelect {
-        font-size: 12px !important;
-        min-height: 32px;
+        font-size: 11.5px !important;
+        min-height: 30px !important;
+        padding: 2px 6px !important;
       }
 
-            /* EXECUTIVE & BRANCH MANAGER PANELS ON MOBILE */
+      /* 4. LIVE PRESENCE RADAR STRIP ON MOBILE */
+      #managerLivePresenceStrip {
+        padding: 8px 12px !important;
+        border-radius: 10px !important;
+        margin-bottom: 10px !important;
+      }
+      #managerLivePresenceList {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        padding-bottom: 2px !important;
+      }
+      #managerLivePresenceList::-webkit-scrollbar {
+        display: none !important;
+      }
+
+      /* 5. ADMIN & BRANCH MANAGER PANELS ON MOBILE */
       .admin-executive-card, .branch-manager-card {
-        padding: 12px;
-        margin-bottom: 12px;
-        border-radius: 14px;
+        padding: 10px 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px !important;
       }
       .admin-panel-grid {
         grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
+        gap: 6px !important;
       }
       .admin-grid-btn {
-        padding: 10px;
-        min-height: 70px;
+        padding: 8px 10px !important;
+        min-height: 64px !important;
+        border-radius: 10px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
+        touch-action: manipulation !important;
+      }
+      .admin-grid-btn:active {
+        transform: scale(0.96) !important;
+      }
+      .admin-grid-btn .btn-icon {
+        font-size: 18px !important;
+        margin-bottom: 2px !important;
       }
       .admin-grid-btn .btn-text {
-        font-size: 12.5px;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        line-height: 1.25 !important;
       }
       .admin-grid-btn .btn-sub {
-        font-size: 10px;
+        display: none !important; /* Hide verbose subtitle to prevent overflow */
       }
 
-      /* 2. SHIFT & SUPERVISOR CARD */
+      /* 6. RESPONSIVE EXCEL WORKBOOK TABS (PERFECT STICKY ALIGNMENT) */
+      .excel-workbook-container {
+        position: sticky !important;
+        top: 74px !important; /* Perfectly aligns below mobile header */
+        z-index: 95 !important;
+        padding: 6px 8px 0 8px !important;
+        margin-top: 8px !important;
+        margin-bottom: 0 !important;
+        border-radius: 10px 10px 0 0 !important;
+      }
+      .excel-workbook-header {
+        margin-bottom: 4px !important;
+        padding-bottom: 4px !important;
+      }
+      .excel-title-text {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+      }
+      .excel-branch-badge {
+        font-size: 10px !important;
+        padding: 1px 6px !important;
+      }
+      .excel-scroll-btn {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 11px !important;
+      }
+      .excel-tabs-track {
+        gap: 4px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding-bottom: 0 !important;
+      }
+      .excel-tabs-track::-webkit-scrollbar {
+        display: none !important;
+      }
+      .excel-sheet-tab {
+        min-height: 42px !important;
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+        border-radius: 8px 8px 0 0 !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        touch-action: manipulation !important;
+      }
+      .excel-sheet-tab.active {
+        font-size: 12.5px !important;
+        font-weight: 900 !important;
+        border-top: 3.5px solid var(--primary) !important;
+        background: #ffffff !important;
+      }
+
+      /* 7. SHIFT CARD & SUPERVISOR BADGE */
       .shift-card {
-        padding: 12px 14px;
-        margin-bottom: 12px;
-        border-radius: 14px;
+        padding: 10px 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px !important;
       }
       .shift-grid {
         grid-template-columns: 1fr !important;
-        gap: 10px !important;
+        gap: 8px !important;
       }
       .active-supervisor-card {
-        padding: 8px 12px;
-        border-radius: 10px;
+        padding: 8px 10px !important;
+        border-radius: 8px !important;
       }
       .active-supervisor-card .sup-name {
-        font-size: 14px;
+        font-size: 13.5px !important;
       }
       .btn-switch-user {
-        min-height: 36px;
-        padding: 6px 12px;
-        font-size: 12px;
-        border-radius: 8px;
-        touch-action: manipulation;
+        min-height: 38px !important;
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+        border-radius: 8px !important;
+        touch-action: manipulation !important;
       }
       .form-group label {
-        font-size: 12px;
-        margin-bottom: 4px;
+        font-size: 11.5px !important;
+        margin-bottom: 3px !important;
       }
       .form-control {
-        min-height: 46px !important;
-        font-size: 16px !important; /* Crucial: Eliminates iOS Safari auto-zoom! */
+        min-height: 44px !important;
+        font-size: 16px !important; /* Apple HIG standard: Prevents auto-zoom in Safari iOS */
         padding: 8px 12px !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
       }
 
-      /* 3. STATS & PROGRESS CARD */
+      /* 8. STATS & HORIZONTAL FILTER BAR */
       .stats-card {
-        padding: 12px 14px;
-        margin-bottom: 12px;
-        border-radius: 14px;
-      }
-      .progress-header {
-        margin-bottom: 8px;
-      }
-      .progress-title {
-        font-size: 14px;
-      }
-      .progress-percentage {
-        font-size: 18px;
-        font-weight: 900;
-      }
-      .progress-track {
-        height: 10px;
-        margin-bottom: 12px;
+        padding: 10px 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px !important;
       }
       .stat-pills {
         grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
+        gap: 6px !important;
       }
       .stat-pill {
-        padding: 10px 8px;
-        border-radius: 10px;
-        touch-action: manipulation;
-      }
-      .stat-pill:active {
-        transform: scale(0.96);
+        padding: 8px 6px !important;
+        border-radius: 8px !important;
+        touch-action: manipulation !important;
       }
       .stat-pill .num {
-        font-size: 22px;
-        font-weight: 900;
+        font-size: 20px !important;
       }
-      .stat-pill .label {
-        font-size: 11px;
-        font-weight: 700;
-      }
-
-      /* 4. HORIZONTAL FILTER BAR */
       .filter-bar {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 6px;
-        padding: 2px 2px 8px 2px;
-        margin-bottom: 10px;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 5px !important;
+        padding: 2px 0 6px 0 !important;
+        margin-bottom: 8px !important;
       }
       .filter-bar::-webkit-scrollbar {
-        display: none;
+        display: none !important;
       }
       .filter-btn {
-        flex-shrink: 0;
-        white-space: nowrap;
-        padding: 8px 14px;
-        font-size: 12px;
-        border-radius: 999px;
-        min-height: 38px;
-        touch-action: manipulation;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 6px 12px !important;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        border-radius: 999px !important;
+        min-height: 36px !important;
+        touch-action: manipulation !important;
       }
 
-      /* 5. SECTION ACCORDIONS */
+      /* 9. CHECKLIST ITEMS & LARGE THUMB STATUS BUTTONS */
       .section-card {
-        border-radius: 12px;
-        margin-bottom: 10px;
-        border: 1.5px solid var(--border);
+        border-radius: 10px !important;
+        margin-bottom: 8px !important;
       }
       .section-header {
-        padding: 12px 14px;
-        min-height: 52px;
-        touch-action: manipulation;
-      }
-      .section-title-group {
-        gap: 8px;
+        padding: 10px 12px !important;
+        min-height: 48px !important;
+        touch-action: manipulation !important;
       }
       .section-num {
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 800;
-        flex-shrink: 0;
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 6px !important;
+        font-size: 12px !important;
       }
       .section-title-ar {
-        font-size: 15px;
-        font-weight: 800;
+        font-size: 14px !important;
+        font-weight: 800 !important;
       }
       .section-title-en {
-        font-size: 11px;
-        display: block;
-        margin-top: 1px;
+        display: none !important; /* Hide english sub-labels inside items on mobile for compact view */
       }
       .section-badge {
-        font-size: 11px;
-        padding: 3px 8px;
+        font-size: 10.5px !important;
+        padding: 2px 7px !important;
       }
       .section-body {
-        padding: 10px 12px;
+        padding: 8px 10px !important;
       }
-
-      /* 6. CHECKLIST ITEMS (Thumb-friendly 2x2 grid) */
       .item-row {
-        padding: 14px 0;
-        gap: 10px;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 12px 0 !important;
+        gap: 8px !important;
       }
       .item-main {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
       }
       .item-titles {
-        min-width: 100%;
+        min-width: 100% !important;
       }
       .item-ar {
-        font-size: 15px;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.35;
-      }
-      .item-en {
-        font-size: 11px;
-        color: #64748b;
+        font-size: 14.5px !important;
+        font-weight: 800 !important;
+        line-height: 1.35 !important;
       }
       .status-group {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: 5px !important;
         width: 100% !important;
-        background: #f1f5f9;
-        padding: 4px;
-        border-radius: 10px;
+        background: #f1f5f9 !important;
+        padding: 4px !important;
+        border-radius: 10px !important;
       }
       .status-pill {
-        min-height: 44px; /* Apple HIG 44px minimum target */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 6px 8px;
-        font-size: 13px;
-        font-weight: 800;
-        border-radius: 8px;
-        touch-action: manipulation;
-        user-select: none;
+        min-height: 48px !important; /* 48px Touch target - easily reachable with thumb */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        padding: 6px 8px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        touch-action: manipulation !important;
+        user-select: none !important;
+        transition: transform 0.1s ease, box-shadow 0.1s ease !important;
       }
       .status-pill:active {
-        transform: scale(0.96);
+        transform: scale(0.94) !important;
       }
       .item-note-input {
-        min-height: 42px;
-        font-size: 15px;
-        padding: 8px 12px;
-        border-radius: 8px;
-        background: #f8fafc;
+        min-height: 42px !important;
+        font-size: 16px !important; /* Prevents auto-zoom on iOS */
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
       }
 
-      /* 7. REFRIGERATOR TEMPERATURES */
+      /* 10. REFRIGERATOR TEMPERATURES */
       .temperatures-container {
-        padding: 12px;
-        border-radius: 10px;
-        margin: 12px 0;
+        padding: 10px !important;
+        border-radius: 10px !important;
+        margin: 10px 0 !important;
       }
       .temp-grid {
         grid-template-columns: 1fr !important;
-        gap: 8px;
+        gap: 8px !important;
       }
       .temp-card {
-        padding: 10px 12px;
-        border-radius: 8px;
-        min-height: 60px;
+        padding: 10px 12px !important;
+        border-radius: 8px !important;
+        min-height: 60px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
       }
       .temp-info h4 {
-        font-size: 13px;
-        font-weight: 700;
+        font-size: 13px !important;
+        font-weight: 800 !important;
       }
       .temp-input {
-        width: 76px;
-        min-height: 44px;
-        font-size: 19px;
-        font-weight: 800;
-        border-radius: 8px;
+        width: 84px !important;
+        min-height: 46px !important;
+        font-size: 20px !important;
+        font-weight: 900 !important;
+        border-radius: 10px !important;
+        text-align: center !important;
       }
 
-      /* 8. MODALS - BOTTOM SHEET ON MOBILE */
+      /* 11. BOTTOM SHEET MODALS WITH PINNED HEADERS & ACTION FOOTERS */
       .modal-overlay {
         align-items: flex-end !important;
         padding: 0 !important;
@@ -2129,39 +2249,42 @@
       .modal-card {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: 92dvh !important;
+        max-height: 94dvh !important;
         border-radius: 20px 20px 0 0 !important;
-        padding: 18px 16px max(24px, env(safe-area-inset-bottom)) 16px !important;
+        padding: 16px 14px max(20px, env(safe-area-inset-bottom)) 14px !important;
         margin: 0 !important;
         overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
+        -webkit-overflow-scrolling: touch !important;
       }
       .modal-header {
-        position: sticky;
-        top: 0;
-        background: white;
-        z-index: 10;
-        padding-bottom: 10px;
-        margin-bottom: 12px;
+        position: sticky !important;
+        top: -16px !important;
+        background: #ffffff !important;
+        z-index: 30 !important;
+        padding: 12px 0 10px 0 !important;
+        margin-top: -16px !important;
+        margin-bottom: 12px !important;
+        border-bottom: 1px solid var(--border) !important;
       }
       .modal-title {
-        font-size: 16px;
+        font-size: 15px !important;
+        font-weight: 800 !important;
       }
       .close-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 22px;
-        border-radius: 8px;
-        touch-action: manipulation;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 22px !important;
+        border-radius: 8px !important;
+        touch-action: manipulation !important;
+      }
+      .close-btn:active {
+        transform: scale(0.92) !important;
       }
 
-      /* 9. AUTH / LOCK SCREEN */
+      /* 12. PIN AUTH LOCK SCREEN */
       .auth-overlay {
-        padding: 12px;
-        min-height: 100dvh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding: 12px max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+        min-height: 100dvh !important;
       }
       .auth-card {
         width: 100% !important;
@@ -2169,85 +2292,96 @@
         padding: 20px 16px !important;
         border-radius: 18px !important;
         max-height: 94dvh !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
       }
       .auth-logo {
-        height: 42px !important;
+        height: 40px !important;
         margin-bottom: 8px !important;
       }
       .auth-title {
-        font-size: 17px !important;
-        margin-bottom: 4px;
-      }
-      .auth-subtitle {
-        font-size: 11px !important;
-        margin-bottom: 12px !important;
+        font-size: 16px !important;
       }
       .pin-input {
         min-height: 48px !important;
         font-size: 24px !important;
-        letter-spacing: 12px !important;
-        padding: 6px 12px !important;
         border-radius: 12px !important;
-        margin-bottom: 10px !important;
       }
       .keypad-grid {
         gap: 8px !important;
-        margin-bottom: 10px !important;
       }
       .key-btn {
-        min-height: 50px !important;
-        font-size: 20px !important;
+        min-height: 52px !important;
+        font-size: 22px !important;
         border-radius: 12px !important;
-        touch-action: manipulation;
+        touch-action: manipulation !important;
       }
       .key-btn:active {
-        background: var(--primary) !important;
-        color: white !important;
-        transform: scale(0.94);
+        transform: scale(0.93) !important;
       }
 
-      /* 10. TOAST NOTIFICATIONS */
+      /* 13. TOAST NOTIFICATIONS */
       .toast {
-        width: 90%;
-        max-width: 360px;
+        width: 92% !important;
+        max-width: 380px !important;
         left: 50% !important;
         bottom: max(16px, env(safe-area-inset-bottom)) !important;
-        padding: 10px 16px !important;
-        font-size: 13px !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+        padding: 10px 14px !important;
+        font-size: 12.5px !important;
+        border-radius: 10px !important;
+      }
+    }
+
+    /* Extra compact tier for iPhone SE / small screens */
+    @media (max-width: 375px) {
+      .brand-name-ar {
+        font-size: 13.5px !important;
+      }
+      .brand-branch-pill {
+        font-size: 9.5px !important;
+        padding: 1px 5px !important;
+      }
+      .header-actions .btn, .sync-badge {
+        font-size: 10px !important;
+        padding: 4px 7px !important;
+        min-height: 34px !important;
+      }
+      .excel-sheet-tab {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+      }
+      .status-pill {
+        font-size: 12px !important;
+        min-height: 44px !important;
+      }
+      .admin-grid-btn {
+        padding: 6px 8px !important;
+      }
+      .admin-grid-btn .btn-text {
+        font-size: 11px !important;
       }
     }
 
     @media (max-height: 680px) and (max-width: 480px) {
-      /* Extra compact for short screens like iPhone SE */
       .auth-card {
-        padding: 14px 14px !important;
+        padding: 12px 12px !important;
       }
       .auth-logo {
-        height: 36px !important;
-        margin-bottom: 6px !important;
+        height: 34px !important;
+        margin-bottom: 4px !important;
       }
       .auth-title {
-        font-size: 15px !important;
+        font-size: 14.5px !important;
       }
       .auth-subtitle {
-        font-size: 10px !important;
-        margin-bottom: 8px !important;
-      }
-      .form-group {
-        margin-bottom: 8px !important;
+        font-size: 9.5px !important;
+        margin-bottom: 6px !important;
       }
       .pin-input {
-        min-height: 42px !important;
-        font-size: 20px !important;
-        margin-bottom: 6px !important;
+        min-height: 40px !important;
+        font-size: 18px !important;
+        margin-bottom: 4px !important;
       }
       .keypad-grid {
-        gap: 6px !important;
-        margin-bottom: 6px !important;
+        gap: 5px !important;
       }
       .key-btn {
         min-height: 42px !important;
@@ -2255,10 +2389,30 @@
       }
     }
 
+
     .print-header, .print-signatures {
       display: none;
     }
   
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    @media (max-width: 768px) {
+      .modal-footer {
+        position: sticky !important;
+        bottom: -16px !important;
+        background: #ffffff !important;
+        z-index: 25 !important;
+        padding: 10px 0 max(16px, env(safe-area-inset-bottom)) 0 !important;
+        border-top: 1px solid var(--border) !important;
+        margin-top: 12px !important;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04) !important;
+      }
+    }
+
     /* ============================================================
        ADMINISTRATIVE DIRECTIVES & REALTIME NOTIFICATIONS
        ============================================================ */
@@ -2487,23 +2641,23 @@
           </div>
 
           <button id="btnHqOverview" class="btn btn-outline-white btn-sm" onclick="openHqOverviewModal()" style="display: none;" title="لوحة المتابعة المركزية لكافة الفروع">
-            🏢 ملخص الفروع
+            🏢 <span class="btn-full-text">ملخص الفروع</span><span class="btn-mobile-text" style="display: none;">الملخص</span>
           </button>
 
           <button id="btnManageSupervisors" class="btn btn-primary btn-sm" onclick="openSupervisorsModal()" style="display: none; background: #2563eb; border-color: #1d4ed8;" title="إدارة مسؤولي الصالة (صلاحية الإدارة فقط)">
-            👥 إدارة المشرفين
+            👥 <span class="btn-full-text">إدارة المشرفين</span><span class="btn-mobile-text" style="display: none;">المشرفين</span>
           </button>
 
           <button id="btnManageShifts" class="btn btn-primary btn-sm" onclick="openShiftsModal()" style="display: none; background: #0284c7; border-color: #0369a1;" title="إدارة وتخصيص ورديات الفروع (صلاحية الإدارة)">
-            🕒 إدارة الورديات
+            🕒 <span class="btn-full-text">إدارة الورديات</span><span class="btn-mobile-text" style="display: none;">الورديات</span>
           </button>
 
           <button id="btnManageBranches" class="btn btn-primary btn-sm" onclick="openBranchesModal()" style="display: none; background: #059669; border-color: #047857;" title="إدارة وإضافة فروع ديوان ماركت (صلاحية الإدارة)">
-            📍 إدارة الفروع
+            📍 <span class="btn-full-text">إدارة الفروع</span><span class="btn-mobile-text" style="display: none;">الفروع</span>
           </button>
 
-          <button class="btn btn-outline-white" onclick="window.print()">
-            🖨️ طباعة
+          <button class="btn btn-outline-white btn-sm" onclick="window.print()" title="طباعة تقرير الوردية">
+            🖨️ <span class="btn-full-text">طباعة</span>
           </button>
 
           <button id="btnHeaderDirectives" class="btn btn-outline-white btn-sm" onclick="openAdminDirectiveModal()" style="display: none; color: #d97706; border-color: #f59e0b;" title="التوجيهات والملاحظات الإدارية">📢 التوجيهات</button>
@@ -2853,7 +3007,7 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-outline-white" style="color: var(--text); border-color: var(--border);" onclick="closeHandoverModal()">إلغاء</button>
         <button type="button" class="btn btn-primary" onclick="submitHandover()">تأكيد تسليم الوردية</button>
       </div>
@@ -3264,7 +3418,7 @@
 
         <div id="directiveFormError" style="color: #dc2626; font-size: 12px; font-weight: 700; margin-bottom: 10px;"></div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <span style="font-size: 11px; color: var(--text-muted);">🔔 سيتلقى المستهدف إشعاراً فورياً على هاتفه مع نغمة تنبيه واهتزاز.</span>
           <div style="display: flex; gap: 8px;">
             <button type="button" class="btn btn-outline-white btn-sm" onclick="closeAdminDirectiveModal()">إلغاء</button>
@@ -6090,7 +6244,7 @@
                     <div class="temp-shift-col ${isAlert ? 'alert' : ''} ${!editable ? 'slot-locked' : ''}">
                       <span class="temp-shift-tag">${shIcon} ${escapeHtml(sh.nameAr)} ${!editable ? '<small style="color: #94a3b8; font-size: 10px;">🔒</small>' : ''}</span>
                       <div class="temp-shift-input-wrap">
-                        <input type="number" step="0.1" class="temp-shift-input" 
+                        <input type="number" step="0.1" inputmode="decimal" class="temp-shift-input" 
                           placeholder="--" 
                           value="${val}"
                           ${!editable ? 'readonly' : ''}
