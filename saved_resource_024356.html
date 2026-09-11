@@ -3255,7 +3255,12 @@
             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
             <span style="font-size: 12px; color: var(--text); font-weight: 700;">مزامنة لحظية مباشرة لمتابعة استلام التوجيهات وتأكيد التنفيذ:</span>
           </div>
-          <div id="directiveLogBranchFilterContainer"></div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div id="directiveLogBranchFilterContainer"></div>
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="clearOldDirectives()" style="color: #ef4444; border-color: #fca5a5; font-size: 11px; padding: 3px 10px; font-weight: 800; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;" title="إلغاء ومسح التوجيهات القديمة المؤكدة">
+              🗑️ مسح التوجيهات القديمة
+            </button>
+          </div>
         </div>
         <div id="directivesLogContainer" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <!-- Populated dynamically -->
@@ -8163,7 +8168,7 @@
                 <strong style="font-size: 13px; color: var(--secondary);">من: ${escapeHtml(d.senderName)}</strong>
                 <span style="font-size: 11px; color: var(--text-muted);">🕒 ${escapeHtml(d.timeFormatted || '')}</span>
               </div>
-              <div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 ${isAck ? `
                   <span style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
                     ✅ تم الاطلاع والتنفيذ: ${escapeHtml(d.acknowledgedBy || 'المشرف')} (${escapeHtml(d.acknowledgedAt || '')})
@@ -8173,6 +8178,11 @@
                     ⏳ قيد الانتظار (لم يؤكد بعد)
                   </span>
                 `}
+                ${(currentUserRole === 'admin' || currentUserRole === 'branch_manager') ? `
+                  <button type="button" class="btn btn-sm" onclick="cancelSingleDirective('${escapeHtml(d.id)}', '${escapeHtml(d.branchId || '')}')" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 6px; cursor: pointer;" title="إلغاء وحذف هذا التوجيه">
+                    🗑️ إلغاء
+                  </button>
+                ` : ''}
               </div>
             </div>
             ${d.text ? `<div style="font-size: 13px; color: var(--text); background: #f8fafc; padding: 8px 10px; border-radius: 6px; margin: 6px 0; border: 1px solid #f1f5f9;">${escapeHtml(d.text)}</div>` : ''}
@@ -8185,6 +8195,84 @@
           </div>
         `;
       }).join('');
+    }
+
+    // Cancel / Delete a Single Directive
+    function cancelSingleDirective(dirId, branchId) {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') return;
+      if (!confirm("هل أنت متأكد من إلغاء وحذف هذا التوجيه؟")) return;
+
+      const branches = getBranchesList();
+      const targetBranches = (branchId && branchId !== 'all')
+        ? [branchId]
+        : branches.map(b => b.id);
+
+      targetBranches.forEach(bId => {
+        if (memoryDirectivesCache[bId]) {
+          memoryDirectivesCache[bId] = memoryDirectivesCache[bId].filter(d => d.id !== dirId);
+        }
+
+        const key = 'diwan_directives_' + bId + '_' + currentDate;
+        const list = safeJsonParse(safeGetItem(key), []);
+        const filtered = list.filter(d => d.id !== dirId);
+        safeSetItem(key, JSON.stringify(filtered));
+
+        if (firebaseDb) {
+          firebaseDb.ref('branches/' + bId + '/directives/' + dirId).remove()
+            .catch(e => console.warn('Firebase directive remove error:', e));
+        }
+      });
+
+      showToast("🗑️ تم إلغاء وحذف التوجيه بنجاح!");
+      checkAndRenderActiveDirectives();
+      renderDirectivesHistoryList();
+    }
+
+    // Clear / Cancel Old Completed Directives
+    function clearOldDirectives() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') return;
+      if (!confirm("هل تريد مسح كافة التوجيهات القديمة المكتملة (التي تم تأكيد تنفيذها)؟")) return;
+
+      const branches = getBranchesList();
+      let clearedCount = 0;
+
+      branches.forEach(b => {
+        const bId = b.id;
+        const key = 'diwan_directives_' + bId + '_' + currentDate;
+        const list = memoryDirectivesCache[bId] || safeJsonParse(safeGetItem(key), []);
+
+        const toKeep = [];
+        const toRemove = [];
+
+        list.forEach(d => {
+          if (d.acknowledged) {
+            toRemove.push(d);
+          } else {
+            toKeep.push(d);
+          }
+        });
+
+        if (toRemove.length > 0) {
+          clearedCount += toRemove.length;
+          memoryDirectivesCache[bId] = toKeep;
+          safeSetItem(key, JSON.stringify(toKeep));
+
+          if (firebaseDb) {
+            toRemove.forEach(d => {
+              firebaseDb.ref('branches/' + bId + '/directives/' + d.id).remove().catch(e => {});
+            });
+          }
+        }
+      });
+
+      if (clearedCount > 0) {
+        showToast(`🧹 تم مسح ${clearedCount} توجيه قديم بنجاح!`);
+      } else {
+        showToast("لا توجد توجيهات قديمة مكتملة لمسحها.");
+      }
+
+      checkAndRenderActiveDirectives();
+      renderDirectivesHistoryList();
     }
 
     /* ============================================================
