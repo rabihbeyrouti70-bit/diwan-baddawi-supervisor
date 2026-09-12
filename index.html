@@ -10647,10 +10647,8 @@
 
         activePeerConnection.ontrack = (event) => {
           console.log(' Caller received remote audio track:', event.streams);
-          const remoteAudio = document.getElementById('remoteAudioElement');
-          if (remoteAudio && event.streams && event.streams[0]) {
-            remoteAudio.srcObject = event.streams[0];
-            remoteAudio.play().catch(e => console.warn('Caller remote play notice:', e));
+          if (event.streams && event.streams[0]) {
+            attachRemoteAudioStream(event.streams[0]);
           }
         };
 
@@ -10952,10 +10950,8 @@
 
       activePeerConnection.ontrack = (event) => {
         console.log(' Callee received remote audio track:', event.streams);
-        const remoteAudio = document.getElementById('remoteAudioElement');
-        if (remoteAudio && event.streams && event.streams[0]) {
-          remoteAudio.srcObject = event.streams[0];
-          remoteAudio.play().catch(e => console.warn('Callee remote audio play notice:', e));
+        if (event.streams && event.streams[0]) {
+          attachRemoteAudioStream(event.streams[0]);
         }
       };
 
@@ -11159,8 +11155,49 @@
       }
     }
 
-    // 7. TOGGLE SPEAKER / EARPIECE AUDIO ROUTING
-    let isSpeakerActive = false; // Default: FALSE (Default to Earpiece / Handset, NOT external speakerphone!)
+    // 7. TOGGLE SPEAKER / EARPIECE AUDIO ROUTING & WEB AUDIO GAIN CONTROLLER
+    let isSpeakerActive = false; // Default: FALSE (Audio strictly stays on internal earpiece, NOT external speakerphone!)
+
+    function attachRemoteAudioStream(stream) {
+      const remoteAudio = document.getElementById('remoteAudioElement');
+      if (!remoteAudio) return;
+      remoteAudio.srcObject = stream;
+
+      // Clear any mediaSession state so mobile OS does NOT treat call as media/music player (which forces loudspeaker)
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'none';
+      }
+
+      // Web Audio Gain Controller for true cross-platform acoustic level control (including iOS Safari)
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          if (!window._callAudioCtx || window._callAudioCtx.state === 'closed') {
+            window._callAudioCtx = new AudioContextClass();
+          }
+          if (window._callAudioCtx.state === 'suspended') {
+            window._callAudioCtx.resume().catch(() => {});
+          }
+          if (window._callGainNode) {
+            try { window._callGainNode.disconnect(); } catch (e) {}
+          }
+          const source = window._callAudioCtx.createMediaStreamSource(stream);
+          window._callGainNode = window._callAudioCtx.createGain();
+          window._callGainNode.gain.value = isSpeakerActive ? 1.0 : 0.4;
+          source.connect(window._callGainNode);
+          window._callGainNode.connect(window._callAudioCtx.destination);
+
+          // Mute raw <audio> element to prevent double playback, since GainNode outputs to destination at correct level
+          remoteAudio.muted = true;
+        }
+      } catch (e) {
+        console.warn('Web Audio gain controller notice:', e);
+        remoteAudio.muted = false;
+      }
+
+      applyCallAudioOutput(isSpeakerActive);
+      remoteAudio.play().catch(e => console.warn('Remote play notice:', e));
+    }
 
     async function applyCallAudioOutput(useSpeaker) {
       isSpeakerActive = !!useSpeaker;
@@ -11169,50 +11206,44 @@
       const remoteAudio = document.getElementById('remoteAudioElement');
       if (!remoteAudio) return;
 
-      // 1. Hardware sink routing via setSinkId if supported (Chromium, modern Safari/WebKit, Android)
+      // 1. Update Web Audio gain node
+      if (window._callGainNode && window._callGainNode.gain) {
+        window._callGainNode.gain.value = useSpeaker ? 1.0 : 0.4;
+      }
+
+      // 2. Manage MediaSession: ONLY set to 'playing' when speaker is explicitly ON
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = useSpeaker ? 'playing' : 'none';
+      }
+
+      // 3. Hardware sink routing via setSinkId if supported
       if (typeof remoteAudio.setSinkId === 'function') {
         try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+          if (useSpeaker) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+            const speakerDevice = audioOutputs.find(d => 
+              d.label.toLowerCase().includes('speaker') || 
+              d.label.toLowerCase().includes('مكبر') ||
+              d.label.toLowerCase().includes('loudspeaker')
+            ) || audioOutputs.find(d => d.deviceId === 'default');
 
-          if (audioOutputs.length > 0) {
-            let targetDevice = null;
-            if (useSpeaker) {
-              targetDevice = audioOutputs.find(d => 
-                d.label.toLowerCase().includes('speaker') || 
-                d.label.toLowerCase().includes('مكبر') ||
-                d.label.toLowerCase().includes('loudspeaker')
-              ) || audioOutputs.find(d => d.deviceId === 'default') || audioOutputs[0];
-            } else {
-              targetDevice = audioOutputs.find(d => 
-                d.label.toLowerCase().includes('earpiece') || 
-                d.label.toLowerCase().includes('receiver') || 
-                d.label.toLowerCase().includes('handset') ||
-                d.label.toLowerCase().includes('سماعة الأذن') ||
-                d.label.toLowerCase().includes('internal') ||
-                d.label.toLowerCase().includes('phone')
-              );
-              if (!targetDevice) {
-                targetDevice = audioOutputs.find(d => 
-                  !d.label.toLowerCase().includes('speaker') && 
-                  !d.label.toLowerCase().includes('مكبر')
-                ) || audioOutputs[0];
-              }
+            if (speakerDevice && speakerDevice.deviceId) {
+              console.log('🔊 [AudioRouting] Routing to external speaker:', speakerDevice.label || speakerDevice.deviceId);
+              await remoteAudio.setSinkId(speakerDevice.deviceId);
             }
-
-            if (targetDevice && targetDevice.deviceId) {
-              console.log(`🔊 [AudioRouting] Setting sink: ${targetDevice.label || targetDevice.deviceId} (useSpeaker=${useSpeaker})`);
-              await remoteAudio.setSinkId(targetDevice.deviceId);
-            }
+          } else {
+            // Private Earpiece mode: Clear sink override so OS uses telephony communication receiver
+            await remoteAudio.setSinkId('');
           }
         } catch (err) {
           console.warn('Audio output sink routing notice:', err);
         }
       }
 
-      // 2. Volume balancing: on earpiece, gentle private level; on speaker, full acoustic level
+      // 4. Element volume fallback
       try {
-        remoteAudio.volume = useSpeaker ? 1.0 : 0.45;
+        remoteAudio.volume = useSpeaker ? 1.0 : 0.4;
       } catch (e) {}
     }
 
@@ -11334,9 +11365,16 @@
         activeCallLocalStream = null;
       }
 
+      if (window._callAudioCtx) {
+        try { window._callAudioCtx.close(); } catch (e) {}
+        window._callAudioCtx = null;
+        window._callGainNode = null;
+      }
+
       const remoteAudio = document.getElementById('remoteAudioElement');
       if (remoteAudio) {
         try {
+          remoteAudio.muted = false;
           remoteAudio.pause();
           remoteAudio.srcObject = null;
         } catch (e) {}
