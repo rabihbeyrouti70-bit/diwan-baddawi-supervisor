@@ -3598,29 +3598,47 @@
   </div>
 
   
-  <!-- MODAL: DIRECT VOICE CALL DIRECTORY -->
+  <!-- MODAL: DIRECT VOICE CALL DIRECTORY & CALL LOGS -->
   <div class="modal-overlay" id="directCallModal" role="dialog" aria-modal="true" aria-labelledby="directCallModalTitle">
-    <div class="modal-card" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
-      <div class="modal-header" style="background: linear-gradient(135deg, #065f46 0%, #047857 100%);">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 26px;">📞</span>
+    <div class="modal-card" style="max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+      <div class="modal-header" style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 16px 20px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 28px;">📞</span>
           <div>
-            <h3 class="modal-title" id="directCallModalTitle" style="color: white; margin: 0; font-size: 16px;">دليل المكالمات الصوتية (الاتصال من الأعلى للأدنى)</h3>
-            <span style="font-size: 11.5px; color: #a7f3d0;">خاصية مخصصة للإدارة للتواصل الهاتفي المباشر مع مسؤولي الصالة</span>
+            <h3 class="modal-title" id="directCallModalTitle" style="color: white; margin: 0; font-size: 16px; font-weight: 800;">منظومة المكالمات الصوتية الإدارية</h3>
+            <span style="font-size: 11.5px; color: #a7f3d0;">الاتصال الهاتفي المباشر وسجل المكالمات (من الأعلى للأدنى)</span>
           </div>
         </div>
         <button class="close-btn" onclick="closeDirectCallModal()" aria-label="إغلاق النافذة" style="color: white;">&times;</button>
       </div>
-      <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
-        <p id="directCallModalDesc" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
-          اختر مسؤول الصالة أو المشرف التابع لفرعك للاتصال به فوراً. المكالمات تتم من الإدارة للأدنى بصوت مباشر عالي النقاء.
-        </p>
-        <div id="directCallListContainer" style="display: flex; flex-direction: column; gap: 10px;">
-          <!-- Populated dynamically -->
+      <!-- Tab Header: Directory vs Call Logs -->
+      <div style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc;">
+        <button type="button" id="tabCallDirectoryBtn" onclick="switchDirectCallTab('directory')" style="flex: 1; padding: 12px; border: none; background: #ffffff; border-bottom: 2.5px solid #059669; font-weight: 800; color: #059669; font-size: 13.5px; cursor: pointer; transition: all 0.2s;">📞 دليل المشرفين للاتصال</button>
+        <button type="button" id="tabCallLogsBtn" onclick="switchDirectCallTab('logs')" style="flex: 1; padding: 12px; border: none; background: transparent; border-bottom: 2.5px solid transparent; font-weight: 700; color: #64748b; font-size: 13.5px; cursor: pointer; transition: all 0.2s;">📋 سجل المكالمات الإدارية</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1; max-height: 60vh;">
+        <!-- Tab 1: Directory -->
+        <div id="directCallDirectoryTab">
+          <p id="directCallModalDesc" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+            اختر مسؤول الصالة للاتصال به فوراً. المكالمات تتم من الإدارة للأدنى بصوت مباشر عالي النقاء.
+          </p>
+          <div id="directCallListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+        <!-- Tab 2: Logs -->
+        <div id="directCallLogsTab" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 12.5px; color: var(--text-muted);">سجل أحدث المكالمات الهاتفية المنفذة:</span>
+            <button type="button" class="btn btn-sm btn-outline-white" onclick="renderDirectCallLogs()" style="color: #059669; border-color: #a7f3d0; font-size: 11px;">🔄 تحديث السجل</button>
+          </div>
+          <div id="directCallLogsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px;">جارٍ تحميل سجل المكالمات...</div>
+          </div>
         </div>
       </div>
       <div class="modal-footer" style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
-        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeDirectCallModal()" style="color: #475569; border-color: #cbd5e1;">إغلاق</button>
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeDirectCallModal()" style="color: #475569; border-color: #cbd5e1; font-weight: 700;">إغلاق</button>
       </div>
     </div>
   </div>
@@ -4822,6 +4840,21 @@
     // Current State (V4.0 Multi-Shift Operations Matrix)
     let currentSupervisor = "علي عبد العال";
     let currentUserId = "admin";
+
+    // Restore saved device identity on startup (ensures incoming calls always reach this supervisor's phone)
+    try {
+      const savedUid = localStorage.getItem('diwan_saved_user_id');
+      if (savedUid) {
+        currentUserId = savedUid;
+        const savedName = localStorage.getItem('diwan_saved_user_name');
+        if (savedName) currentSupervisor = savedName;
+        const savedRole = localStorage.getItem('diwan_saved_user_role');
+        if (savedRole) currentUserRole = savedRole;
+        const savedBranch = localStorage.getItem('diwan_saved_branch_id');
+        if (savedBranch) currentBranchId = savedBranch;
+        console.log('📱 [Device Identity] Restored active supervisor session:', currentUserId, currentSupervisor);
+      }
+    } catch (e) {}
     let currentShiftType = "morning"; // Active operating shift for logging
     let activeShiftView = "all";       // View mode: 'all' (matrix comparison) or 'morning' | 'evening' | 'night'
     let currentDate = new Date().toISOString().split("T")[0];
@@ -5564,6 +5597,15 @@
           failedAttempts = 0;
           currentSupervisor = matchedUser.name;
           currentUserId = matchedUser.id;
+
+          // Persist device identity so incoming calls reach this phone even after refresh/backgrounding
+          try {
+            localStorage.setItem('diwan_saved_user_id', matchedUser.id);
+            localStorage.setItem('diwan_saved_user_name', matchedUser.name);
+            localStorage.setItem('diwan_saved_user_role', matchedUser.role || 'supervisor');
+            if (matchedUser.branchId) localStorage.setItem('diwan_saved_branch_id', matchedUser.branchId);
+          } catch (e) {}
+
           if (typeof listenForIncomingVoiceCalls === 'function') {
             listenForIncomingVoiceCalls();
           }
@@ -9489,30 +9531,9 @@
     let keepAliveOsc = null;
 
     function enableBackgroundSyncKeepAlive() {
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        
-        if (!keepAliveContext) {
-          keepAliveContext = new AudioContextClass();
-        }
-        if (keepAliveContext.state === 'suspended') {
-          keepAliveContext.resume();
-        }
-        
-        if (!keepAliveOsc) {
-          // Inaudible 15Hz oscillator prevents mobile browser from suspending WebSockets & timers in background
-          keepAliveOsc = keepAliveContext.createOscillator();
-          keepAliveGain = keepAliveContext.createGain();
-          keepAliveOsc.frequency.setValueAtTime(15, keepAliveContext.currentTime);
-          keepAliveGain.gain.setValueAtTime(0.0001, keepAliveContext.currentTime);
-          keepAliveOsc.connect(keepAliveGain);
-          keepAliveGain.connect(keepAliveContext.destination);
-          keepAliveOsc.start();
-          console.log('✅ Background audio keep-alive active');
-        }
-      } catch (e) {
-        console.warn('Background keep-alive notice:', e);
+      // Clean keep-alive delegated entirely to HTML5 studio audio element (zero speaker buzzing or drone)
+      if (typeof startBackgroundKeepAlive === 'function') {
+        startBackgroundKeepAlive();
       }
     }
 
@@ -9708,6 +9729,203 @@
     // Modal UI & Dropdown management
     
     /* ============================================================
+       DIRECT VOICE CALL DIRECTORY & CALL LOGS MODAL CONTROLLERS
+       ============================================================ */
+    let currentCallModalTab = 'directory';
+
+    function openDirectCallModal() {
+      // Strict Top-Down Permission Check
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع للتواصل مع مسؤولي الصالة (من الأعلى للأدنى).");
+        return;
+      }
+      document.body.classList.add('modal-open');
+      switchDirectCallTab('directory');
+      const modal = document.getElementById('directCallModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeDirectCallModal() {
+      const modal = document.getElementById('directCallModal');
+      if (modal) modal.classList.remove('open');
+      if (!document.querySelector('.modal-overlay.open')) {
+        document.body.classList.remove('modal-open');
+      }
+    }
+
+    function switchDirectCallTab(tab) {
+      currentCallModalTab = tab;
+      const tabDirBtn = document.getElementById('tabCallDirectoryBtn');
+      const tabLogsBtn = document.getElementById('tabCallLogsBtn');
+      const tabDirContent = document.getElementById('directCallDirectoryTab');
+      const tabLogsContent = document.getElementById('directCallLogsTab');
+
+      if (tab === 'directory') {
+        if (tabDirBtn) {
+          tabDirBtn.style.background = '#ffffff';
+          tabDirBtn.style.color = '#059669';
+          tabDirBtn.style.borderBottom = '2.5px solid #059669';
+        }
+        if (tabLogsBtn) {
+          tabLogsBtn.style.background = 'transparent';
+          tabLogsBtn.style.color = '#64748b';
+          tabLogsBtn.style.borderBottom = '2.5px solid transparent';
+        }
+        if (tabDirContent) tabDirContent.style.display = 'block';
+        if (tabLogsContent) tabLogsContent.style.display = 'none';
+        renderDirectCallList();
+      } else {
+        if (tabLogsBtn) {
+          tabLogsBtn.style.background = '#ffffff';
+          tabLogsBtn.style.color = '#059669';
+          tabLogsBtn.style.borderBottom = '2.5px solid #059669';
+        }
+        if (tabDirBtn) {
+          tabDirBtn.style.background = 'transparent';
+          tabDirBtn.style.color = '#64748b';
+          tabDirBtn.style.borderBottom = '2.5px solid transparent';
+        }
+        if (tabDirContent) tabDirContent.style.display = 'none';
+        if (tabLogsContent) tabLogsContent.style.display = 'block';
+        renderDirectCallLogs();
+      }
+    }
+
+    function renderDirectCallList() {
+      const container = document.getElementById('directCallListContainer');
+      if (!container) return;
+
+      const supervisors = getSupervisorsList();
+      let targetList = [];
+
+      if (currentUserRole === 'admin') {
+        // General Manager: can call floor supervisors & branch managers (top-down)
+        targetList = supervisors.filter(s => s.id !== currentUserId && s.id !== 'admin');
+      } else if (currentUserRole === 'branch_manager') {
+        // Branch Manager: can ONLY call floor supervisors in their branch
+        targetList = supervisors.filter(s => s.id !== currentUserId && s.branchId === currentBranchId && s.role !== 'admin' && s.id !== 'admin' && s.role !== 'branch_manager');
+      } else {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">الاتصال الصوتي مخصص للإدارة للتواصل مع المشرفين.</div>';
+        return;
+      }
+
+      if (targetList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+            <span style="font-size: 32px; display: block; margin-bottom: 8px;">👥</span>
+            <span>لا يوجد مشرفون مسجلون متاحون للاتصال في هذا النطاق.</span>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort: Online first, then alphabetical
+      targetList.sort((a, b) => {
+        const aOnline = isUserReallyOnline(a.id) ? 1 : 0;
+        const bOnline = isUserReallyOnline(b.id) ? 1 : 0;
+        return bOnline - aOnline;
+      });
+
+      let html = '';
+      targetList.forEach(s => {
+        const isOnline = isUserReallyOnline(s.id);
+        const b = getBranchById(s.branchId);
+        const branchName = b ? b.nameAr : (s.branchId || 'الفرع الرئيسي');
+        const roleLabel = (s.role === 'branch_manager' || (s.id && s.id.startsWith('mgr_'))) ? '🏢 مدير فرع' : '👤 مسؤول صالة';
+        const pres = livePresenceCache[s.id];
+        const dev = deviceActivationsCache[s.id];
+        const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
+        const statusText = formatLivePresenceTime(lastSeen, isOnline);
+
+        html += `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: ${isOnline ? '#f0fdf4' : '#f8fafc'}; border: 1.5px solid ${isOnline ? '#86efac' : '#e2e8f0'}; border-radius: 12px; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 50%; background: ${isOnline ? '#10b981' : '#cbd5e1'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; flex-shrink: 0; box-shadow: ${isOnline ? '0 0 10px rgba(16,185,129,0.4)' : 'none'};">
+                ${isOnline ? '🟢' : '⚪'}
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <strong style="font-size: 14.5px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
+                  <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 1px 7px; border-radius: 4px; font-weight: 700;">${roleLabel}</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                  📍 فرع ${escapeHtml(branchName)} • <span style="color: ${isOnline ? '#059669' : '#64748b'}; font-weight: 600;">${statusText}</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="closeDirectCallModal(); initiateVoiceCall('${escapeHtml(s.id)}');" style="background: linear-gradient(135deg, #10b981, #059669); border: none; border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(16,185,129,0.35); cursor: pointer;">
+              <span>📞</span>
+              <span>اتصال بالمشرف</span>
+            </button>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderDirectCallLogs() {
+      const container = document.getElementById('directCallLogsContainer');
+      if (!container || !firebaseDb) return;
+
+      firebaseDb.ref('call_logs').limitToLast(25).once('value').then(snap => {
+        const val = snap.val();
+        if (!val || Object.keys(val).length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+              <span style="font-size: 30px; display: block; margin-bottom: 6px;">📋</span>
+              <span>لا توجد مكالمات مسجلة حتى الآن.</span>
+            </div>
+          `;
+          return;
+        }
+
+        const logs = Object.values(val);
+        logs.sort((a, b) => (b.endedAt || b.createdAt || 0) - (a.endedAt || a.createdAt || 0));
+
+        let html = '';
+        logs.forEach(call => {
+          const dt = call.endedAt ? new Date(call.endedAt) : new Date();
+          const timeStr = dt.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = dt.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+          const mins = String(Math.floor((call.durationSeconds || 0) / 60)).padStart(2, '0');
+          const secs = String((call.durationSeconds || 0) % 60).padStart(2, '0');
+          const durationFormatted = `${mins}:${secs}`;
+
+          let statusBadge = '<span style="background: #ecfdf5; color: #047857; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">✅ ناجحة</span>';
+          if (call.status === 'rejected') {
+            statusBadge = '<span style="background: #fef2f2; color: #b91c1c; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">❌ مرفوضة</span>';
+          } else if (call.status === 'no_answer' || call.status === 'missed') {
+            statusBadge = '<span style="background: #fffbeb; color: #b45309; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">⏳ لم يتم الرد</span>';
+          } else if (call.status === 'cancelled') {
+            statusBadge = '<span style="background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">⚠️ ملغاة</span>';
+          }
+
+          html += `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: white; border: 1px solid #e2e8f0; border-radius: 10px; gap: 8px; flex-wrap: wrap;">
+              <div>
+                <div style="font-size: 13.5px; font-weight: 800; color: var(--secondary);">
+                  ${escapeHtml(call.callerName || 'الإدارة')} ➔ ${escapeHtml(call.calleeName || 'مشرف')}
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                  📅 ${dateStr} - ${timeStr} • المدة: ${durationFormatted}
+                </div>
+              </div>
+              <div>
+                ${statusBadge}
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+      }).catch(err => {
+        container.innerHTML = '<div style="color: #b91c1c; padding: 12px;">تعذر تحميل السجل.</div>';
+      });
+    }
+
+
+    /* ============================================================
        WEBRTC LIVE IN-APP AUDIO CALLING ENGINE (V5.0) - DIRECT P2P & LOUD RING
        ============================================================ */
     const RTC_CALL_CONFIG = {
@@ -9882,7 +10100,11 @@
       } catch (e) {}
     }
 
-    // 1. INITIATE OUTGOING CALL (CALLER)
+    // 1. INITIATE OUTGOING CALL (CALLER) - Direct Top-Down Calling
+    async function initiateVoiceCallTo(targetSupervisorId) {
+      return initiateVoiceCall(targetSupervisorId);
+    }
+
     async function initiateVoiceCall(targetSupervisorId) {
       if (!currentUserId) {
         showToast('يرجى تسجيل الدخول أولاً للاتصال.');
@@ -10046,11 +10268,24 @@
 
             await activePeerConnection.setRemoteDescription(new RTCSessionDescription(val.answer));
 
+            // Flush any buffered caller ICE candidates
+            if (window.pendingIceCandidatesQueue && window.pendingIceCandidatesQueue.length > 0) {
+              window.pendingIceCandidatesQueue.forEach(cand => {
+                activePeerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              });
+              window.pendingIceCandidatesQueue = [];
+            }
+
             // Listen for Callee ICE Candidates
             firebaseDb.ref(`calls/${activeCallId}/calleeCandidates`).on('child_added', (candSnap) => {
               const candidate = candSnap.val();
               if (candidate && activePeerConnection) {
-                activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+                if (activePeerConnection.remoteDescription && activePeerConnection.remoteDescription.type) {
+                  activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+                } else {
+                  if (!window.pendingIceCandidatesQueue) window.pendingIceCandidatesQueue = [];
+                  window.pendingIceCandidatesQueue.push(candidate);
+                }
               }
             });
 
@@ -10262,6 +10497,15 @@
       }
 
       await activePeerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+      // Flush any queued caller ICE candidates
+      if (window.pendingIceCandidatesQueue && window.pendingIceCandidatesQueue.length > 0) {
+        window.pendingIceCandidatesQueue.forEach(cand => {
+          activePeerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+        });
+        window.pendingIceCandidatesQueue = [];
+      }
+
       const answer = await activePeerConnection.createAnswer();
       await activePeerConnection.setLocalDescription(answer);
 
@@ -10277,7 +10521,12 @@
       firebaseDb.ref(`calls/${activeCallId}/callerCandidates`).on('child_added', (candSnap) => {
         const candidate = candSnap.val();
         if (candidate && activePeerConnection) {
-          activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+          if (activePeerConnection.remoteDescription && activePeerConnection.remoteDescription.type) {
+            activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+          } else {
+            if (!window.pendingIceCandidatesQueue) window.pendingIceCandidatesQueue = [];
+            window.pendingIceCandidatesQueue.push(candidate);
+          }
         }
       });
 
@@ -10384,6 +10633,24 @@
         playCallEndedSound();
         showToast(`📞 انتهت المكالمة (المدة: ${durationStr})`);
       }
+
+      // Record call entry to executive call logs
+      try {
+        if (firebaseDb && activeCallId) {
+          const logData = {
+            callId: activeCallId,
+            callerId: (pendingIncomingCallObj && pendingIncomingCallObj.callerId) || currentUserId,
+            callerName: (pendingIncomingCallObj && pendingIncomingCallObj.callerName) || currentSupervisor,
+            callerRole: (pendingIncomingCallObj && pendingIncomingCallObj.callerRole) || currentUserRole,
+            calleeId: (pendingIncomingCallObj && pendingIncomingCallObj.calleeId) || outgoingTargetSupId,
+            calleeName: (pendingIncomingCallObj && pendingIncomingCallObj.calleeName) || (document.getElementById('outgoingCalleeName') ? document.getElementById('outgoingCalleeName').innerText : 'مشرف'),
+            durationSeconds: callSecondsCount,
+            status: reason === 'cancelled' ? 'cancelled' : (reason === 'rejected_by_callee' ? 'rejected' : (reason === 'timeout_no_answer' ? 'no_answer' : (callSecondsCount > 0 ? 'completed' : 'missed'))),
+            endedAt: Date.now()
+          };
+          firebaseDb.ref('call_logs/' + activeCallId).set(logData).catch(() => {});
+        }
+      } catch (e) {}
 
       closeCallModal();
       cleanupCallState();

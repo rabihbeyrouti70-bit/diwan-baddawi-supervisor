@@ -1,5 +1,5 @@
-// Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push + Background Calling)
-const CACHE_NAME = 'diwan-supervisor-v8';
+// Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push + Background Calling v9)
+const CACHE_NAME = 'diwan-supervisor-v9';
 
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
@@ -39,7 +39,6 @@ function showDeduplicatedNotification(title, options) {
   }
   seenNotificationTags.set(tag, now);
 
-  // Clean old tags
   if (seenNotificationTags.size > 80) {
     for (const [k, v] of seenNotificationTags.entries()) {
       if (now - v > 30000) seenNotificationTags.delete(k);
@@ -175,7 +174,6 @@ self.addEventListener('notificationclick', (event) => {
   const action = event.action;
 
   if (isIncomingCall && action === 'reject_call') {
-    // Notify clients to reject call
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
@@ -186,7 +184,6 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Answer call or regular notification click -> Focus window & pass action
   const targetUrl = notificationData.url || './';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
