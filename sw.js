@@ -1,5 +1,5 @@
-// Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push)
-const CACHE_NAME = 'diwan-supervisor-v7';
+// Diwan Market Floor Supervisor - Unified Service Worker (PWA + FCM Web Push + Background Calling)
+const CACHE_NAME = 'diwan-supervisor-v8';
 
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
@@ -58,11 +58,52 @@ function showDeduplicatedNotification(title, options) {
   return self.registration.showNotification(title, finalOptions);
 }
 
-// Handle notification triggers from client page
+// Handle notification triggers and incoming calls from client page
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+  if (!event.data) return;
+
+  if (event.data.type === 'SHOW_NOTIFICATION') {
     const { title, options } = event.data;
     event.waitUntil(showDeduplicatedNotification(title, options));
+  } else if (event.data.type === 'INCOMING_CALL') {
+    const callData = event.data.callData || {};
+    const callId = callData.callId || ('call_' + Date.now());
+    const roleText = callData.callerRole === 'admin' ? '👑 المدير العام' : (callData.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
+    const callerName = callData.callerName || 'الإدارة';
+
+    const title = '📞 مكالمة صوتية واردة الآن!';
+    const options = {
+      body: `اتصال إداري مباشر من: ${callerName} (${roleText})`,
+      icon: 'apple-touch-icon.png',
+      badge: 'apple-touch-icon.png',
+      tag: 'incoming_call_' + callId,
+      requireInteraction: true,
+      renotify: true,
+      silent: false,
+      vibrate: [1000, 500, 1000, 500, 1000, 500, 1500, 500, 2000, 500, 2000],
+      actions: [
+        { action: 'accept_call', title: '📞 رد على المكالمة' },
+        { action: 'reject_call', title: '❌ رفض' }
+      ],
+      data: {
+        type: 'INCOMING_CALL',
+        callId: callId,
+        callerName: callerName,
+        url: './?action=accept_call&callId=' + callId
+      }
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } else if (event.data.type === 'CANCEL_CALL') {
+    const callId = event.data.callId;
+    event.waitUntil(
+      self.registration.getNotifications().then((notifications) => {
+        notifications.forEach((n) => {
+          if (n.tag === ('incoming_call_' + callId) || (n.data && n.data.callId === callId)) {
+            n.close();
+          }
+        });
+      })
+    );
   }
 });
 
@@ -74,6 +115,37 @@ try {
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage((payload) => {
     console.log('[sw.js] FCM Background message received: ', payload);
+    const data = payload.data || {};
+    const isCall = data.type === 'INCOMING_CALL' || !!data.callId;
+
+    if (isCall) {
+      const callId = data.callId || ('call_' + Date.now());
+      const callerName = data.callerName || (payload.notification && payload.notification.title) || 'الإدارة';
+      const roleText = data.callerRole === 'admin' ? '👑 المدير العام' : (data.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
+      const title = '📞 مكالمة صوتية واردة الآن!';
+      const options = {
+        body: `اتصال إداري مباشر من: ${callerName} (${roleText})`,
+        icon: 'apple-touch-icon.png',
+        badge: 'apple-touch-icon.png',
+        tag: 'incoming_call_' + callId,
+        requireInteraction: true,
+        renotify: true,
+        silent: false,
+        vibrate: [1000, 500, 1000, 500, 1000, 500, 1500, 500, 2000, 500, 2000],
+        actions: [
+          { action: 'accept_call', title: '📞 رد على المكالمة' },
+          { action: 'reject_call', title: '❌ رفض' }
+        ],
+        data: {
+          type: 'INCOMING_CALL',
+          callId: callId,
+          callerName: callerName,
+          url: './?action=accept_call&callId=' + callId
+        }
+      };
+      return self.registration.showNotification(title, options);
+    }
+
     const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || '📢 توجيه إداري - ديوان ماركت';
     const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'وصلك توجيه أو ملاحظة إدارية عاجلة';
     const tag = (payload.data && payload.data.directiveId) ? ('dir_' + payload.data.directiveId) : ((payload.data && payload.data.tag) || ('dir_' + Date.now()));
@@ -95,15 +167,39 @@ try {
   console.warn('FCM initialization in sw.js warning:', e);
 }
 
-// Handle notification click to bring app to foreground
+// Handle notification click to bring app to foreground or answer/reject call
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : './';
+  const notificationData = event.notification.data || {};
+  const isIncomingCall = notificationData.type === 'INCOMING_CALL' || !!notificationData.callId;
+  const action = event.action;
+
+  if (isIncomingCall && action === 'reject_call') {
+    // Notify clients to reject call
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          client.postMessage({ type: 'SW_REJECT_CALL', callId: notificationData.callId });
+        }
+      })
+    );
+    return;
+  }
+
+  // Answer call or regular notification click -> Focus window & pass action
+  const targetUrl = notificationData.url || './';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          return client.focus();
+          return client.focus().then((focusedClient) => {
+            if (isIncomingCall && focusedClient) {
+              focusedClient.postMessage({
+                type: 'SW_ACCEPT_CALL',
+                callId: notificationData.callId
+              });
+            }
+          });
         }
       }
       if (clients.openWindow) {

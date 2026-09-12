@@ -39,7 +39,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
   <script>
-    // Register Service Worker for true background mobile notifications
+    // Register Service Worker for true background mobile notifications & lock-screen incoming calls
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(reg => {
@@ -54,6 +54,30 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           console.log('✅ Diwan ServiceWorker controller updated and active');
         });
+
+        // Listen for call actions dispatched from Service Worker lock-screen notification buttons
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (!event.data) return;
+          if (event.data.type === 'SW_ACCEPT_CALL') {
+            const callId = event.data.callId;
+            if (activeCallId === callId && activeCallRole === 'callee' && typeof acceptIncomingCall === 'function') {
+              acceptIncomingCall();
+            }
+          } else if (event.data.type === 'SW_REJECT_CALL') {
+            const callId = event.data.callId;
+            if (activeCallId === callId && activeCallRole === 'callee' && typeof rejectIncomingCall === 'function') {
+              rejectIncomingCall();
+            }
+          }
+        });
+
+        // Check if page was opened/focused from an incoming call notification click
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('action') === 'accept_call' && urlParams.get('callId')) {
+            window.pendingCallAutoAcceptId = urlParams.get('callId');
+          }
+        } catch (e) {}
       });
     }
   </script>
@@ -8312,10 +8336,73 @@
 
 
     /* ============================================================
-       BACKGROUND AUDIO KEEP-ALIVE ENGINE (الحل الثاني: المزامنة مع إطفاء الشاشة)
+       BACKGROUND AUDIO & UNBROKEN MEDIASTREAM ENGINE (منظومة رنين الهاتف واستمرار العمل بالخلفية)
        ============================================================ */
     let bgAudioElement = null;
+    let preloadedRingtoneAudio = null;
     let isBackgroundKeepAliveActive = false;
+    let diwanAudioContext = null;
+    let diwanStreamDest = null;
+    let diwanMasterGain = null;
+    let diwanCarrierOsc = null;
+
+    function getOrCreateDiwanAudioContext() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        if (!diwanAudioContext || diwanAudioContext.state === 'closed') {
+          diwanAudioContext = new AudioCtx();
+        }
+        if (diwanAudioContext.state === 'suspended') {
+          diwanAudioContext.resume().catch(() => {});
+        }
+        return diwanAudioContext;
+      } catch (e) {
+        console.warn('getOrCreateDiwanAudioContext error:', e);
+        return null;
+      }
+    }
+
+    function setupContinuousAudioStream() {
+      try {
+        initBackgroundKeepAliveAudio();
+        const ctx = getOrCreateDiwanAudioContext();
+        if (!ctx) return;
+
+        if (!diwanStreamDest) {
+          diwanStreamDest = ctx.createMediaStreamDestination();
+
+          diwanMasterGain = ctx.createGain();
+          diwanMasterGain.gain.value = 1.0;
+          diwanMasterGain.connect(diwanStreamDest);
+          try { diwanMasterGain.connect(ctx.destination); } catch (e) {}
+
+          // Constant sub-audible carrier oscillator (440Hz @ 0.0001 gain) keeps audio hardware open
+          diwanCarrierOsc = ctx.createOscillator();
+          const carrierGain = ctx.createGain();
+          carrierGain.gain.value = 0.0001; // completely inaudible
+          diwanCarrierOsc.frequency.value = 440;
+          diwanCarrierOsc.connect(carrierGain);
+          carrierGain.connect(diwanMasterGain);
+          diwanCarrierOsc.start();
+        }
+
+        if (bgAudioElement && diwanStreamDest && diwanStreamDest.stream) {
+          if (!bgAudioElement.srcObject) {
+            bgAudioElement.srcObject = diwanStreamDest.stream;
+            bgAudioElement.volume = 1.0;
+            const p = bgAudioElement.play();
+            if (p !== undefined) {
+              p.catch(err => {
+                console.warn('Continuous stream play blocked, will retry on gesture:', err);
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('setupContinuousAudioStream error:', e);
+      }
+    }
 
     function createSilentWavDataUri() {
       const sampleRate = 8000;
@@ -8406,12 +8493,24 @@
     function initBackgroundKeepAliveAudio() {
       if (!bgAudioElement) {
         bgAudioElement = document.createElement('audio');
+        bgAudioElement.id = 'diwanBackgroundAudio';
         bgAudioElement.setAttribute('playsinline', '');
         bgAudioElement.setAttribute('loop', '');
         bgAudioElement.setAttribute('preload', 'auto');
         bgAudioElement.style.display = 'none';
-        bgAudioElement.volume = 0.01;
+        bgAudioElement.volume = 1.0;
         document.body.appendChild(bgAudioElement);
+      }
+
+      if (!preloadedRingtoneAudio) {
+        preloadedRingtoneAudio = document.createElement('audio');
+        preloadedRingtoneAudio.id = 'diwanPreloadedRingtone';
+        preloadedRingtoneAudio.setAttribute('playsinline', '');
+        preloadedRingtoneAudio.setAttribute('loop', '');
+        preloadedRingtoneAudio.setAttribute('preload', 'auto');
+        preloadedRingtoneAudio.style.display = 'none';
+        preloadedRingtoneAudio.src = createRingtoneWavDataUri();
+        document.body.appendChild(preloadedRingtoneAudio);
       }
     }
 
@@ -8441,12 +8540,15 @@
     function startBackgroundKeepAlive() {
       try {
         initBackgroundKeepAliveAudio();
-        if (!bgAudioElement.src) {
+        setupContinuousAudioStream();
+
+        if (bgAudioElement && !bgAudioElement.srcObject && !bgAudioElement.src) {
           bgAudioElement.src = createSilentWavDataUri();
         }
-        const playPromise = bgAudioElement.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
+
+        const p = bgAudioElement ? bgAudioElement.play() : null;
+        if (p !== undefined && p !== null) {
+          p.then(() => {
             isBackgroundKeepAliveActive = true;
             localStorage.setItem('diwan_bg_keepalive', 'true');
             updateBackgroundKeepAliveUI();
@@ -8461,10 +8563,17 @@
               });
               navigator.mediaSession.playbackState = 'playing';
             }
-            showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً حتى لو طُفئت شاشة الهاتف');
+            showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً ويرن حتى لو طُفئت شاشة الهاتف');
           }).catch(err => {
-            console.warn('Silent audio play blocked (needs user click):', err);
+            console.warn('Background audio start blocked (needs user click):', err);
+            // Mark active so subsequent gesture attaches it immediately
+            isBackgroundKeepAliveActive = true;
+            localStorage.setItem('diwan_bg_keepalive', 'true');
+            updateBackgroundKeepAliveUI();
           });
+        } else {
+          isBackgroundKeepAliveActive = true;
+          updateBackgroundKeepAliveUI();
         }
       } catch (e) {
         console.warn('startBackgroundKeepAlive error:', e);
@@ -8490,6 +8599,86 @@
       } else {
         startBackgroundKeepAlive();
       }
+    }
+
+    // Service Worker Call Notification Helpers
+    function notifyServiceWorkerIncomingCall(callData) {
+      if (!callData) return;
+      const thisCallId = callData.callId || callData.id;
+      const roleText = callData.callerRole === 'admin' ? '👑 المدير العام' : (callData.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
+
+      // 1. Post to active Service Worker controller
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'INCOMING_CALL',
+            callData: {
+              callId: thisCallId,
+              callerName: callData.callerName || 'الإدارة',
+              callerRole: callData.callerRole,
+              callerBranch: callData.callerBranch
+            }
+          });
+        }
+      } catch (e) {}
+
+      // 2. Direct showNotification via ready Service Worker registration (Android Chrome compatible)
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg && reg.showNotification) {
+              reg.showNotification('📞 مكالمة صوتية واردة الآن!', {
+                body: `اتصال إداري مباشر من: ${callData.callerName || 'الإدارة'} (${roleText})`,
+                icon: 'apple-touch-icon.png',
+                badge: 'apple-touch-icon.png',
+                tag: 'incoming_call_' + thisCallId,
+                requireInteraction: true,
+                renotify: true,
+                silent: false,
+                vibrate: [1000, 500, 1000, 500, 1000, 500, 1500, 500, 2000, 500, 2000],
+                actions: [
+                  { action: 'accept_call', title: '📞 رد على المكالمة' },
+                  { action: 'reject_call', title: '❌ رفض' }
+                ],
+                data: {
+                  type: 'INCOMING_CALL',
+                  callId: thisCallId,
+                  callerName: callData.callerName || 'الإدارة',
+                  url: './?action=accept_call&callId=' + thisCallId
+                }
+              }).catch(err => console.warn('reg.showNotification error:', err));
+            }
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    }
+
+    function dismissServiceWorkerCallNotification(callId) {
+      if (!callId) return;
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'CANCEL_CALL',
+            callId: callId
+          });
+        }
+      } catch (e) {}
+
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg && reg.getNotifications) {
+              reg.getNotifications().then(notifications => {
+                notifications.forEach(n => {
+                  if (n.tag === ('incoming_call_' + callId) || (n.data && n.data.callId === callId)) {
+                    n.close();
+                  }
+                });
+              }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      } catch (e) {}
     }
 
     function initLivePresenceEngine() {
@@ -9515,14 +9704,20 @@
     let activeIncomingFallbackRef = null;
     let outgoingTargetSupId = null;
 
-    // Global gesture audio unlocker
+    // Global gesture audio unlocker & continuous stream activator
     function unlockAudioOnUserGesture() {
       try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx) {
-          if (!callRingtoneContext) callRingtoneContext = new AudioCtx();
-          if (callRingtoneContext.state === 'suspended') {
-            callRingtoneContext.resume().catch(() => {});
+        getOrCreateDiwanAudioContext();
+        setupContinuousAudioStream();
+
+        // Warm up preloaded ringtone audio on user interaction
+        if (preloadedRingtoneAudio) {
+          const p = preloadedRingtoneAudio.play();
+          if (p !== undefined) {
+            p.then(() => {
+              preloadedRingtoneAudio.pause();
+              preloadedRingtoneAudio.currentTime = 0;
+            }).catch(() => {});
           }
         }
       } catch (e) {}
@@ -9530,103 +9725,112 @@
     document.addEventListener('touchstart', unlockAudioOnUserGesture, { passive: true });
     document.addEventListener('click', unlockAudioOnUserGesture, { passive: true });
 
-    // Synthesized Web Audio Ringtone & Vibration (Dual Foreground + Background HTML5 Audio Engine)
+    // Multi-Layer Background & Foreground Ringtone Engine
     function startAudioRingtone(type = 'incoming') {
       try {
         stopAudioRingtone();
 
         if (type === 'incoming') {
-          // 1. Play real telephone ringtone via HTML5 Audio element (works seamlessly in background & with screen locked)
-          try {
-            initBackgroundKeepAliveAudio();
-            if (bgAudioElement) {
-              bgAudioElement.volume = 1.0; // FULL LOUD VOLUME
-              bgAudioElement.loop = true;
-              bgAudioElement.src = createRingtoneWavDataUri();
-              const p = bgAudioElement.play();
-              if (p) p.catch(e => console.warn('bgAudio ringtone play error:', e));
-
-              if ('mediaSession' in navigator) {
-                const callerTitle = (pendingIncomingCallObj && pendingIncomingCallObj.callerName)
-                  ? pendingIncomingCallObj.callerName
-                  : 'الإدارة';
-                navigator.mediaSession.metadata = new MediaMetadata({
-                  title: '📞 مكالمة صوتية واردة الآن!',
-                  artist: callerTitle,
-                  album: 'ديوان ماركت - اتصال مباشر',
-                  artwork: [{ src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
-                });
-                navigator.mediaSession.playbackState = 'playing';
-              }
-            }
-          } catch (e) {
-            console.warn('Background audio ringtone error:', e);
+          // Layer 1: System-level Persistent Notification via Service Worker (vibrates screen & shows Answer/Decline buttons on lock screen)
+          if (pendingIncomingCallObj) {
+            notifyServiceWorkerIncomingCall(pendingIncomingCallObj);
           }
 
-          // 2. Also run Web Audio API dual oscillator for rich foreground sound
+          // Layer 2: Synthesize loud dual-tone telephone bell directly into continuous stream & speakers
+          const ctx = getOrCreateDiwanAudioContext();
+          if (ctx) {
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            setupContinuousAudioStream();
+
+            const playTone = () => {
+              if (!ctx || ctx.state === 'closed') return;
+              if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+              const now = ctx.currentTime;
+
+              const osc1 = ctx.createOscillator();
+              const osc2 = ctx.createOscillator();
+              const gain = ctx.createGain();
+
+              osc1.type = 'sine'; osc1.frequency.setValueAtTime(440, now);
+              osc2.type = 'sine'; osc2.frequency.setValueAtTime(480, now);
+
+              gain.gain.setValueAtTime(0.8, now);
+              gain.gain.setValueAtTime(0.8, now + 1.2);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+
+              osc1.connect(gain);
+              osc2.connect(gain);
+
+              // Route into live stream destination (for background playback) and speakers
+              if (diwanMasterGain) {
+                gain.connect(diwanMasterGain);
+              } else {
+                gain.connect(ctx.destination);
+              }
+
+              osc1.start(now); osc1.stop(now + 1.25);
+              osc2.start(now); osc2.stop(now + 1.25);
+
+              if ('vibrate' in navigator) {
+                try { navigator.vibrate([1000, 400, 1000, 400, 1500]); } catch (e) {}
+              }
+            };
+
+            playTone();
+            callRingtoneInterval = setInterval(playTone, 3000);
+          }
+
+          // Layer 3: Also trigger preloaded HTML5 audio element
           try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (AudioContextClass) {
-              if (!callRingtoneContext) callRingtoneContext = new AudioContextClass();
-              if (callRingtoneContext.state === 'suspended') callRingtoneContext.resume().catch(() => {});
+            if (preloadedRingtoneAudio) {
+              preloadedRingtoneAudio.currentTime = 0;
+              preloadedRingtoneAudio.volume = 1.0;
+              preloadedRingtoneAudio.loop = true;
+              const p = preloadedRingtoneAudio.play();
+              if (p !== undefined) {
+                p.catch(e => console.warn('preloadedRingtoneAudio play warning:', e));
+              }
             }
           } catch (e) {}
 
-          const playTone = () => {
-            if (!callRingtoneContext || callRingtoneContext.state === 'closed') return;
-            if (callRingtoneContext.state === 'suspended') callRingtoneContext.resume().catch(() => {});
-            const now = callRingtoneContext.currentTime;
-
-            const osc1 = callRingtoneContext.createOscillator();
-            const osc2 = callRingtoneContext.createOscillator();
-            const gain = callRingtoneContext.createGain();
-
-            osc1.type = 'sine'; osc1.frequency.setValueAtTime(440, now);
-            osc2.type = 'sine'; osc2.frequency.setValueAtTime(480, now);
-
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.setValueAtTime(0.4, now + 1.2);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
-
-            osc1.connect(gain); osc2.connect(gain);
-            gain.connect(callRingtoneContext.destination);
-
-            osc1.start(now); osc1.stop(now + 1.25);
-            osc2.start(now); osc2.stop(now + 1.25);
-
-            if ('vibrate' in navigator) {
-              try { navigator.vibrate([1000, 400, 1000, 400, 1500]); } catch (e) {}
-            }
-          };
-
-          playTone();
-          callRingtoneInterval = setInterval(playTone, 3000);
+          // Layer 4: Lock screen media notification
+          if ('mediaSession' in navigator) {
+            const callerTitle = (pendingIncomingCallObj && pendingIncomingCallObj.callerName)
+              ? pendingIncomingCallObj.callerName
+              : 'الإدارة';
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: '📞 مكالمة صوتية واردة الآن!',
+              artist: callerTitle,
+              album: 'ديوان ماركت - اتصال مباشر',
+              artwork: [{ src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
+            });
+            navigator.mediaSession.playbackState = 'playing';
+          }
         } else {
           // Outgoing Ringback tone (caller ear feedback)
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) {
-            if (!callRingtoneContext) callRingtoneContext = new AudioContextClass();
-            if (callRingtoneContext.state === 'suspended') callRingtoneContext.resume().catch(() => {});
+          const ctx = getOrCreateDiwanAudioContext();
+          if (ctx) {
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+            const playTone = () => {
+              if (!ctx || ctx.state === 'closed') return;
+              if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+              const now = ctx.currentTime;
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine'; osc.frequency.setValueAtTime(440, now);
+              gain.gain.setValueAtTime(0.08, now);
+              gain.gain.setValueAtTime(0.08, now + 1.0);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
+
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(now); osc.stop(now + 1.05);
+            };
+
+            playTone();
+            callRingtoneInterval = setInterval(playTone, 3500);
           }
-
-          const playTone = () => {
-            if (!callRingtoneContext || callRingtoneContext.state === 'closed') return;
-            if (callRingtoneContext.state === 'suspended') callRingtoneContext.resume().catch(() => {});
-            const now = callRingtoneContext.currentTime;
-            const osc = callRingtoneContext.createOscillator();
-            const gain = callRingtoneContext.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(440, now);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.setValueAtTime(0.08, now + 1.0);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
-
-            osc.connect(gain);
-            gain.connect(callRingtoneContext.destination);
-            osc.start(now); osc.stop(now + 1.05);
-          };
-
-          playTone();
-          callRingtoneInterval = setInterval(playTone, 3500);
         }
       } catch (err) {
         console.warn('startAudioRingtone error:', err);
@@ -9642,30 +9846,32 @@
         try { navigator.vibrate(0); } catch (e) {}
       }
 
-      // Restore background audio to silent keep-alive if active, or pause
+      // Stop preloaded ringtone audio
+      if (preloadedRingtoneAudio) {
+        try {
+          preloadedRingtoneAudio.pause();
+          preloadedRingtoneAudio.currentTime = 0;
+        } catch (e) {}
+      }
+
+      // Dismiss lock-screen notification from Service Worker
+      if (pendingIncomingCallObj && (pendingIncomingCallObj.callId || pendingIncomingCallObj.id)) {
+        dismissServiceWorkerCallNotification(pendingIncomingCallObj.callId || pendingIncomingCallObj.id);
+      }
+
+      // Restore lock screen mediaSession state
       try {
-        if (bgAudioElement) {
+        if ('mediaSession' in navigator) {
           if (isBackgroundKeepAliveActive) {
-            bgAudioElement.volume = 0.01;
-            bgAudioElement.loop = true;
-            bgAudioElement.src = createSilentWavDataUri();
-            const p = bgAudioElement.play();
-            if (p) p.catch(() => {});
-            if ('mediaSession' in navigator) {
-              navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'ديوان ماركت - وضع العمل المستمر ⚡',
-                artist: currentSupervisor || 'مشرف الصالة',
-                album: 'المزامنة اللحظية والتوجيهات',
-                artwork: [{ src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
-              });
-              navigator.mediaSession.playbackState = 'playing';
-            }
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: 'ديوان ماركت - وضع العمل المستمر ⚡',
+              artist: currentSupervisor || 'مشرف الصالة',
+              album: 'المزامنة اللحظية والتوجيهات',
+              artwork: [{ src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }]
+            });
+            navigator.mediaSession.playbackState = 'playing';
           } else {
-            bgAudioElement.pause();
-            bgAudioElement.currentTime = 0;
-            if ('mediaSession' in navigator) {
-              navigator.mediaSession.playbackState = 'none';
-            }
+            navigator.mediaSession.playbackState = 'none';
           }
         }
       } catch (e) {}
@@ -9983,19 +10189,17 @@
       document.getElementById('inAppCallModal').classList.add('open');
       document.body.classList.add('modal-open');
 
-      // Start ringing sound & vibration
+      // Start ringing sound & vibration (Multi-layer background & lock-screen engine)
       startAudioRingtone('incoming');
 
-      // System notification if permission granted
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification('📞 مكالمة صوتية واردة الآن!', {
-            body: `من: ${callData.callerName || 'الإدارة'} (${roleText})`,
-            icon: 'diwan.PNG',
-            tag: 'call_' + thisCallId,
-            requireInteraction: true
-          });
-        } catch (e) {}
+      // Check if user tapped "رد على المكالمة" from lock screen notification
+      if (window.pendingCallAutoAcceptId && window.pendingCallAutoAcceptId === thisCallId) {
+        window.pendingCallAutoAcceptId = null;
+        setTimeout(() => {
+          if (activeCallId === thisCallId && activeCallRole === 'callee') {
+            acceptIncomingCall();
+          }
+        }, 200);
       }
     }
 
@@ -10095,7 +10299,11 @@
 
     // 4. REJECT INCOMING CALL
     function rejectIncomingCall() {
+      const thisCallId = (pendingIncomingCallObj && (pendingIncomingCallObj.callId || pendingIncomingCallObj.id)) || activeCallId;
       stopAudioRingtone();
+      if (thisCallId) {
+        dismissServiceWorkerCallNotification(thisCallId);
+      }
       if (activeCallFirebaseRef) {
         activeCallFirebaseRef.update({ status: 'rejected' }).catch(() => {});
       }
