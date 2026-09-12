@@ -8336,158 +8336,111 @@
 
 
     /* ============================================================
-       BACKGROUND AUDIO & UNBROKEN MEDIASTREAM ENGINE (منظومة رنين الهاتف واستمرار العمل بالخلفية)
+       STUDIO TELEPHONE AUDIO & BACKGROUND CALLING ENGINE (منظومة رنين الهاتف واستمرار العمل بالخلفية)
        ============================================================ */
-    let bgAudioElement = null;
-    let preloadedRingtoneAudio = null;
+    let bgAudioElement = null; // Incoming ringtone audio element
+    let outgoingAudioElement = null; // Outgoing ringback audio element
     let isBackgroundKeepAliveActive = false;
-    let diwanAudioContext = null;
-    let diwanStreamDest = null;
-    let diwanMasterGain = null;
-    let diwanCarrierOsc = null;
+    let cachedIncomingRingWavUri = null;
+    let cachedOutgoingRingWavUri = null;
 
-    function getOrCreateDiwanAudioContext() {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return null;
-        if (!diwanAudioContext || diwanAudioContext.state === 'closed') {
-          diwanAudioContext = new AudioCtx();
-        }
-        if (diwanAudioContext.state === 'suspended') {
-          diwanAudioContext.resume().catch(() => {});
-        }
-        return diwanAudioContext;
-      } catch (e) {
-        console.warn('getOrCreateDiwanAudioContext error:', e);
-        return null;
-      }
-    }
+    // High-Fidelity 16-Bit Studio Telephone WAV Synthesizer (Realistic Phone Cadence & Natural Harmonics)
+    function createStudioTelephoneWav(type) {
+      if (type === 'incoming' && cachedIncomingRingWavUri) return cachedIncomingRingWavUri;
+      if (type === 'outgoing' && cachedOutgoingRingWavUri) return cachedOutgoingRingWavUri;
 
-    function setupContinuousAudioStream() {
-      try {
-        initBackgroundKeepAliveAudio();
-        const ctx = getOrCreateDiwanAudioContext();
-        if (!ctx) return;
+      const sampleRate = 16000;
+      const isIncoming = type === 'incoming';
+      const duration = isIncoming ? 3.5 : 4.0;
+      const totalSamples = Math.floor(sampleRate * duration);
 
-        if (!diwanStreamDest) {
-          diwanStreamDest = ctx.createMediaStreamDestination();
-
-          diwanMasterGain = ctx.createGain();
-          diwanMasterGain.gain.value = 1.0;
-          diwanMasterGain.connect(diwanStreamDest);
-          try { diwanMasterGain.connect(ctx.destination); } catch (e) {}
-
-          // Constant sub-audible carrier oscillator (440Hz @ 0.0001 gain) keeps audio hardware open
-          diwanCarrierOsc = ctx.createOscillator();
-          const carrierGain = ctx.createGain();
-          carrierGain.gain.value = 0.0001; // completely inaudible
-          diwanCarrierOsc.frequency.value = 440;
-          diwanCarrierOsc.connect(carrierGain);
-          carrierGain.connect(diwanMasterGain);
-          diwanCarrierOsc.start();
-        }
-
-        if (bgAudioElement && diwanStreamDest && diwanStreamDest.stream) {
-          if (!bgAudioElement.srcObject) {
-            bgAudioElement.srcObject = diwanStreamDest.stream;
-            bgAudioElement.volume = 1.0;
-            const p = bgAudioElement.play();
-            if (p !== undefined) {
-              p.catch(err => {
-                console.warn('Continuous stream play blocked, will retry on gesture:', err);
-              });
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('setupContinuousAudioStream error:', e);
-      }
-    }
-
-    function createSilentWavDataUri() {
-      const sampleRate = 8000;
-      const numSamples = 8000; // 1 second of silence
-      const buffer = new ArrayBuffer(44 + numSamples);
+      const numBytes = 44 + totalSamples * 2; // 16-bit mono PCM
+      const buffer = new ArrayBuffer(numBytes);
       const view = new DataView(buffer);
 
       // "RIFF" chunk
       view.setUint32(0, 0x52494646, false);
-      view.setUint32(4, 36 + numSamples, true);
+      view.setUint32(4, 36 + totalSamples * 2, true);
       view.setUint32(8, 0x57415645, false); // "WAVE"
 
       // "fmt " chunk
       view.setUint32(12, 0x666d7420, false);
       view.setUint32(16, 16, true);
       view.setUint16(20, 1, true); // PCM format
-      view.setUint16(22, 1, true); // Mono channel
+      view.setUint16(22, 1, true); // Mono
       view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate, true); // Byte rate
-      view.setUint16(32, 1, true); // Block align
-      view.setUint16(34, 8, true); // 8-bit samples
+      view.setUint32(28, sampleRate * 2, true); // 16-bit = 2 bytes/sample
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
 
       // "data" chunk
       view.setUint32(36, 0x64617461, false);
-      view.setUint32(40, numSamples, true);
+      view.setUint32(40, totalSamples * 2, true);
 
-      // Fill with 8-bit PCM silence (128)
-      const bytes = new Uint8Array(buffer, 44);
-      bytes.fill(128);
+      for (let i = 0; i < totalSamples; i++) {
+        const t = i / sampleRate;
+        let sampleVal = 0;
 
-      const blob = new Blob([buffer], { type: 'audio/wav' });
-      return URL.createObjectURL(blob);
-    }
+        if (isIncoming) {
+          // Classic European / International Telephone cadence:
+          // Burst 1: 0.00s to 0.42s
+          // Gap:     0.42s to 0.62s
+          // Burst 2: 0.62s to 1.04s
+          // Silence: 1.04s to 3.50s
+          let inRing = false;
+          let ringT = 0;
+          const burstLen = 0.42;
 
-    let cachedRingtoneWavUri = null;
-    function createRingtoneWavDataUri() {
-      if (cachedRingtoneWavUri) return cachedRingtoneWavUri;
+          if (t >= 0 && t < 0.42) {
+            inRing = true;
+            ringT = t;
+          } else if (t >= 0.62 && t < 1.04) {
+            inRing = true;
+            ringT = t - 0.62;
+          }
 
-      // 8000 Hz, 8-bit mono, 3.0 seconds duration (1.2s dual-tone 440Hz+480Hz, 1.8s pause)
-      const sampleRate = 8000;
-      const duration = 3.0;
-      const numSamples = Math.floor(sampleRate * duration);
-      const ringDuration = 1.2;
-      const numRingSamples = Math.floor(sampleRate * ringDuration);
+          if (inRing) {
+            // Harmonized acoustic executive telephone bell (440Hz + 480Hz + soft chime harmonics)
+            const tone1 = Math.sin(2 * Math.PI * 440 * ringT);
+            const tone2 = Math.sin(2 * Math.PI * 480 * ringT);
+            const harm1 = 0.22 * Math.sin(2 * Math.PI * 880 * ringT);
+            const harm2 = 0.22 * Math.sin(2 * Math.PI * 960 * ringT);
+            const raw = (0.39 * tone1 + 0.39 * tone2 + harm1 + harm2);
 
-      const buffer = new ArrayBuffer(44 + numSamples);
-      const view = new DataView(buffer);
+            // Smooth bell envelope (15ms attack, 20ms decay) prevents click/harshness
+            let env = 1.0;
+            if (ringT < 0.015) env = ringT / 0.015;
+            else if (ringT > burstLen - 0.02) env = (burstLen - ringT) / 0.02;
 
-      // "RIFF"
-      view.setUint32(0, 0x52494646, false);
-      view.setUint32(4, 36 + numSamples, true);
-      view.setUint32(8, 0x57415645, false);
-
-      // "fmt "
-      view.setUint32(12, 0x666d7420, false);
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM
-      view.setUint16(22, 1, true); // mono
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate, true);
-      view.setUint16(32, 1, true);
-      view.setUint16(34, 8, true);
-
-      // "data"
-      view.setUint32(36, 0x64617461, false);
-      view.setUint32(40, numSamples, true);
-
-      const bytes = new Uint8Array(buffer, 44);
-      for (let i = 0; i < numSamples; i++) {
-        if (i < numRingSamples) {
-          const t = i / sampleRate;
-          const tone = 0.5 * Math.sin(2 * Math.PI * 440 * t) + 0.5 * Math.sin(2 * Math.PI * 480 * t);
-          let env = 1.0;
-          if (i < sampleRate * 0.04) env = i / (sampleRate * 0.04);
-          else if (i > numRingSamples - sampleRate * 0.04) env = (numRingSamples - i) / (sampleRate * 0.04);
-          const sampleByte = Math.floor(128 + 120 * tone * env);
-          bytes[i] = Math.max(0, Math.min(255, sampleByte));
+            sampleVal = raw * env * 28000; // Strong clear 16-bit amplitude
+          }
         } else {
-          bytes[i] = 128;
+          // Outgoing Ringback tone (نغمة توووت... توووت... الطبيعية الناعمة للمتصل):
+          // Ring: 0.00s to 1.45s
+          // Silence: 1.45s to 4.00s
+          if (t < 1.45) {
+            const tone1 = Math.sin(2 * Math.PI * 440 * t);
+            const tone2 = Math.sin(2 * Math.PI * 480 * t);
+            const raw = (0.5 * tone1 + 0.5 * tone2);
+
+            // Very smooth warm envelope (70ms fade-in, 90ms fade-out)
+            let env = 1.0;
+            if (t < 0.07) env = t / 0.07;
+            else if (t > 1.36) env = (1.45 - t) / 0.09;
+
+            sampleVal = raw * env * 11000; // Soft comfortable listening volume
+          }
         }
+
+        const clamped = Math.max(-32768, Math.min(32767, Math.floor(sampleVal)));
+        view.setInt16(44 + i * 2, clamped, true);
       }
 
-      const ringBlob = new Blob([buffer], { type: 'audio/wav' });
-      cachedRingtoneWavUri = URL.createObjectURL(ringBlob);
-      return cachedRingtoneWavUri;
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      const uri = URL.createObjectURL(blob);
+      if (isIncoming) cachedIncomingRingWavUri = uri;
+      else cachedOutgoingRingWavUri = uri;
+      return uri;
     }
 
     function initBackgroundKeepAliveAudio() {
@@ -8498,19 +8451,21 @@
         bgAudioElement.setAttribute('loop', '');
         bgAudioElement.setAttribute('preload', 'auto');
         bgAudioElement.style.display = 'none';
-        bgAudioElement.volume = 1.0;
+        bgAudioElement.src = createStudioTelephoneWav('incoming');
+        bgAudioElement.volume = 0.0001; // Silent carrier loop keeping Android audio track open
         document.body.appendChild(bgAudioElement);
       }
 
-      if (!preloadedRingtoneAudio) {
-        preloadedRingtoneAudio = document.createElement('audio');
-        preloadedRingtoneAudio.id = 'diwanPreloadedRingtone';
-        preloadedRingtoneAudio.setAttribute('playsinline', '');
-        preloadedRingtoneAudio.setAttribute('loop', '');
-        preloadedRingtoneAudio.setAttribute('preload', 'auto');
-        preloadedRingtoneAudio.style.display = 'none';
-        preloadedRingtoneAudio.src = createRingtoneWavDataUri();
-        document.body.appendChild(preloadedRingtoneAudio);
+      if (!outgoingAudioElement) {
+        outgoingAudioElement = document.createElement('audio');
+        outgoingAudioElement.id = 'diwanOutgoingAudio';
+        outgoingAudioElement.setAttribute('playsinline', '');
+        outgoingAudioElement.setAttribute('loop', '');
+        outgoingAudioElement.setAttribute('preload', 'auto');
+        outgoingAudioElement.style.display = 'none';
+        outgoingAudioElement.src = createStudioTelephoneWav('outgoing');
+        outgoingAudioElement.volume = 0.35; // Soft and comfortable in the ear
+        document.body.appendChild(outgoingAudioElement);
       }
     }
 
@@ -8540,40 +8495,38 @@
     function startBackgroundKeepAlive() {
       try {
         initBackgroundKeepAliveAudio();
-        setupContinuousAudioStream();
 
-        if (bgAudioElement && !bgAudioElement.srcObject && !bgAudioElement.src) {
-          bgAudioElement.src = createSilentWavDataUri();
-        }
-
-        const p = bgAudioElement ? bgAudioElement.play() : null;
-        if (p !== undefined && p !== null) {
-          p.then(() => {
+        if (bgAudioElement) {
+          bgAudioElement.loop = true;
+          bgAudioElement.volume = 0.0001; // Silent carrier loop keeping Android audio track open!
+          const p = bgAudioElement.play();
+          if (p !== undefined) {
+            p.then(() => {
+              isBackgroundKeepAliveActive = true;
+              localStorage.setItem('diwan_bg_keepalive', 'true');
+              updateBackgroundKeepAliveUI();
+              if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                  title: 'ديوان ماركت - وضع العمل المستمر ⚡',
+                  artist: currentSupervisor || 'مشرف الصالة',
+                  album: 'المزامنة اللحظية والتوجيهات',
+                  artwork: [
+                    { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+                  ]
+                });
+                navigator.mediaSession.playbackState = 'playing';
+              }
+              showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً ويرن حتى لو طُفئت شاشة الهاتف');
+            }).catch(err => {
+              console.warn('Background audio start notice (will resume on gesture):', err);
+              isBackgroundKeepAliveActive = true;
+              localStorage.setItem('diwan_bg_keepalive', 'true');
+              updateBackgroundKeepAliveUI();
+            });
+          } else {
             isBackgroundKeepAliveActive = true;
-            localStorage.setItem('diwan_bg_keepalive', 'true');
             updateBackgroundKeepAliveUI();
-            if ('mediaSession' in navigator) {
-              navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'ديوان ماركت - وضع العمل المستمر ⚡',
-                artist: currentSupervisor || 'مشرف الصالة',
-                album: 'المزامنة اللحظية والتوجيهات',
-                artwork: [
-                  { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
-                ]
-              });
-              navigator.mediaSession.playbackState = 'playing';
-            }
-            showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً ويرن حتى لو طُفئت شاشة الهاتف');
-          }).catch(err => {
-            console.warn('Background audio start blocked (needs user click):', err);
-            // Mark active so subsequent gesture attaches it immediately
-            isBackgroundKeepAliveActive = true;
-            localStorage.setItem('diwan_bg_keepalive', 'true');
-            updateBackgroundKeepAliveUI();
-          });
-        } else {
-          isBackgroundKeepAliveActive = true;
-          updateBackgroundKeepAliveUI();
+          }
         }
       } catch (e) {
         console.warn('startBackgroundKeepAlive error:', e);
@@ -8584,7 +8537,10 @@
       isBackgroundKeepAliveActive = false;
       localStorage.setItem('diwan_bg_keepalive', 'false');
       if (bgAudioElement) {
-        try { bgAudioElement.pause(); } catch (e) {}
+        try {
+          bgAudioElement.pause();
+          bgAudioElement.currentTime = 0;
+        } catch (e) {}
       }
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'paused';
@@ -8679,6 +8635,81 @@
           }).catch(() => {});
         }
       } catch (e) {}
+    }
+
+    // Google Cloud Messaging (FCM HTTP v1) Dispatcher for Outgoing Voice Calls
+    async function dispatchCallFcmPush(targetSupervisorId, callData, targetBranchId) {
+      if (!firebaseDb) return;
+      try {
+        let targetToken = null;
+        const devSnap = await firebaseDb.ref('fcm_devices/' + targetSupervisorId).once('value');
+        const devVal = devSnap.val();
+        if (devVal && devVal.token) {
+          targetToken = devVal.token;
+        } else if (targetBranchId) {
+          const bSnap = await firebaseDb.ref('branches/' + targetBranchId + '/fcm_tokens/' + targetSupervisorId).once('value');
+          const bVal = bSnap.val();
+          if (bVal && bVal.token) targetToken = bVal.token;
+        }
+
+        if (!targetToken) {
+          console.log('No registered FCM device token found for supervisor:', targetSupervisorId);
+          return;
+        }
+
+        console.log('🚀 Dispatching High-Priority Call FCM push to supervisor device...');
+        const accessToken = await getGoogleOAuth2AccessToken();
+        const roleText = callData.callerRole === 'admin' ? '👑 المدير العام' : (callData.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
+        const notifTitle = '📞 مكالمة صوتية واردة الآن!';
+        const notifBody = `اتصال إداري مباشر من: ${callData.callerName || 'الإدارة'} (${roleText})`;
+
+        const payload = {
+          message: {
+            token: targetToken,
+            data: {
+              type: 'INCOMING_CALL',
+              callId: String(callData.id || ''),
+              callerId: String(callData.callerId || ''),
+              callerName: String(callData.callerName || 'الإدارة'),
+              callerRole: String(callData.callerRole || ''),
+              callerBranch: String(callData.callerBranch || ''),
+              url: String(window.location.origin + window.location.pathname + '?action=accept_call&callId=' + callData.id)
+            },
+            webpush: {
+              headers: {
+                Urgency: "high"
+              },
+              notification: {
+                title: notifTitle,
+                body: notifBody,
+                icon: "apple-touch-icon.png",
+                badge: "apple-touch-icon.png",
+                tag: "incoming_call_" + callData.id,
+                requireInteraction: true,
+                vibrate: [1000, 500, 1000, 500, 1000, 500, 1500, 500, 2000, 500, 2000],
+                actions: [
+                  { action: "accept_call", title: "📞 رد على المكالمة" },
+                  { action: "reject_call", title: "❌ رفض" }
+                ]
+              }
+            }
+          }
+        };
+
+        fetch("https://fcm.googleapis.com/v1/projects/diwan-supervisor/messages:send", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + accessToken,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }).then(res => {
+          if (res.ok) console.log('✅ Call FCM Web Push sent successfully to supervisor!');
+          else console.warn('Call FCM Web Push HTTP notice:', res.status);
+        }).catch(e => console.warn('Call FCM Web Push error:', e));
+      } catch (err) {
+        console.warn('dispatchCallFcmPush error:', err);
+      }
     }
 
     function initLivePresenceEngine() {
@@ -9704,21 +9735,19 @@
     let activeIncomingFallbackRef = null;
     let outgoingTargetSupId = null;
 
-    // Global gesture audio unlocker & continuous stream activator
+    // Global gesture audio unlocker
     function unlockAudioOnUserGesture() {
       try {
-        getOrCreateDiwanAudioContext();
-        setupContinuousAudioStream();
-
-        // Warm up preloaded ringtone audio on user interaction
-        if (preloadedRingtoneAudio) {
-          const p = preloadedRingtoneAudio.play();
-          if (p !== undefined) {
-            p.then(() => {
-              preloadedRingtoneAudio.pause();
-              preloadedRingtoneAudio.currentTime = 0;
-            }).catch(() => {});
-          }
+        initBackgroundKeepAliveAudio();
+        if (isBackgroundKeepAliveActive && bgAudioElement && bgAudioElement.paused) {
+          bgAudioElement.volume = 0.0001;
+          bgAudioElement.play().catch(() => {});
+        }
+        if (outgoingAudioElement && outgoingAudioElement.paused) {
+          outgoingAudioElement.play().then(() => {
+            outgoingAudioElement.pause();
+            outgoingAudioElement.currentTime = 0;
+          }).catch(() => {});
         }
       } catch (e) {}
     }
@@ -9736,62 +9765,21 @@
             notifyServiceWorkerIncomingCall(pendingIncomingCallObj);
           }
 
-          // Layer 2: Synthesize loud dual-tone telephone bell directly into continuous stream & speakers
-          const ctx = getOrCreateDiwanAudioContext();
-          if (ctx) {
-            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-            setupContinuousAudioStream();
-
-            const playTone = () => {
-              if (!ctx || ctx.state === 'closed') return;
-              if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-              const now = ctx.currentTime;
-
-              const osc1 = ctx.createOscillator();
-              const osc2 = ctx.createOscillator();
-              const gain = ctx.createGain();
-
-              osc1.type = 'sine'; osc1.frequency.setValueAtTime(440, now);
-              osc2.type = 'sine'; osc2.frequency.setValueAtTime(480, now);
-
-              gain.gain.setValueAtTime(0.8, now);
-              gain.gain.setValueAtTime(0.8, now + 1.2);
-              gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
-
-              osc1.connect(gain);
-              osc2.connect(gain);
-
-              // Route into live stream destination (for background playback) and speakers
-              if (diwanMasterGain) {
-                gain.connect(diwanMasterGain);
-              } else {
-                gain.connect(ctx.destination);
-              }
-
-              osc1.start(now); osc1.stop(now + 1.25);
-              osc2.start(now); osc2.stop(now + 1.25);
-
-              if ('vibrate' in navigator) {
-                try { navigator.vibrate([1000, 400, 1000, 400, 1500]); } catch (e) {}
-              }
-            };
-
-            playTone();
-            callRingtoneInterval = setInterval(playTone, 3000);
+          // Layer 2: Ring at full 100% volume via active HTML5 audio element (works in background, screen off, and foreground!)
+          initBackgroundKeepAliveAudio();
+          if (bgAudioElement) {
+            bgAudioElement.currentTime = 0;
+            bgAudioElement.volume = 1.0; // FULL MAXIMUM VOLUME LOUD RINGING
+            const p = bgAudioElement.play();
+            if (p !== undefined) {
+              p.catch(err => console.warn('bgAudioElement play notice:', err));
+            }
           }
 
-          // Layer 3: Also trigger preloaded HTML5 audio element
-          try {
-            if (preloadedRingtoneAudio) {
-              preloadedRingtoneAudio.currentTime = 0;
-              preloadedRingtoneAudio.volume = 1.0;
-              preloadedRingtoneAudio.loop = true;
-              const p = preloadedRingtoneAudio.play();
-              if (p !== undefined) {
-                p.catch(e => console.warn('preloadedRingtoneAudio play warning:', e));
-              }
-            }
-          } catch (e) {}
+          // Layer 3: Strong mechanical phone vibration
+          if ('vibrate' in navigator) {
+            try { navigator.vibrate([1000, 400, 1000, 400, 1500]); } catch (e) {}
+          }
 
           // Layer 4: Lock screen media notification
           if ('mediaSession' in navigator) {
@@ -9807,29 +9795,15 @@
             navigator.mediaSession.playbackState = 'playing';
           }
         } else {
-          // Outgoing Ringback tone (caller ear feedback)
-          const ctx = getOrCreateDiwanAudioContext();
-          if (ctx) {
-            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-
-            const playTone = () => {
-              if (!ctx || ctx.state === 'closed') return;
-              if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-              const now = ctx.currentTime;
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = 'sine'; osc.frequency.setValueAtTime(440, now);
-              gain.gain.setValueAtTime(0.08, now);
-              gain.gain.setValueAtTime(0.08, now + 1.0);
-              gain.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
-
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start(now); osc.stop(now + 1.05);
-            };
-
-            playTone();
-            callRingtoneInterval = setInterval(playTone, 3500);
+          // Outgoing Ringback tone (نغمة توووت... توووت... الطبيعية الناعمة للمتصل)
+          initBackgroundKeepAliveAudio();
+          if (outgoingAudioElement) {
+            outgoingAudioElement.currentTime = 0;
+            outgoingAudioElement.volume = 0.35; // Soft, comfortable in the ear
+            const p = outgoingAudioElement.play();
+            if (p !== undefined) {
+              p.catch(err => console.warn('outgoingAudioElement play notice:', err));
+            }
           }
         }
       } catch (err) {
@@ -9838,28 +9812,39 @@
     }
 
     function stopAudioRingtone() {
-      if (callRingtoneInterval) {
-        clearInterval(callRingtoneInterval);
-        callRingtoneInterval = null;
+      // 1. Stop outgoing ringback tone
+      if (outgoingAudioElement) {
+        try {
+          outgoingAudioElement.pause();
+          outgoingAudioElement.currentTime = 0;
+        } catch (e) {}
       }
+
+      // 2. Stop vibration
       if ('vibrate' in navigator) {
         try { navigator.vibrate(0); } catch (e) {}
       }
 
-      // Stop preloaded ringtone audio
-      if (preloadedRingtoneAudio) {
+      // 3. Restore incoming audio element: if keep-alive active, drop volume to 0.0001 (silent loop), else pause
+      if (bgAudioElement) {
         try {
-          preloadedRingtoneAudio.pause();
-          preloadedRingtoneAudio.currentTime = 0;
+          if (isBackgroundKeepAliveActive) {
+            bgAudioElement.volume = 0.0001; // Back to silent background mode
+            const p = bgAudioElement.play();
+            if (p !== undefined) p.catch(() => {});
+          } else {
+            bgAudioElement.pause();
+            bgAudioElement.currentTime = 0;
+          }
         } catch (e) {}
       }
 
-      // Dismiss lock-screen notification from Service Worker
+      // 4. Dismiss lock-screen notification from Service Worker
       if (pendingIncomingCallObj && (pendingIncomingCallObj.callId || pendingIncomingCallObj.id)) {
         dismissServiceWorkerCallNotification(pendingIncomingCallObj.callId || pendingIncomingCallObj.id);
       }
 
-      // Restore lock screen mediaSession state
+      // 5. Restore lock screen mediaSession state
       try {
         if ('mediaSession' in navigator) {
           if (isBackgroundKeepAliveActive) {
@@ -10030,6 +10015,11 @@
         offer: { type: offer.type, sdp: offer.sdp }
       });
       directBellRef.onDisconnect().remove();
+
+      // 3. Dispatch instant high-priority FCM push to supervisor device (wakes up phone in background/locked screen)
+      if (typeof dispatchCallFcmPush === 'function') {
+        dispatchCallFcmPush(targetSupervisorId, callData, targetSup.branchId);
+      }
 
       // Update UI for Outgoing Call
       document.getElementById('outgoingCalleeName').innerText = targetSup.name;
