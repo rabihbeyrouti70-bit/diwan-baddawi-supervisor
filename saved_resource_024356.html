@@ -2717,6 +2717,11 @@
           <span class="btn-text">إدارة الفروع والمواقع</span>
           <span class="btn-sub">إضافة وتعديل فروع ديوان ماركت</span>
         </button>
+        <button type="button" class="admin-grid-btn" onclick="openBranchTasksModal()" style="border-color: #10b981;">
+          <span class="btn-icon">📋</span>
+          <span class="btn-text">إدارة مهام وأقسام الفروع</span>
+          <span class="btn-sub">تخصيص وتسمية مهام كل فرع (أكثر / أقل من 10)</span>
+        </button>
         <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
           <span class="btn-icon">📢</span>
           <span class="btn-text">التوجيهات والرسائل الإدارية</span>
@@ -2749,6 +2754,11 @@
           <span class="btn-icon">🕒</span>
           <span class="btn-text">ورديات فرعك</span>
           <span class="btn-sub">متابعة وتخصيص ورديات الفرع</span>
+        </button>
+        <button type="button" class="admin-grid-btn" onclick="openBranchTasksModal()" style="border-color: #10b981;">
+          <span class="btn-icon">📋</span>
+          <span class="btn-text">مهام وأقسام فرعك</span>
+          <span class="btn-sub">إضافة وتسمية وإلغاء مهام فرعك</span>
         </button>
         <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
           <span class="btn-icon">📢</span>
@@ -3249,7 +3259,114 @@
         <button type="button" class="btn btn-outline-white btn-sm" onclick="closeShiftsModal()">إغلاق</button>
       </div>
     </div>
+  </div
+  <!-- BRANCH TASKS & SECTIONS MODAL -->
+  <div class="modal-overlay" id="branchTasksModal" role="dialog" aria-modal="true" aria-labelledby="branchTasksModalTitle">
+    <div class="modal-card" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="diwan.PNG" alt="ديوان ماركت" class="modal-logo">
+          <h3 class="modal-title" id="branchTasksModalTitle">إدارة وتخصيص مهام وأقسام الفروع</h3>
+        </div>
+        <button class="close-btn" onclick="closeBranchTasksModal()" aria-label="إغلاق النافذة">&times;</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="modal-body" style="overflow-y: auto; padding: 16px; flex: 1;">
+        <!-- Branch Selector -->
+        <div style="margin-bottom: 14px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+          <label for="branchTasksBranchFilter" style="font-size: 13px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">
+            📍 اختر الفرع لتخصيص مهامه وأقسامه:
+          </label>
+          <select id="branchTasksBranchFilter" class="form-control" style="font-weight: 800;" onchange="onBranchTasksFilterChange()">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <!-- Summary & Stats Bar -->
+        <div id="branchTasksStatsBar" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Quick Add from Popular Supermarket Templates -->
+        <div style="margin-bottom: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px;">
+          <div style="font-size: 12px; font-weight: 800; color: #1e40af; margin-bottom: 6px;">
+            ⚡ إضافة سريعة لأقسام شائعة بنقرة واحدة:
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="quickAddTemplateSection('sec_fruits_veg')" style="font-size: 11px; padding: 3px 8px; color: #047857; border-color: #a7f3d0; background: white;">+ الخضار والفواكه 🥦</button>
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="quickAddTemplateSection('sec_roastery')" style="font-size: 11px; padding: 3px 8px; color: #92400e; border-color: #fde68a; background: white;">+ المحمصة والبهارات 🥜</button>
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="quickAddTemplateSection('sec_seafood')" style="font-size: 11px; padding: 3px 8px; color: #0284c7; border-color: #bae6fd; background: white;">+ الأسماك والبحريات 🐟</button>
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="quickAddTemplateSection('sec_facility')" style="font-size: 11px; padding: 3px 8px; color: #6b21a8; border-color: #e9d5ff; background: white;">+ النظافة والمرافق 🧹</button>
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="quickAddTemplateSection('sec_warehouse_ext')" style="font-size: 11px; padding: 3px 8px; color: #475569; border-color: #cbd5e1; background: white;">+ المستودع الخارجي 📦</button>
+          </div>
+        </div>
+
+        <!-- Add Custom Section Form -->
+        <div id="customSectionFormContainer" style="display: none; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+          <h4 id="customSectionFormTitle" style="font-size: 13.5px; font-weight: 800; color: #92400e; margin-bottom: 10px;">➕ إضافة مهمة / قسم جديد لهذا الفرع</h4>
+          <input type="hidden" id="editCustomSectionId">
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="inputCustomSectionNameAr">اسم القسم / المهمة (بالعربية):</label>
+              <input type="text" id="inputCustomSectionNameAr" class="form-control" placeholder="مثال: قسم الخضار والفواكه، ركن العروض...">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="inputCustomSectionIcon">الأيقونة / الرمز:</label>
+              <input type="text" id="inputCustomSectionIcon" class="form-control" placeholder="مثال: 🥦 أو 🛒" value="📋">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label for="inputCustomSectionItems">بنود التفتيش والمتابعة (اكتب كل بند بسطر منفصل):</label>
+            <textarea id="inputCustomSectionItems" class="form-control" rows="4" placeholder="النظافة العامة وطاولات العرض&#10;الفرز والجودة وفحص التالف&#10;وضوح بطاقات الأسعار"></textarea>
+            <small style="color: var(--text-muted); font-size: 11px;">اضغط Enter لكتابة كل بند في سطر مستقل.</small>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="inputCustomSectionHasTemps" onchange="toggleCustomSectionTempCount(this.checked)">
+              <span>❄️ هل يتطلب هذا القسم فحص درجات حرارة برادات/ثلاجات؟</span>
+            </label>
+            <div id="customSectionTempCountWrapper" style="display: none; margin-top: 8px; padding: 8px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+              <label for="inputCustomSectionTempCount" style="font-size: 12px; margin-bottom: 4px; display: block;">عدد الثلاجات / البرادات المراد فحص حرارتها:</label>
+              <input type="number" id="inputCustomSectionTempCount" class="form-control" min="1" max="10" value="1" style="max-width: 120px;">
+            </div>
+          </div>
+
+          <div id="customSectionFormError" style="color: #ef4444; font-size: 12px; margin-bottom: 10px; font-weight: 700;"></div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button type="button" class="btn btn-outline-white btn-sm" onclick="cancelCustomSectionForm()">إلغاء</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomSectionForm()">حفظ المهمة للفرع</button>
+          </div>
+        </div>
+
+        <!-- Action button to show custom section form -->
+        <div style="margin-bottom: 14px;">
+          <button id="btnShowAddCustomSection" type="button" class="btn btn-outline-white btn-sm" style="color: var(--primary-dark); border-color: var(--primary); width: 100%; justify-content: center; font-weight: 800;" onclick="showAddCustomSectionForm()">
+            ➕ إضافة قسم أو مهمة مخصصة جديدة للفرع
+          </button>
+        </div>
+
+        <!-- Sections List -->
+        <div id="branchSectionsListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Dynamically rendered sections cards -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="border-top: 1px solid var(--border); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: #f8fafc;">
+        <button type="button" class="btn btn-outline-white btn-sm" style="color: #dc2626; border-color: #fca5a5; font-size: 11px;" onclick="resetBranchSectionsToDefault()">
+          🔄 استعادة الأقسام العشرة القياسية لهذا الفرع
+        </button>
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeBranchTasksModal()">إغلاق</button>
+      </div>
+    </div>
   </div>
+
+>
 
   <div class="modal-overlay" id="hqOverviewModal" role="dialog" aria-modal="true" aria-labelledby="hqOverviewModalTitle">
     <div class="modal-card" style="max-width: 780px;">
@@ -3455,7 +3572,7 @@
     /* ============================================================
        DATA & CONSTANTS
        ============================================================ */
-    const SECTIONS_DATA = [
+    const DEFAULT_SECTIONS_DATA = [
   {
     "id": "sec_1",
     "num": 1,
@@ -3954,14 +4071,184 @@
     const STORAGE_KEYS = {
       BRANCHES: 'diwan_branches_data',
       BRANCH_SHIFTS: 'diwan_branch_shifts',
+      BRANCH_SECTIONS: 'diwan_branch_sections',
       SUPERVISORS: 'diwan_supervisors_data',
       FIREBASE_CONFIG: 'diwan_firebase_config',
       SHIFT_PREFIX: 'diwan_shift_',
       ARCHIVE_PREFIX: 'diwan_archive_shifts_'
     };
 
-    // Calculate total items dynamically from SECTIONS_DATA (C8 Fix)
-    const TOTAL_ITEMS = SECTIONS_DATA.reduce((acc, sec) => acc + (sec.items ? sec.items.length : 0), 0);
+    /* ============================================================
+       DYNAMIC MULTI-BRANCH TASKS & SECTIONS ENGINE (V4.5)
+       ============================================================ */
+    const POPULAR_SECTION_TEMPLATES = [
+      {
+        id: 'sec_fruits_veg',
+        titleAr: 'قسم الخضار والفواكه',
+        titleEn: 'Fruits & Vegetables',
+        icon: '🥦',
+        items: [
+          { rawId: 'Fruits & Veg - Cleanliness / النظافة', ar: 'النظافة العامة وطاولات العرض', en: 'Cleanliness & Tables' },
+          { rawId: 'Fruits & Veg - Sorting & Freshness / الفرز والطزاجة', ar: 'الفرز والجودة وفحص التالف', en: 'Sorting & Quality Check' },
+          { rawId: 'Fruits & Veg - FIFO & Display / العرض وتدوير البضاعة', ar: 'تطبيق FIFO وتدوير البضاعة', en: 'FIFO & Product Rotation' },
+          { rawId: 'Fruits & Veg - Price Tags & Scale / الأسعار والميزان', ar: 'وضوح بطاقات الأسعار ونظافة الميزان', en: 'Price Tags & Scales' }
+        ],
+        temps: [],
+        note: 'قسم الخضار والفواكه'
+      },
+      {
+        id: 'sec_roastery',
+        titleAr: 'قسم المحمصة والبهارات',
+        titleEn: 'Roastery & Spices',
+        icon: '🥜',
+        items: [
+          { rawId: 'Roastery - Cleanliness / النظافة', ar: 'نظافة المحمصة والمطاحن والواجهة', en: 'Cleanliness & Roaster' },
+          { rawId: 'Roastery - Packing & Sealing / التعبئة والتغليف', ar: 'تغليف وإحكام إغلاق الأكياس', en: 'Packing & Sealing' },
+          { rawId: 'Roastery - Expiry Dates / تواريخ الصلاحية', ar: 'مراقبة تواريخ الإنتاج والصلاحية', en: 'Expiry Dates' },
+          { rawId: 'Roastery - Price Tags / بطاقات الأسعار', ar: 'وضوح الأسعار على العبوات والمكسرات', en: 'Price Tags' }
+        ],
+        temps: [],
+        note: 'قسم المحمصة'
+      },
+      {
+        id: 'sec_seafood',
+        titleAr: 'قسم الأسماك والبحريات',
+        titleEn: 'Fish & Seafood',
+        icon: '🐟',
+        items: [
+          { rawId: 'Seafood - Cleanliness & Odor / النظافة والرائحة', ar: 'النظافة والتعقيم اليومي والرائحة', en: 'Cleanliness & Odor' },
+          { rawId: 'Seafood - Ice Layer & Freshness / الثلج والطزاجة', ar: 'تجديد الثلج وفحص طزاجة الأسماك', en: 'Ice Layer & Freshness' },
+          { rawId: 'Seafood - Tools Sterilization / تعقيم الأدوات', ar: 'تعقيم ألواح التقطيع والسكاكين', en: 'Tools Sterilization' },
+          { rawId: 'Seafood - Fridge Cleanliness / نظافة البراد', ar: 'نظافة براد حفظ الأسماك المركزي', en: 'Fish Fridge Cleanliness' }
+        ],
+        temps: [
+          { rawId: 'Fish Refrigerator 1 Temperature / حرارة براد الأسماك 1', label: 'حرارة براد الأسماك 1', min: 0, max: 4 }
+        ],
+        note: 'قسم الأسماك'
+      },
+      {
+        id: 'sec_facility',
+        titleAr: 'قسم النظافة والمرافق العامة',
+        titleEn: 'Hygiene & Facilities',
+        icon: '🧹',
+        items: [
+          { rawId: 'Facility - Aisles Cleanliness / نظافة الممرات', ar: 'نظافة ممرات الصالة والواجهات الزجاجية', en: 'Aisles & Glass Cleanliness' },
+          { rawId: 'Facility - Restrooms Disinfection / تعقيم الحمامات', ar: 'نظافة وتعقيم دورات المياه والمغاسل', en: 'Restrooms Disinfection' },
+          { rawId: 'Facility - Trash Bins / سلال المهملات', ar: 'تفريغ سلال المهملات وتبديل الأكياس', en: 'Emptying Trash Bins' },
+          { rawId: 'Facility - Sanitizers Available / توفر المعقمات', ar: 'توفر المعقمات والمحارم للزبائن', en: 'Sanitizers & Tissues' }
+        ],
+        temps: [],
+        note: 'قسم المرافق'
+      },
+      {
+        id: 'sec_warehouse_ext',
+        titleAr: 'قسم المستودع الخارجي ومنطقة التنزيل',
+        titleEn: 'External Warehouse',
+        icon: '📦',
+        items: [
+          { rawId: 'Ext Warehouse - Cleanliness / نظافة التنزيل', ar: 'نظافة منطقة التفريغ والتنزيل', en: 'Unloading Area Cleanliness' },
+          { rawId: 'Ext Warehouse - Pallets & Aisles / تنظيم الطبالي', ar: 'ترتيب الطبالي وتنظيم ممرات الطوارئ', en: 'Pallets & Emergency Aisles' },
+          { rawId: 'Ext Warehouse - Cold Rooms / غرف التبريد', ar: 'فحص درجات حرارة غرف التبريد الخارجية', en: 'External Cold Rooms' },
+          { rawId: 'Ext Warehouse - Security & Doors / إغلاق الأبواب', ar: 'إحكام إغلاق الأبواب وأمان المستودع', en: 'Doors Security' }
+        ],
+        temps: [],
+        note: 'المستودع الخارجي'
+      }
+    ];
+
+    let memoryBranchSectionsCache = null;
+
+    function getAllBranchSections() {
+      if (memoryBranchSectionsCache && typeof memoryBranchSectionsCache === 'object') {
+        return memoryBranchSectionsCache;
+      }
+      const saved = safeGetItem(STORAGE_KEYS.BRANCH_SECTIONS);
+      if (saved) {
+        const parsed = safeJsonParse(saved);
+        if (parsed && typeof parsed === 'object') {
+          memoryBranchSectionsCache = parsed;
+          return parsed;
+        }
+      }
+      return {};
+    }
+
+    function getBranchSections(branchId, includeDisabled = false) {
+      const bId = branchId || currentBranchId;
+      const all = getAllBranchSections();
+      let sections = (all && all[bId] && Array.isArray(all[bId])) ? all[bId] : DEFAULT_SECTIONS_DATA;
+      if (!Array.isArray(sections) || sections.length === 0) {
+        sections = DEFAULT_SECTIONS_DATA;
+      }
+      if (!includeDisabled) {
+        return sections.filter(sec => !sec.disabled);
+      }
+      return sections;
+    }
+
+    // Dynamic backward compatibility for global SECTIONS_DATA & TOTAL_ITEMS
+    Object.defineProperty(window, 'SECTIONS_DATA', {
+      get: function() {
+        return getBranchSections(currentBranchId, false);
+      },
+      configurable: true
+    });
+
+    function getBranchTotalItems(branchId) {
+      const sections = getBranchSections(branchId || currentBranchId, false);
+      return sections.reduce((acc, sec) => acc + (sec.items ? sec.items.length : 0), 0);
+    }
+
+    Object.defineProperty(window, 'TOTAL_ITEMS', {
+      get: function() {
+        return getBranchTotalItems(currentBranchId);
+      },
+      configurable: true
+    });
+
+    function saveBranchSections(branchId, sectionsList, broadcast = true) {
+      const bId = branchId || currentBranchId;
+      const all = getAllBranchSections();
+      all[bId] = sectionsList;
+      memoryBranchSectionsCache = all;
+      safeSetItem(STORAGE_KEYS.BRANCH_SECTIONS, JSON.stringify(all));
+
+      if (broadcast && broadcastChannel) {
+        broadcastChannel.postMessage({
+          type: 'SYNC_BRANCH_SECTIONS',
+          branchId: bId,
+          sections: sectionsList
+        });
+      }
+      if (firebaseDb) {
+        firebaseDb.ref('config/branch_sections/' + bId).set(sectionsList).catch(err => {
+          console.warn('Firebase branch sections write error:', err);
+        });
+      }
+
+      if (bId === currentBranchId) {
+        renderAll();
+      }
+    }
+
+    function listenToFirebaseBranchSections() {
+      if (!firebaseDb) return;
+      firebaseDb.ref('config/branch_sections').on('value', (snapshot) => {
+        const val = snapshot.val();
+        if (val && typeof val === 'object') {
+          memoryBranchSectionsCache = val;
+          safeSetItem(STORAGE_KEYS.BRANCH_SECTIONS, JSON.stringify(val));
+          if (document.body.classList.contains('auth-passed')) {
+            renderAll();
+          }
+          const modal = document.getElementById('branchTasksModal');
+          if (modal && modal.classList.contains('open')) {
+            renderBranchSectionsList();
+          }
+        }
+      }, (err) => console.warn('Firebase branch sections listener error:', err));
+    }
+
 
     /* ============================================================
        SECURITY & RESILIENCE UTILITIES (XSS & STORAGE PROTECTION)
@@ -4007,11 +4294,339 @@
     }
 
     // Centralized Stats Calculation (V4.0 Multi-Shift Matrix Support)
-    function calculateShiftStats(shiftId, optionalItems) {
+    
+    /* ============================================================
+       BRANCH TASKS & SECTIONS UI CONTROLLER & PERMISSIONS (V4.5)
+       ============================================================ */
+    function openBranchTasksModal() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، هذه الصلاحية مخصصة للإدارة ومديري الفروع فقط.");
+        return;
+      }
+      populateBranchTasksBranchFilter();
+      cancelCustomSectionForm();
+      renderBranchSectionsList();
+      document.getElementById('branchTasksModal').classList.add('open');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeBranchTasksModal() {
+      document.getElementById('branchTasksModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
+      cancelCustomSectionForm();
+    }
+
+    function populateBranchTasksBranchFilter() {
+      const filter = document.getElementById('branchTasksBranchFilter');
+      if (!filter) return;
+      const branches = getBranchesList();
+
+      if (currentUserRole === 'branch_manager') {
+        const b = getBranchById(currentBranchId);
+        filter.innerHTML = `<option value="${escapeHtml(currentBranchId)}" selected>🏢 ${escapeHtml(b ? b.nameAr : currentBranchId)} (فرعك فقط)</option>`;
+        filter.disabled = true;
+      } else {
+        filter.disabled = false;
+        filter.innerHTML = branches.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.nameAr)} (${escapeHtml(b.location)})</option>`).join('');
+        filter.value = currentBranchId;
+      }
+    }
+
+    function onBranchTasksFilterChange() {
+      cancelCustomSectionForm();
+      renderBranchSectionsList();
+    }
+
+    function getSelectedBranchForTasks() {
+      const filter = document.getElementById('branchTasksBranchFilter');
+      if (!filter || currentUserRole === 'branch_manager') {
+        return currentBranchId;
+      }
+      return filter.value || currentBranchId;
+    }
+
+    function renderBranchSectionsList() {
+      const branchId = getSelectedBranchForTasks();
+      const b = getBranchById(branchId);
+      const sections = getBranchSections(branchId, true);
+      const container = document.getElementById('branchSectionsListContainer');
+      const statsBar = document.getElementById('branchTasksStatsBar');
+      if (!container) return;
+
+      const activeSections = sections.filter(s => !s.disabled);
+      const disabledSections = sections.filter(s => s.disabled);
+      const totalItems = activeSections.reduce((acc, s) => acc + (s.items ? s.items.length : 0), 0);
+
+      if (statsBar) {
+        statsBar.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong style="color: #166534; font-size: 13.5px;">🏢 ${escapeHtml(b ? b.nameAr : branchId)}:</strong>
+            <span style="background: #dcfce7; color: #166534; font-weight: 800; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">
+              ${activeSections.length} مهام مفعلة
+            </span>
+            ${disabledSections.length > 0 ? `<span style="background: #f1f5f9; color: #64748b; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 999px; border: 1px solid #cbd5e1;">${disabledSections.length} معطلة</span>` : ''}
+          </div>
+          <div style="font-size: 12px; color: #166534; font-weight: 700;">
+            📝 إجمالي بنود التفتيش الحالية: <strong>${totalItems}</strong> بنداً
+          </div>
+        `;
+      }
+
+      if (sections.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">لا توجد مهام معرفة لهذا الفرع. أضف مهمة جديدة أو استعد الأقسام الافتراضية.</div>';
+        return;
+      }
+
+      container.innerHTML = sections.map((sec, idx) => {
+        const isEnabled = !sec.disabled;
+        const itemCount = sec.items ? sec.items.length : 0;
+        const tempCount = sec.temps ? sec.temps.length : 0;
+        const icon = sec.icon || (idx === 0 ? '🚗' : idx === 1 ? '🚪' : idx === 2 ? '🛒' : idx === 3 ? '💳' : idx === 4 ? '🥖' : idx === 5 ? '🧀' : idx === 6 ? '🥩' : idx === 7 ? '🍗' : idx === 8 ? '🏢' : idx === 9 ? '📦' : '📋');
+        const isCustom = !!sec.isCustom || String(sec.id).startsWith('sec_custom_') || String(sec.id).startsWith('sec_fruits_') || String(sec.id).startsWith('sec_roastery') || String(sec.id).startsWith('sec_seafood') || String(sec.id).startsWith('sec_facility') || String(sec.id).startsWith('sec_warehouse_');
+
+        return `
+          <div style="background: ${isEnabled ? '#ffffff' : '#f8fafc'}; border: 1.5px solid ${isEnabled ? '#cbd5e1' : '#e2e8f0'}; border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: ${isEnabled ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'}; opacity: ${isEnabled ? '1' : '0.75'};">
+            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 240px;">
+              <span style="font-size: 20px; width: 34px; height: 34px; background: ${isEnabled ? '#ecfdf5' : '#e2e8f0'}; border-radius: 8px; display: flex; align-items: center; justify-content: center;">${icon}</span>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <strong style="font-size: 13.5px; color: ${isEnabled ? 'var(--secondary)' : '#64748b'};">${escapeHtml(sec.titleAr || sec.titleEn || 'قسم')}</strong>
+                  ${sec.titleEn ? `<small style="font-size: 10.5px; color: var(--text-muted);">(${escapeHtml(sec.titleEn)})</small>` : ''}
+                  ${isCustom ? '<span style="background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; border: 1px solid #bfdbfe;">مخصص للفرع</span>' : ''}
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
+                  📋 ${itemCount} بنود تفتيش ${tempCount > 0 ? `• ❄️ ${tempCount} برادات` : ''}
+                  • الحالة: ${isEnabled ? '<span style="color: #059669; font-weight: 700;">مفعل للفرع 🟢</span>' : '<span style="color: #dc2626; font-weight: 700;">معطل ⚪</span>'}
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 10px; font-size: 11.5px; color: ${isEnabled ? '#d97706' : '#059669'}; border-color: ${isEnabled ? '#fde68a' : '#a7f3d0'};" onclick="toggleBranchSection('${escapeHtml(branchId)}', '${escapeHtml(sec.id)}')">
+                ${isEnabled ? 'تعطيل للفرع ⏸️' : 'تفعيل للفرع ▶️'}
+              </button>
+              <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 10px; font-size: 11.5px;" onclick="openEditCustomSectionForm('${escapeHtml(branchId)}', '${escapeHtml(sec.id)}')">
+                ✏️ تعديل
+              </button>
+              ${isCustom ? `
+                <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 10px; font-size: 11.5px; color: #dc2626; border-color: #fca5a5;" onclick="deleteBranchSection('${escapeHtml(branchId)}', '${escapeHtml(sec.id)}')">
+                  🗑️ حذف
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleBranchSection(branchId, secId) {
+      const sections = JSON.parse(JSON.stringify(getBranchSections(branchId, true)));
+      const sec = sections.find(s => s.id === secId);
+      if (!sec) return;
+
+      sec.disabled = !sec.disabled;
+      saveBranchSections(branchId, sections);
+      renderBranchSectionsList();
+      const b = getBranchById(branchId);
+      const bName = b ? b.nameAr : branchId;
+      showToast(`${sec.disabled ? '⚪ تم تعطيل' : '🟢 تم تفعيل'} قسم "${sec.titleAr}" لـ (${bName})`);
+    }
+
+    function quickAddTemplateSection(templateId) {
+      const branchId = getSelectedBranchForTasks();
+      const tmpl = POPULAR_SECTION_TEMPLATES.find(t => t.id === templateId);
+      if (!tmpl) return;
+
+      const sections = JSON.parse(JSON.stringify(getBranchSections(branchId, true)));
+      // Check if already exists in this branch
+      const existing = sections.find(s => s.id === tmpl.id || s.titleAr === tmpl.titleAr);
+      if (existing) {
+        if (existing.disabled) {
+          existing.disabled = false;
+          saveBranchSections(branchId, sections);
+          renderBranchSectionsList();
+          showToast(`🟢 تم إعادة تفعيل قسم "${tmpl.titleAr}" للفرع!`);
+          return;
+        } else {
+          alert(`قسم "${tmpl.titleAr}" موجود ومفعل بالفعل في هذا الفرع!`);
+          return;
+        }
+      }
+
+      // Add fresh copy
+      const newSec = JSON.parse(JSON.stringify(tmpl));
+      newSec.num = sections.length + 1;
+      newSec.disabled = false;
+      newSec.isCustom = true;
+      sections.push(newSec);
+
+      saveBranchSections(branchId, sections);
+      renderBranchSectionsList();
+      const b = getBranchById(branchId);
+      showToast(`✅ تمت إضافة "${tmpl.titleAr}" لـ (${b ? b.nameAr : branchId}) بنجاح!`);
+    }
+
+    function showAddCustomSectionForm() {
+      document.getElementById('customSectionFormTitle').innerText = '➕ إضافة مهمة / قسم جديد لهذا الفرع';
+      document.getElementById('editCustomSectionId').value = '';
+      document.getElementById('inputCustomSectionNameAr').value = '';
+      document.getElementById('inputCustomSectionIcon').value = '📋';
+      document.getElementById('inputCustomSectionItems').value = 'النظافة العامة وطاولات العرض\nالفرز والجودة وفحص التالف\nوضوح بطاقات الأسعار';
+      document.getElementById('inputCustomSectionHasTemps').checked = false;
+      document.getElementById('customSectionTempCountWrapper').style.display = 'none';
+      document.getElementById('inputCustomSectionTempCount').value = '1';
+      document.getElementById('customSectionFormError').innerText = '';
+      document.getElementById('customSectionFormContainer').style.display = 'block';
+      document.getElementById('customSectionFormContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function openEditCustomSectionForm(branchId, secId) {
+      const sections = getBranchSections(branchId, true);
+      const sec = sections.find(s => s.id === secId);
+      if (!sec) return;
+
+      document.getElementById('customSectionFormTitle').innerText = `✏️ تعديل قسم: ${sec.titleAr}`;
+      document.getElementById('editCustomSectionId').value = sec.id;
+      document.getElementById('inputCustomSectionNameAr').value = sec.titleAr || '';
+      document.getElementById('inputCustomSectionIcon').value = sec.icon || '📋';
+      
+      const itemsText = (sec.items || []).map(i => i.ar || i.en).join('\n');
+      document.getElementById('inputCustomSectionItems').value = itemsText;
+
+      const hasTemps = sec.temps && sec.temps.length > 0;
+      document.getElementById('inputCustomSectionHasTemps').checked = hasTemps;
+      document.getElementById('customSectionTempCountWrapper').style.display = hasTemps ? 'block' : 'none';
+      document.getElementById('inputCustomSectionTempCount').value = hasTemps ? sec.temps.length : 1;
+
+      document.getElementById('customSectionFormError').innerText = '';
+      document.getElementById('customSectionFormContainer').style.display = 'block';
+      document.getElementById('customSectionFormContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function toggleCustomSectionTempCount(checked) {
+      const wrapper = document.getElementById('customSectionTempCountWrapper');
+      if (wrapper) wrapper.style.display = checked ? 'block' : 'none';
+    }
+
+    function cancelCustomSectionForm() {
+      const c = document.getElementById('customSectionFormContainer');
+      if (c) c.style.display = 'none';
+    }
+
+    function saveCustomSectionForm() {
+      const branchId = getSelectedBranchForTasks();
+      const editId = document.getElementById('editCustomSectionId').value.trim();
+      const nameAr = document.getElementById('inputCustomSectionNameAr').value.trim();
+      const icon = document.getElementById('inputCustomSectionIcon').value.trim() || '📋';
+      const itemsRaw = document.getElementById('inputCustomSectionItems').value.trim();
+      const hasTemps = document.getElementById('inputCustomSectionHasTemps').checked;
+      const tempCount = parseInt(document.getElementById('inputCustomSectionTempCount').value, 10) || 1;
+      const errorBox = document.getElementById('customSectionFormError');
+
+      if (!nameAr) {
+        errorBox.innerText = 'يرجى كتابة اسم القسم أو المهمة.';
+        return;
+      }
+
+      const itemLines = itemsRaw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      if (itemLines.length === 0) {
+        errorBox.innerText = 'يرجى كتابة بند تفتيش واحد على الأقل.';
+        return;
+      }
+
+      const sections = JSON.parse(JSON.stringify(getBranchSections(branchId, true)));
+      const items = itemLines.map(line => ({
+        rawId: `${nameAr} - ${line}`,
+        ar: line,
+        en: line
+      }));
+
+      const temps = [];
+      if (hasTemps) {
+        for (let i = 1; i <= Math.min(10, Math.max(1, tempCount)); i++) {
+          temps.push({
+            rawId: `${nameAr} - Refrigerator ${i} Temperature / حرارة الثلاجة ${i}`,
+            label: `حرارة ثلاجة ${i}`,
+            min: 0,
+            max: 8
+          });
+        }
+      }
+
+      if (editId) {
+        // Edit existing
+        const sec = sections.find(s => s.id === editId);
+        if (sec) {
+          sec.titleAr = nameAr;
+          sec.icon = icon;
+          sec.items = items;
+          sec.temps = temps;
+          sec.itemCount = items.length;
+        }
+      } else {
+        // Create new
+        const newSecId = 'sec_custom_' + Date.now();
+        sections.push({
+          id: newSecId,
+          num: sections.length + 1,
+          titleAr: nameAr,
+          titleEn: nameAr,
+          icon: icon,
+          itemCount: items.length,
+          items: items,
+          temps: temps,
+          disabled: false,
+          isCustom: true,
+          note: nameAr
+        });
+      }
+
+      saveBranchSections(branchId, sections);
+      cancelCustomSectionForm();
+      renderBranchSectionsList();
+      const b = getBranchById(branchId);
+      showToast(`✅ تم حفظ قسم "${nameAr}" لفرع (${b ? b.nameAr : branchId}) بنجاح!`);
+    }
+
+    function deleteBranchSection(branchId, secId) {
+      const sections = getBranchSections(branchId, true);
+      const sec = sections.find(s => s.id === secId);
+      if (!sec) return;
+
+      if (!confirm(`هل أنت متأكد من رغبتك في حذف قسم "${sec.titleAr}" نهائياً من هذا الفرع؟`)) {
+        return;
+      }
+
+      const updated = sections.filter(s => s.id !== secId);
+      saveBranchSections(branchId, updated);
+      renderBranchSectionsList();
+      const b = getBranchById(branchId);
+      showToast(`🗑️ تم حذف قسم "${sec.titleAr}" من (${b ? b.nameAr : branchId})`);
+    }
+
+    function resetBranchSectionsToDefault() {
+      const branchId = getSelectedBranchForTasks();
+      const b = getBranchById(branchId);
+      const bName = b ? b.nameAr : branchId;
+
+      if (!confirm(`هل أنت متأكد من استعادة الأقسام العشرة القياسية لـ (${bName})؟\nسيتم إلغاء أي تعديلات أو مهام مخصصة أُضيفت لهذا الفرع.`)) {
+        return;
+      }
+
+      const defaults = JSON.parse(JSON.stringify(DEFAULT_SECTIONS_DATA));
+      saveBranchSections(branchId, defaults);
+      renderBranchSectionsList();
+      showToast(`🔄 تم استعادة الأقسام العشرة القياسية لـ (${bName})`);
+    }
+
+    function calculateShiftStats(shiftId, optionalItems, branchId) {
       let done = 0, inProgress = 0, critical = 0, handover = 0;
       const targetItems = optionalItems || (state && state.items) || {};
+      const bId = branchId || currentBranchId;
+      const sections = getBranchSections(bId, false);
       
-      SECTIONS_DATA.forEach(sec => {
+      sections.forEach(sec => {
+        if (!sec.items) return;
         sec.items.forEach(itDef => {
           const it = targetItems[itDef.rawId];
           if (!it) return;
@@ -4023,7 +4638,7 @@
           else if (shData.status === 'handover') handover++;
         });
       });
-      const total = TOTAL_ITEMS;
+      const total = getBranchTotalItems(bId);
       const pending = Math.max(0, total - done - inProgress - critical - handover);
       const percentage = total > 0 ? Math.round((done / total) * 100) : 0;
       return { done, inProgress, critical, handover, pending, total, percentage };
@@ -5830,6 +6445,7 @@
         listenToFirebaseShift();
         listenToFirebaseSupervisors();
         listenToFirebaseBranchShifts();
+        listenToFirebaseBranchSections();
         listenToFirebaseTempRanges();
         listenToFirebaseBranches();
         listenToBranchDirectives();
@@ -5968,7 +6584,7 @@
       const text = document.getElementById('toggleAllText');
       if (!btn) return;
 
-      const allOpen = expandedSections.size === SECTIONS_DATA.length;
+      const allOpen = expandedSections.size === getBranchSections(currentBranchId, false).length;
       if (allOpen) {
         if (icon) icon.innerText = '📁';
         if (text) text.innerText = 'إغلاق الكل';
@@ -5981,7 +6597,7 @@
     }
 
     function toggleAllSections() {
-      if (expandedSections.size === SECTIONS_DATA.length) {
+      if (expandedSections.size === getBranchSections(currentBranchId, false).length) {
         collapseAllSections();
       } else {
         expandAllSections();
@@ -5996,7 +6612,7 @@
     }
 
     function expandAllSections() {
-      SECTIONS_DATA.forEach(s => expandedSections.add(s.id));
+      getBranchSections(currentBranchId, false).forEach(s => expandedSections.add(s.id));
       renderSections();
       updateToggleAllButton();
       showToast("تم فتح كافة المهام 📂");
@@ -6009,7 +6625,8 @@
 
       const branchShifts = getBranchShifts(currentBranchId);
 
-      SECTIONS_DATA.forEach((sec, idx) => {
+      const currentBranchSections = getBranchSections(currentBranchId, false);
+      currentBranchSections.forEach((sec, idx) => {
         // Filter items according to activeFilter
         const matchingItems = sec.items.filter(item => {
           const itemEntry = state.items[item.rawId] || {};
@@ -6787,7 +7404,8 @@
        ============================================================ */
     function getItemTitle(rawId) {
       if (!rawId) return '';
-      for (const sec of SECTIONS_DATA) {
+      const secList = getBranchSections(currentBranchId, false);
+      for (const sec of secList) {
         if (sec.items) {
           const it = sec.items.find(i => i.rawId === rawId);
           if (it) {
@@ -8242,7 +8860,8 @@
           }
         }
 
-        let s = { done: 0, inProgress: 0, handover: 0, critical: 0, total: TOTAL_ITEMS, percentage: 0 };
+        const branchItemTotal = getBranchTotalItems(b.id);
+        let s = { done: 0, inProgress: 0, handover: 0, critical: 0, total: branchItemTotal, percentage: 0 };
         let hasData = false;
 
         if (branchItems) {
@@ -8254,7 +8873,7 @@
             });
             if (dayDone > 0) {
               s.done = dayDone;
-              s.percentage = Math.round((dayDone / TOTAL_ITEMS) * 100);
+              s.percentage = branchItemTotal > 0 ? Math.round((dayDone / branchItemTotal) * 100) : 0;
             }
           }
           if (s.done > 0 || s.inProgress > 0 || s.critical > 0) {
@@ -8294,7 +8913,7 @@
                   });
                   if (dayDone > 0) {
                     s.done = dayDone;
-                    s.percentage = Math.round((dayDone / TOTAL_ITEMS) * 100);
+                    s.percentage = branchItemTotal > 0 ? Math.round((dayDone / branchItemTotal) * 100) : 0;
                   }
                 }
                 const hasData = (s.done > 0 || s.inProgress > 0 || s.critical > 0);
