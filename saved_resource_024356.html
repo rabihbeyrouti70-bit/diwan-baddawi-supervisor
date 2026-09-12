@@ -2654,9 +2654,6 @@
             🖨️ <span class="btn-full-text">طباعة</span>
           </button>
 
-          <button id="btnHeaderCall" class="btn btn-outline-white btn-sm" onclick="openDirectCallModal()" style="display: none; background: #10b981; border-color: #059669; color: white; font-weight: 800;" title="إجراء مكالمة صوتية مباشرة عبر التطبيق">
-            📞 <span class="btn-full-text">اتصال صوتي</span><span class="btn-mobile-text" style="display: none;">اتصال</span>
-          </button>
           <button id="btnHeaderDirectives" class="btn btn-outline-white btn-sm" onclick="openAdminDirectiveModal()" style="display: none; color: #d97706; border-color: #f59e0b;" title="التوجيهات والملاحظات الإدارية">📢 التوجيهات</button>
           <button class="btn btn-outline-white btn-sm" onclick="lockApp()" title="قفل الجلسة (خروج)">🔒 قفل</button>
         </div>
@@ -2789,14 +2786,9 @@
           <strong id="livePresenceStripTitle" style="font-size: 13.5px; color: #0f172a;">🟢 المشرفون النشطون لحظياً (الرصد المباشر):</strong>
           <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="openDirectCallModal()" style="font-size: 11.5px; padding: 3px 12px; background: #10b981; border-color: #059669; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 4px rgba(16,185,129,0.3);" title="إجراء مكالمة هاتفية صوتية عبر التطبيق">
-            📞 مكالمة صوتية
-          </button>
-          <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
-            👥 إدارة المشرفين
-          </button>
-        </div>
+        <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
+          👥 إدارة وتفاصيل المشرفين
+        </button>
       </div>
       <div id="managerLivePresenceList" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
         <span style="font-size: 12px; color: var(--text-muted);">جارٍ رصد تواجد المشرفين لحظياً...</span>
@@ -2819,14 +2811,9 @@
                 <span id="activeBranchDisplay" style="font-size: 11px; color: var(--text-muted); display: block;">فرع النويري</span>
               </div>
             </div>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <button type="button" id="btnShiftCardCall" class="btn btn-sm" onclick="openDirectCallModal()" style="display: none; align-items: center; gap: 4px; background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" title="إجراء مكالمة صوتية مباشرة لمسؤول صالة">
-                📞 اتصال بمشرف
-              </button>
-              <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
-                🔒 خروج / تبديل
-              </button>
-            </div>
+            <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
+              🔒 خروج / تبديل
+            </button>
           </div>
         </div>
 
@@ -5582,11 +5569,7 @@
             if (btnBranches) btnBranches.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
-            const btnCallHead = document.getElementById('btnHeaderCall');
-            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
-            const btnShiftCall = document.getElementById('btnShiftCardCall');
-            if (btnShiftCall) btnShiftCall.style.display = 'inline-flex';
-            if (adminSwitcher) {
+                        if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
               populateHeaderBranchSelect();
             }
@@ -5602,11 +5585,7 @@
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
-            const btnCallHead = document.getElementById('btnHeaderCall');
-            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
-            const btnShiftCall = document.getElementById('btnShiftCardCall');
-            if (btnShiftCall) btnShiftCall.style.display = 'inline-flex';
-            if (adminSwitcher) adminSwitcher.style.display = 'none';
+                        if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) {
               bmPanel.style.display = 'block';
@@ -5621,11 +5600,7 @@
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
             if (btnDirHead) btnDirHead.style.display = 'none';
-            const btnCallHead = document.getElementById('btnHeaderCall');
-            if (btnCallHead) btnCallHead.style.display = 'none';
-            const btnShiftCall = document.getElementById('btnShiftCardCall');
-            if (btnShiftCall) btnShiftCall.style.display = 'none';
-            if (adminSwitcher) adminSwitcher.style.display = 'none';
+                        if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) bmPanel.style.display = 'none';
           }
@@ -5821,11 +5796,7 @@
       if (btnBranches) btnBranches.style.display = 'none';
       if (btnHq) btnHq.style.display = 'none';
       if (btnDirHead) btnDirHead.style.display = 'none';
-      const btnCallHead = document.getElementById('btnHeaderCall');
-      if (btnCallHead) btnCallHead.style.display = 'none';
-      const btnShiftCall = document.getElementById('btnShiftCardCall');
-      if (btnShiftCall) btnShiftCall.style.display = 'none';
-      if (adminSwitcher) adminSwitcher.style.display = 'none';
+            if (adminSwitcher) adminSwitcher.style.display = 'none';
       const execPanel = document.getElementById('adminExecutivePanel');
       const bmPanel = document.getElementById('branchManagerPanel');
       if (execPanel) execPanel.style.display = 'none';
@@ -8197,13 +8168,8 @@
           : '⚪ لا يوجد مشرفون متصلون لحظياً الآن في كافة الفروع';
         html += `
           <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 11.5px; color: #64748b; display: inline-flex; align-items: center; gap: 6px;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span>${emptyText}</span>
-              ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
-            </div>
-            <button type="button" onclick="openDirectCallModal()" style="background: #10b981; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 3px rgba(16,185,129,0.3);">
-              📞 فتح قائمة الاتصال
-            </button>
+            <span>${emptyText}</span>
+            ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
           </div>
         `;
       }
