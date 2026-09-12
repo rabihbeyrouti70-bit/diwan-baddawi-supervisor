@@ -2820,8 +2820,8 @@
               </div>
             </div>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <button type="button" id="btnShiftCardCall" class="btn btn-sm" onclick="openDirectCallModal()" style="display: inline-flex; align-items: center; gap: 4px; background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" title="إجراء مكالمة صوتية مباشرة">
-                📞 اتصال صوتي
+              <button type="button" id="btnShiftCardCall" class="btn btn-sm" onclick="openDirectCallModal()" style="display: none; align-items: center; gap: 4px; background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" title="إجراء مكالمة صوتية مباشرة لمسؤول صالة">
+                📞 اتصال بمشرف
               </button>
               <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
                 🔒 خروج / تبديل
@@ -3594,15 +3594,15 @@
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 26px;">📞</span>
           <div>
-            <h3 class="modal-title" id="directCallModalTitle" style="color: white; margin: 0; font-size: 16px;">دليل المكالمات الصوتية المباشرة</h3>
-            <span style="font-size: 11.5px; color: #a7f3d0;">اتصال هاتفي مباشر وفوري عبر تطبيق ديوان ماركت</span>
+            <h3 class="modal-title" id="directCallModalTitle" style="color: white; margin: 0; font-size: 16px;">دليل المكالمات الصوتية (الاتصال من الأعلى للأدنى)</h3>
+            <span style="font-size: 11.5px; color: #a7f3d0;">خاصية مخصصة للإدارة للتواصل الهاتفي المباشر مع مسؤولي الصالة</span>
           </div>
         </div>
         <button class="close-btn" onclick="closeDirectCallModal()" aria-label="إغلاق النافذة" style="color: white;">&times;</button>
       </div>
       <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
         <p id="directCallModalDesc" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
-          اختر الشخص الذي تود الاتصال به فوراً. ستفتح المكالمة مباشرة بين الجهازين بصوت عالي النقاء ودون الحاجة لأرقام هواتف.
+          اختر مسؤول الصالة أو المشرف التابع لفرعك للاتصال به فوراً. المكالمات تتم من الإدارة للأدنى بصوت مباشر عالي النقاء.
         </p>
         <div id="directCallListContainer" style="display: flex; flex-direction: column; gap: 10px;">
           <!-- Populated dynamically -->
@@ -5584,6 +5584,8 @@
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
             const btnCallHead = document.getElementById('btnHeaderCall');
             if (btnCallHead) btnCallHead.style.display = 'inline-flex';
+            const btnShiftCall = document.getElementById('btnShiftCardCall');
+            if (btnShiftCall) btnShiftCall.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
               populateHeaderBranchSelect();
@@ -5602,6 +5604,8 @@
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
             const btnCallHead = document.getElementById('btnHeaderCall');
             if (btnCallHead) btnCallHead.style.display = 'inline-flex';
+            const btnShiftCall = document.getElementById('btnShiftCardCall');
+            if (btnShiftCall) btnShiftCall.style.display = 'inline-flex';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) {
@@ -5618,7 +5622,9 @@
             if (btnHq) btnHq.style.display = 'none';
             if (btnDirHead) btnDirHead.style.display = 'none';
             const btnCallHead = document.getElementById('btnHeaderCall');
-            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
+            if (btnCallHead) btnCallHead.style.display = 'none';
+            const btnShiftCall = document.getElementById('btnShiftCardCall');
+            if (btnShiftCall) btnShiftCall.style.display = 'none';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) bmPanel.style.display = 'none';
@@ -5817,6 +5823,8 @@
       if (btnDirHead) btnDirHead.style.display = 'none';
       const btnCallHead = document.getElementById('btnHeaderCall');
       if (btnCallHead) btnCallHead.style.display = 'none';
+      const btnShiftCall = document.getElementById('btnShiftCardCall');
+      if (btnShiftCall) btnShiftCall.style.display = 'none';
       if (adminSwitcher) adminSwitcher.style.display = 'none';
       const execPanel = document.getElementById('adminExecutivePanel');
       const bmPanel = document.getElementById('branchManagerPanel');
@@ -8174,9 +8182,12 @@
               ${currentUserRole === 'admin' ? `<span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(item.branchName)}</span>` : ''}
               ${item.platStr ? `<span style="font-size: 10.5px; color: #047857;">• ${escapeHtml(item.platStr)}</span>` : ''}
               <span style="font-size: 10.5px; font-weight: 800; color: #059669;">[متصل لحظياً]</span>
-              <button type="button" onclick="event.stopPropagation(); initiateVoiceCall('${escapeHtml(s.id)}')" style="background: #10b981; color: white; border: none; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3); transition: all 0.2s;" title="اتصال هاتفي صوتي مباشر عبر التطبيق">
-                <span style="font-size: 11.5px;">📞</span> اتصال
-              </button>
+              ${((currentUserRole === 'admin' && s.id !== currentUserId && s.id !== 'admin' && s.role !== 'admin') ||
+                 (currentUserRole === 'branch_manager' && s.branchId === currentBranchId && s.id !== currentUserId && s.role !== 'admin' && s.id !== 'admin' && s.role !== 'branch_manager')) ? `
+                <button type="button" onclick="event.stopPropagation(); initiateVoiceCall('${escapeHtml(s.id)}')" style="background: #10b981; color: white; border: none; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3); transition: all 0.2s;" title="اتصال هاتفي صوتي مباشر عبر التطبيق">
+                  <span style="font-size: 11.5px;">📞</span> اتصال
+                </button>
+              ` : ''}
             </div>
           `;
         }).join('');
@@ -8648,7 +8659,8 @@
               </div>
             </div>
             <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-              ${s.id !== currentUserId ? `
+              ${((currentUserRole === 'admin' && s.id !== currentUserId && s.id !== 'admin' && s.role !== 'admin') ||
+                 (currentUserRole === 'branch_manager' && s.branchId === currentBranchId && s.id !== currentUserId && s.role !== 'admin' && s.id !== 'admin' && s.role !== 'branch_manager')) ? `
                 <button type="button" class="btn btn-sm" style="padding: 4px 10px; font-size: 12px; font-weight: 800; background: ${isOnline ? '#10b981' : '#059669'}; color: white; border: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" onclick="event.stopPropagation(); closeSupervisorsModal(); initiateVoiceCall('${escapeHtml(s.id)}')">
                   📞 اتصال
                 </button>
@@ -9556,6 +9568,10 @@
 
     // DIRECT CALL DIRECTORY MODAL CONTROLLERS
     function openDirectCallModal() {
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع فقط للتواصل مع مسؤولي الصالة (الاتصال من الأعلى للأدنى فقط).");
+        return;
+      }
       document.body.classList.add('modal-open');
       renderDirectCallList();
       const modal = document.getElementById('directCallModal');
@@ -9578,21 +9594,27 @@
       let targetList = [];
 
       if (currentUserRole === 'admin') {
-        // General Manager: can call anyone except self
-        targetList = supervisors.filter(s => s.id !== currentUserId && s.id !== 'admin');
+        // General Manager (Top Authority): Can call branch managers and floor supervisors (excludes self and other admin accounts)
+        targetList = supervisors.filter(s => s.id !== currentUserId && s.id !== 'admin' && s.role !== 'admin');
       } else if (currentUserRole === 'branch_manager') {
-        // Branch Manager: can call floor supervisors in their branch, plus the General Manager
-        targetList = supervisors.filter(s => s.id !== currentUserId && (s.branchId === currentBranchId || s.role === 'admin' || s.id === 'admin'));
+        // Branch Manager (Branch Authority): Can ONLY call floor supervisors in their own branch (strictly not GM, not other branch managers)
+        targetList = supervisors.filter(s => s.branchId === currentBranchId && s.id !== currentUserId && s.role !== 'admin' && s.id !== 'admin' && s.role !== 'branch_manager');
       } else {
-        // Floor Supervisor: can call their branch manager and the General Manager
-        targetList = supervisors.filter(s => s.id !== currentUserId && (s.role === 'admin' || s.id === 'admin' || (s.role === 'branch_manager' && s.branchId === currentBranchId)));
+        // Floor Supervisor: Cannot initiate calls (strictly top-down)
+        targetList = [];
       }
 
       if (targetList.length === 0) {
+        const b = getBranchById(currentBranchId);
+        const emptyMsg = (currentUserRole === 'branch_manager')
+          ? `لا يوجد مسؤولو صالة مسجلون في فرع (${b ? b.nameAr : ''}) للاتصال بهم.`
+          : (currentUserRole === 'admin'
+              ? 'لا يوجد مسؤولو صالة أو مدراء فروع مسجلون في المنظومة للاتصال بهم.'
+              : 'عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع فقط (من الأعلى للأدنى).');
         container.innerHTML = `
           <div style="text-align: center; padding: 24px; color: var(--text-muted);">
             <span style="font-size: 32px; display: block; margin-bottom: 8px;">👥</span>
-            <span>لا يوجد جهات اتصال مسجلة متاحة للاتصال حالياً.</span>
+            <span>${emptyMsg}</span>
           </div>
         `;
         return;
@@ -9656,19 +9678,37 @@
         showToast('يرجى تسجيل الدخول أولاً للاتصال.');
         return;
       }
+      // Strict Hierarchy Enforcement: Top-down only (من الأعلى للأدنى فقط)
+      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+        alert("عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع فقط للتواصل مع مسؤولي الصالة (من الأعلى للأدنى).");
+        return;
+      }
+      const supervisors = getSupervisorsList();
+      const targetSup = supervisors.find(s => s.id === targetSupervisorId);
+      if (!targetSup) {
+        showToast('المشرف المطلوب غير مسجل.');
+        return;
+      }
+      if (currentUserRole === 'branch_manager') {
+        // Branch manager can ONLY call floor supervisors in their own branch
+        const isFloorSupInBranch = (targetSup.branchId === currentBranchId && targetSup.role !== 'admin' && targetSup.id !== 'admin' && targetSup.role !== 'branch_manager');
+        if (!isFloorSupInBranch) {
+          alert('عذراً، يحق لمدير الفرع الاتصال بمسؤولي صالة فرعه فقط (الاتصال من الأعلى للأدنى).');
+          return;
+        }
+      }
+      if (currentUserRole === 'admin') {
+        if (targetSup.id === 'admin' || targetSup.id === currentUserId || targetSup.role === 'admin') {
+          showToast('لا يمكن الاتصال بنفس الحساب أو بالإدارة المركزية.');
+          return;
+        }
+      }
       if (activeCallId) {
         showToast('أنت في مكالمة بالفعل حالياً.');
         return;
       }
       if (!firebaseDb) {
         showToast('الاتصال السحابي غير متاح حالياً.');
-        return;
-      }
-
-      const supervisors = getSupervisorsList();
-      const targetSup = supervisors.find(s => s.id === targetSupervisorId);
-      if (!targetSup) {
-        showToast('المشرف المطلوب غير مسجل.');
         return;
       }
 
