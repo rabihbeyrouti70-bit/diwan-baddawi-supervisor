@@ -4840,6 +4840,7 @@
     // Current State (V4.0 Multi-Shift Operations Matrix)
     let currentSupervisor = "علي عبد العال";
     let currentUserId = "admin";
+    let currentUserRole = "admin";
 
     // Restore saved device identity on startup (ensures incoming calls always reach this supervisor's phone)
     try {
@@ -5235,7 +5236,7 @@
       { id: 'sup_sameh', name: 'سامح الحسن (Sameh El-Hassan)', role: 'supervisor', branchId: 'baddawi', pinHash: 'be41b7f1fa56ba2b0582910053c86cf6ee7e311efc51300220df0918bb9a287b' }
     ];
 
-    let currentUserRole = 'supervisor';
+    // currentUserRole initialized above with active session restoration
 
     // Force clear any old cached logins
     // Storage cleared cleanly
@@ -10168,224 +10169,237 @@
     }
 
     async function initiateVoiceCall(targetSupervisorId) {
-      if (!currentUserId) {
-        showToast('يرجى تسجيل الدخول أولاً للاتصال.');
-        return;
-      }
-
-      // Top-Down Calling Hierarchy Validation
-      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
-        alert('عذراً، الاتصال الصوتي مخصص للإدارة للتواصل المباشر مع المشرفين.');
-        return;
-      }
-
-      if (activeCallId) {
-        alert('أنت بالفعل في مكالمة حالياً.');
-        return;
-      }
-
-      const targetSup = supervisors.find(s => s.id === targetSupervisorId);
-      if (!targetSup) {
-        showToast('المشرف المطلوب غير موجود.');
-        return;
-      }
-
-      if (currentUserRole === 'branch_manager' && targetSup.branchId !== currentBranchId) {
-        alert('عذراً، كمدير فرع يمكنك الاتصال بمشرفي فرعك فقط.');
-        return;
-      }
-      if (!firebaseDb) {
-        showToast('الاتصال السحابي غير متاح حالياً.');
-        return;
-      }
-
-      if (!isUserReallyOnline(targetSupervisorId)) {
-        const proceed = confirm(`المشرف "${targetSup.name}" غير متصل لحظياً بالشاشة الآن (قد يكون التطبيق يعمل في الخلفية أو مغلقاً).\n\nهل ترغب في إرسال رنين الاتصال ومحاولة الاتصال به على أي حال؟`);
-        if (!proceed) return;
-      }
-
       try {
+        if (!currentUserId) {
+          showToast('يرجى تسجيل الدخول أولاً للاتصال.');
+          return;
+        }
+
+        // Top-Down Calling Hierarchy Validation (Admin & Branch Managers can call supervisors)
+        const isManager = (currentUserRole === 'admin' || currentUserRole === 'branch_manager' || currentUserId === 'admin' || (currentSupervisor && (currentSupervisor.includes('علي عبد العال') || currentSupervisor.includes('المدير'))));
+        if (!isManager) {
+          alert('عذراً، الاتصال الصوتي مخصص للإدارة للتواصل المباشر مع المشرفين.');
+          return;
+        }
+
+        // If a stale call session exists, auto-clean it rather than blocking with an alert
+        if (activeCallId) {
+          cleanupCallState();
+        }
+
+        // Properly retrieve the supervisors directory list (fixes ReferenceError!)
+        const supervisors = (typeof getSupervisorsList === 'function') ? getSupervisorsList() : [];
+        let targetSup = supervisors.find(s => s.id === targetSupervisorId);
+        if (!targetSup) {
+          const b = (typeof getBranchById === 'function') ? getBranchById(currentBranchId) : null;
+          targetSup = {
+            id: targetSupervisorId,
+            name: 'المشرف',
+            branchId: (b && b.id) || currentBranchId || 'rawche'
+          };
+        }
+
+        if (currentUserRole === 'branch_manager' && targetSup.branchId && targetSup.branchId !== currentBranchId) {
+          alert('عذراً، كمدير فرع يمكنك الاتصال بمشرفي فرعك فقط.');
+          return;
+        }
+
+        if (!firebaseDb) {
+          showToast('الاتصال السحابي غير متاح حالياً.');
+          return;
+        }
+
+        const b = (typeof getBranchById === 'function') ? getBranchById(targetSup.branchId) : null;
+        const bName = b ? b.nameAr : targetSup.branchId;
+
+        // Immediately Open Outgoing Call Modal for Instant Visual Feedback!
+        document.getElementById('outgoingCalleeName').innerText = targetSup.name;
+        document.getElementById('outgoingCalleeBranch').innerText = bName ? `📍 فرع ${bName}` : '';
+        document.getElementById('outgoingStatusText').innerText = 'جارٍ تجهيز الاتصال الصوتي... ⏳';
+        document.getElementById('callViewOutgoing').style.display = 'block';
+        document.getElementById('callViewIncoming').style.display = 'none';
+        document.getElementById('callViewActive').style.display = 'none';
+        document.getElementById('inAppCallModal').classList.add('open');
+        document.body.classList.add('modal-open');
+
         // Request Microphone Permission - ONLY when explicitly placing a call!
-        activeCallLocalStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-      } catch (err) {
-        console.error('Mic access error:', err);
-        alert('يرجى إعطاء صلاحية الميكروفون للموقع من إعدادات المتصفح لإجراء المكالمة الصوتية.');
-        return;
-      }
-
-      const callId = 'call_' + Date.now() + '_' + currentUserId + '_' + targetSupervisorId;
-      activeCallId = callId;
-      activeCallRole = 'caller';
-      isCallEstablished = false;
-      outgoingTargetSupId = targetSupervisorId;
-      isCallMuted = false;
-      pendingIceCandidatesQueue = [];
-
-      // Setup WebRTC PeerConnection
-      activePeerConnection = new RTCPeerConnection(RTC_CALL_CONFIG);
-      activeCallLocalStream.getTracks().forEach(track => {
-        activePeerConnection.addTrack(track, activeCallLocalStream);
-      });
-
-      activePeerConnection.ontrack = (event) => {
-        console.log(' Caller received remote audio track:', event.streams);
-        const remoteAudio = document.getElementById('remoteAudioElement');
-        if (remoteAudio && event.streams && event.streams[0]) {
-          remoteAudio.srcObject = event.streams[0];
-          remoteAudio.play().catch(e => console.warn('Caller remote play notice:', e));
-        }
-      };
-
-      activePeerConnection.onicecandidate = (event) => {
-        if (event.candidate && activeCallId && firebaseDb) {
-          firebaseDb.ref(`calls/${activeCallId}/callerCandidates`).push(event.candidate.toJSON());
-        }
-      };
-
-      activePeerConnection.onconnectionstatechange = () => {
-        console.log(' Caller connectionState:', activePeerConnection ? activePeerConnection.connectionState : 'null');
-        if (activePeerConnection) {
-          if (activePeerConnection.connectionState === 'connected') {
-            console.log(' Full-duplex audio connected on caller side!');
-            const remoteAudio = document.getElementById('remoteAudioElement');
-            if (remoteAudio && remoteAudio.paused) {
-              remoteAudio.play().catch(() => {});
-            }
-          } else if (activePeerConnection.connectionState === 'disconnected' || activePeerConnection.connectionState === 'failed') {
-            if (isCallEstablished) {
-              hangupCurrentCall('connection_lost');
-            }
-          }
-        }
-      };
-
-      // Create Offer with explicit audio reception
-      const offer = await activePeerConnection.createOffer({ offerToReceiveAudio: true });
-      await activePeerConnection.setLocalDescription(offer);
-
-      const b = getBranchById(targetSup.branchId);
-      const bName = b ? b.nameAr : targetSup.branchId;
-
-      const callData = {
-        id: callId,
-        callerId: currentUserId,
-        callerName: currentSupervisor,
-        callerRole: currentUserRole,
-        callerBranch: currentBranchId,
-        calleeId: targetSupervisorId,
-        calleeName: targetSup.name,
-        calleeBranch: targetSup.branchId,
-        status: 'ringing',
-        createdAt: Date.now(),
-        offer: { type: offer.type, sdp: offer.sdp }
-      };
-
-      // 1. Write session to calls/{callId}
-      activeCallFirebaseRef = firebaseDb.ref(`calls/${callId}`);
-      await activeCallFirebaseRef.set(callData);
-      activeCallFirebaseRef.child('status').onDisconnect().set('ended');
-
-      // 2. Write direct point-to-point bell to incoming_calls/{targetSupervisorId}
-      const directBellRef = firebaseDb.ref(`incoming_calls/${targetSupervisorId}`);
-      await directBellRef.set({
-        callId: callId,
-        callerId: currentUserId,
-        callerName: currentSupervisor,
-        callerRole: currentUserRole,
-        callerBranch: currentBranchId,
-        status: 'ringing',
-        createdAt: Date.now(),
-        offer: { type: offer.type, sdp: offer.sdp }
-      });
-      directBellRef.onDisconnect().remove();
-
-      // 3. Dispatch instant high-priority FCM push to supervisor device (wakes up phone in background/locked screen)
-      if (typeof dispatchCallFcmPush === 'function') {
-        dispatchCallFcmPush(targetSupervisorId, callData, targetSup.branchId);
-      }
-
-      // Update UI for Outgoing Call
-      document.getElementById('outgoingCalleeName').innerText = targetSup.name;
-      document.getElementById('outgoingCalleeBranch').innerText = bName ? `📍 فرع ${bName}` : '';
-      document.getElementById('outgoingStatusText').innerText = 'جارٍ الاتصال ورنين الهاتف... 🔔';
-
-      document.getElementById('callViewOutgoing').style.display = 'block';
-      document.getElementById('callViewIncoming').style.display = 'none';
-      document.getElementById('callViewActive').style.display = 'none';
-      document.getElementById('inAppCallModal').classList.add('open');
-      document.body.classList.add('modal-open');
-
-      startAudioRingtone('outgoing');
-
-      // Listen for Answer / Status Changes
-      activeCallFirebaseRef.on('value', async (snapshot) => {
-        const val = snapshot.val();
-        if (!val) return;
-
-        if (val.status === 'accepted' && val.answer && activeCallRole === 'caller' && !isCallEstablished) {
-          isCallEstablished = true;
-          stopAudioRingtone();
-          if (outgoingCallTimeoutTimer) clearTimeout(outgoingCallTimeoutTimer);
-
-          try {
-            await activePeerConnection.setRemoteDescription(new RTCSessionDescription(val.answer));
-          } catch (e) {
-            console.warn('Caller setRemoteDescription error:', e);
-          }
-
-          // Flush any buffered callee ICE candidates
-          if (pendingIceCandidatesQueue.length > 0) {
-            pendingIceCandidatesQueue.forEach(cand => {
-              activePeerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
-            });
-            pendingIceCandidatesQueue = [];
-          }
-
-          // Listen for Callee ICE Candidates
-          firebaseDb.ref(`calls/${activeCallId}/calleeCandidates`).on('child_added', (candSnap) => {
-            const candidate = candSnap.val();
-            if (candidate && activePeerConnection) {
-              if (activePeerConnection.remoteDescription && activePeerConnection.remoteDescription.type) {
-                activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
-              } else {
-                pendingIceCandidatesQueue.push(candidate);
-              }
+        try {
+          activeCallLocalStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
             }
           });
+        } catch (err) {
+          console.error('Mic access error:', err);
+          closeCallModal();
+          alert('يرجى إعطاء صلاحية الميكروفون للموقع من إعدادات المتصفح لإجراء المكالمة الصوتية.');
+          return;
+        }
 
-          // Clean up direct incoming bell
-          if (outgoingTargetSupId && firebaseDb) {
-            firebaseDb.ref(`incoming_calls/${outgoingTargetSupId}`).remove().catch(() => {});
+        const callId = 'call_' + Date.now() + '_' + currentUserId + '_' + targetSupervisorId;
+        activeCallId = callId;
+        activeCallRole = 'caller';
+        isCallEstablished = false;
+        outgoingTargetSupId = targetSupervisorId;
+        isCallMuted = false;
+        pendingIceCandidatesQueue = [];
+
+        // Setup WebRTC PeerConnection
+        activePeerConnection = new RTCPeerConnection(RTC_CALL_CONFIG);
+        activeCallLocalStream.getTracks().forEach(track => {
+          activePeerConnection.addTrack(track, activeCallLocalStream);
+        });
+
+        activePeerConnection.ontrack = (event) => {
+          console.log(' Caller received remote audio track:', event.streams);
+          const remoteAudio = document.getElementById('remoteAudioElement');
+          if (remoteAudio && event.streams && event.streams[0]) {
+            remoteAudio.srcObject = event.streams[0];
+            remoteAudio.play().catch(e => console.warn('Caller remote play notice:', e));
           }
+        };
 
-          // Transition to Active Call View
-          transitionToActiveCallUi(val.calleeName || targetSup.name, bName);
-        } else if (val.status === 'rejected') {
-          stopAudioRingtone();
-          showToast(`❌ تم رفض المكالمة من قِبل المشرف "${targetSup.name}".`);
-          hangupCurrentCall('rejected_by_callee');
-        } else if (val.status === 'busy') {
-          stopAudioRingtone();
-          showToast(`⚠️ المشرف "${targetSup.name}" مشغول في مكالمة أخرى.`);
-          hangupCurrentCall('callee_busy');
-        } else if (val.status === 'ended') {
-          hangupCurrentCall('remote_ended');
-        }
-      });
+        activePeerConnection.onicecandidate = (event) => {
+          if (event.candidate && activeCallId && firebaseDb) {
+            firebaseDb.ref(`calls/${activeCallId}/callerCandidates`).push(event.candidate.toJSON());
+          }
+        };
 
-      // 45s Ringing Timeout
-      outgoingCallTimeoutTimer = setTimeout(() => {
-        if (activeCallId && activeCallRole === 'caller' && !isCallEstablished) {
-          showToast(`لم يتم الرد على المكالمة من قِبل "${targetSup.name}".`);
-          hangupCurrentCall('timeout_no_answer');
+        activePeerConnection.onconnectionstatechange = () => {
+          console.log(' Caller connectionState:', activePeerConnection ? activePeerConnection.connectionState : 'null');
+          if (activePeerConnection) {
+            if (activePeerConnection.connectionState === 'connected') {
+              console.log(' Full-duplex audio connected on caller side!');
+              const remoteAudio = document.getElementById('remoteAudioElement');
+              if (remoteAudio && remoteAudio.paused) {
+                remoteAudio.play().catch(() => {});
+              }
+            } else if (activePeerConnection.connectionState === 'disconnected' || activePeerConnection.connectionState === 'failed') {
+              if (isCallEstablished) {
+                hangupCurrentCall('connection_lost');
+              }
+            }
+          }
+        };
+
+        // Create Offer with explicit audio reception
+        const offer = await activePeerConnection.createOffer({ offerToReceiveAudio: true });
+        await activePeerConnection.setLocalDescription(offer);
+
+        const callData = {
+          id: callId,
+          callerId: currentUserId,
+          callerName: currentSupervisor,
+          callerRole: currentUserRole,
+          callerBranch: currentBranchId,
+          calleeId: targetSupervisorId,
+          calleeName: targetSup.name,
+          calleeBranch: targetSup.branchId,
+          status: 'ringing',
+          createdAt: Date.now(),
+          offer: { type: offer.type, sdp: offer.sdp }
+        };
+
+        // 1. Write session to calls/{callId}
+        activeCallFirebaseRef = firebaseDb.ref(`calls/${callId}`);
+        await activeCallFirebaseRef.set(callData);
+        activeCallFirebaseRef.child('status').onDisconnect().set('ended');
+
+        // 2. Write direct point-to-point bell to incoming_calls/{targetSupervisorId}
+        const directBellRef = firebaseDb.ref(`incoming_calls/${targetSupervisorId}`);
+        await directBellRef.set({
+          callId: callId,
+          callerId: currentUserId,
+          callerName: currentSupervisor,
+          callerRole: currentUserRole,
+          callerBranch: currentBranchId,
+          status: 'ringing',
+          createdAt: Date.now(),
+          offer: { type: offer.type, sdp: offer.sdp }
+        });
+        directBellRef.onDisconnect().remove();
+
+        // 3. Dispatch instant high-priority FCM push to supervisor device (wakes up phone in background/locked screen)
+        if (typeof dispatchCallFcmPush === 'function') {
+          dispatchCallFcmPush(targetSupervisorId, callData, targetSup.branchId);
         }
-      }, 45000);
+
+        // Update status text and start outgoing ringback tone
+        document.getElementById('outgoingStatusText').innerText = 'جارٍ الاتصال ورنين الهاتف... 🔔';
+        startAudioRingtone('outgoing');
+
+        // Listen for Answer / Status Changes
+        activeCallFirebaseRef.on('value', async (snapshot) => {
+          const val = snapshot.val();
+          if (!val) return;
+
+          if (val.status === 'accepted' && val.answer && activeCallRole === 'caller' && !isCallEstablished) {
+            isCallEstablished = true;
+            stopAudioRingtone();
+            if (outgoingCallTimeoutTimer) clearTimeout(outgoingCallTimeoutTimer);
+
+            try {
+              await activePeerConnection.setRemoteDescription(new RTCSessionDescription(val.answer));
+            } catch (e) {
+              console.warn('Caller setRemoteDescription error:', e);
+            }
+
+            // Flush any buffered callee ICE candidates
+            if (pendingIceCandidatesQueue.length > 0) {
+              pendingIceCandidatesQueue.forEach(cand => {
+                activePeerConnection.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              });
+              pendingIceCandidatesQueue = [];
+            }
+
+            // Listen for Callee ICE Candidates
+            firebaseDb.ref(`calls/${activeCallId}/calleeCandidates`).on('child_added', (candSnap) => {
+              const candidate = candSnap.val();
+              if (candidate && activePeerConnection) {
+                if (activePeerConnection.remoteDescription && activePeerConnection.remoteDescription.type) {
+                  activePeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn(e));
+                } else {
+                  pendingIceCandidatesQueue.push(candidate);
+                }
+              }
+            });
+
+            // Clean up direct incoming bell
+            if (outgoingTargetSupId && firebaseDb) {
+              firebaseDb.ref(`incoming_calls/${outgoingTargetSupId}`).remove().catch(() => {});
+            }
+
+            // Transition to Active Call View
+            transitionToActiveCallUi(val.calleeName || targetSup.name, bName);
+          } else if (val.status === 'rejected') {
+            stopAudioRingtone();
+            showToast(`❌ تم رفض المكالمة من قِبل المشرف "${targetSup.name}".`);
+            hangupCurrentCall('rejected_by_callee');
+          } else if (val.status === 'busy') {
+            stopAudioRingtone();
+            showToast(`⚠️ المشرف "${targetSup.name}" مشغول في مكالمة أخرى.`);
+            hangupCurrentCall('callee_busy');
+          } else if (val.status === 'ended') {
+            hangupCurrentCall('remote_ended');
+          }
+        });
+
+        // 45s Ringing Timeout
+        outgoingCallTimeoutTimer = setTimeout(() => {
+          if (activeCallId && activeCallRole === 'caller' && !isCallEstablished) {
+            showToast(`لم يتم الرد على المكالمة من قِبل "${targetSup.name}".`);
+            hangupCurrentCall('timeout_no_answer');
+          }
+        }, 45000);
+
+      } catch (fatalErr) {
+        console.error('Fatal error in initiateVoiceCall:', fatalErr);
+        closeCallModal();
+        showToast('تعذر بدء المكالمة: ' + (fatalErr.message || fatalErr));
+        cleanupCallState();
+      }
     }
 
     // 2. LISTEN FOR INCOMING CALLS (CALLEE)
