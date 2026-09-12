@@ -167,6 +167,27 @@ Mobile browsers (iOS Safari and Android Chrome) handle audio channels differentl
 
 ---
 
+
+### 3.2 Proximity Sensor & Ear Detection Blackout (حساس التقارب وإطفاء الشاشة)
+
+When holding the phone against the ear during a private call, the screen must turn completely black and disable all touch inputs to prevent accidental button presses with the face or cheek (just like native WhatsApp).
+
+1. **OLED Blackout Curtain Element**:
+   - A pitch-black overlay (`#000000`) with maximum z-index (`z-index: 2147483647`) and `touch-action: none`.
+   - Swallows all touch and pointer events to guarantee zero accidental touches.
+
+2. **Multi-Sensory Detection Tiers**:
+   - **Tier 1 (Hardware Proximity)**: Chromium / Android `window.ProximitySensor`. Directly reports `near === true`.
+   - **Tier 2 (Ambient Light)**: `window.AmbientLightSensor`. When ear covers sensor, lux drops to <= 1.5.
+   - **Tier 3 (DeviceOrientation Posture)**: Accelerometer tilt tracks vertical head posture (`55deg <= |beta| <= 125deg`). Pulling phone away (`|beta| < 40deg`) restores screen.
+   - **Tier 4 (Touch Ear Guard)**: Touches to the upper bezel/speaker area during upright posture immediately engage the curtain.
+   - **Tier 5 (Emergency Double-Tap)**: Fast double-tap on dark screen manually overrides and wakes the screen.
+
+3. **Loudspeaker Immunity**:
+   - If user activates the loudspeaker (`isSpeakerActive === true`), proximity blackout is strictly suspended so the screen remains on and interactive.
+
+---
+
 ## 4. Chat & Messaging Components
 
 ### 4.1 Message Bubbles & Delivery Ticks

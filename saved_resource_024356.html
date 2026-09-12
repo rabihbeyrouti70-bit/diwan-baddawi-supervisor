@@ -465,6 +465,27 @@
       opacity: 1 !important;
     }
 
+    /* ============================================================
+       WHATSAPP PROXIMITY SENSOR SCREEN BLACKOUT CURTAIN (V7.2)
+       ============================================================ */
+    .wa-proximity-curtain {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000000 !important;
+      z-index: 2147483647 !important;
+      display: none;
+      touch-action: none !important;
+      pointer-events: all !important;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: none;
+    }
+    .wa-proximity-curtain.active {
+      display: block !important;
+    }
+
     .wa-call-screen {
       position: relative;
       width: 100%;
@@ -3974,6 +3995,9 @@
       </button>
     </div>
   </div>
+
+  <!-- PROXIMITY SENSOR SCREEN BLACKOUT CURTAIN (WhatsApp Ear-Detection Screen Off) -->
+  <div id="waProximityCurtain" class="wa-proximity-curtain" aria-hidden="true"></div>
 
   <!-- LIVE IN-APP WEBRTC CALL OVERLAY (WHATSAPP CALL SCREEN) -->
   <div class="modal-overlay wa-call-modal-overlay" id="inAppCallModal" role="dialog" aria-modal="true" aria-labelledby="callModalTitle">
@@ -11074,6 +11098,9 @@
       // Route audio to earpiece by default (not external loudspeaker)
       applyCallAudioOutput(false);
 
+      // Start proximity sensor to blank screen when placed on ear
+      startProximityEarDetection();
+
       // Attempt to immediately play remote audio in case browser suspended it
       const remoteAudio = document.getElementById('remoteAudioElement');
       if (remoteAudio && remoteAudio.srcObject) {
@@ -11203,6 +11230,11 @@
       isSpeakerActive = !!useSpeaker;
       updateSpeakerButtonUi();
 
+      // If user enables loudspeaker, immediately unblank the screen
+      if (isSpeakerActive) {
+        setProximityCurtain(false, 'speaker_enabled');
+      }
+
       const remoteAudio = document.getElementById('remoteAudioElement');
       if (!remoteAudio) return;
 
@@ -11285,6 +11317,184 @@
           lbl.style.color = '#8696a0';
         }
       }
+    }
+
+    // ============================================================
+    // 7b. PROXIMITY SENSOR & EAR-DETECTION SCREEN BLACKOUT (WHATSAPP CALL SCREEN OFF)
+    // ============================================================
+    let proximitySensorObj = null;
+    let ambientLightSensorObj = null;
+    let isProximityListening = false;
+    let isProximityCurtainActive = false;
+    let isPhoneTiltedToEar = false;
+    let lastCurtainTapTime = 0;
+
+    function initProximityEarDetection() {
+      const curtain = document.getElementById('waProximityCurtain');
+      if (!curtain) return;
+
+      // Swallows all touches on the blackout curtain to completely prevent accidental clicks
+      curtain.addEventListener('touchstart', handleCurtainTouchBlocker, { passive: false });
+      curtain.addEventListener('touchmove', handleCurtainTouchBlocker, { passive: false });
+      curtain.addEventListener('pointerdown', handleCurtainTouchBlocker, { passive: false });
+      curtain.addEventListener('click', handleCurtainTouchBlocker, { passive: false });
+
+      // Emergency double-tap override to wake screen manually if user needs screen while holding phone
+      curtain.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const now = Date.now();
+        if (now - lastCurtainTapTime < 380) {
+          setProximityCurtain(false, 'double_tap_override');
+        }
+        lastCurtainTapTime = now;
+      }, { passive: false });
+    }
+
+    function handleCurtainTouchBlocker(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function startProximityEarDetection() {
+      if (isProximityListening) return;
+      isProximityListening = true;
+
+      // 1. Hardware ProximitySensor API (Chromium / Android PWA)
+      if ('ProximitySensor' in window) {
+        try {
+          if (!proximitySensorObj) {
+            proximitySensorObj = new ProximitySensor();
+            proximitySensorObj.addEventListener('reading', () => {
+              if (!isProximityListening || isSpeakerActive) {
+                setProximityCurtain(false);
+                return;
+              }
+              setProximityCurtain(!!proximitySensorObj.near, 'hardware_proximity');
+            });
+            proximitySensorObj.addEventListener('error', (err) => {
+              console.log('ProximitySensor fallback to heuristics:', err);
+            });
+          }
+          proximitySensorObj.start();
+        } catch (e) {
+          console.log('ProximitySensor init notice:', e);
+        }
+      }
+
+      // 2. Ambient Light Sensor API (Lux drops to ~0 when covered by human ear)
+      if ('AmbientLightSensor' in window) {
+        try {
+          if (!ambientLightSensorObj) {
+            ambientLightSensorObj = new AmbientLightSensor();
+            ambientLightSensorObj.addEventListener('reading', () => {
+              if (!isProximityListening || isSpeakerActive) {
+                setProximityCurtain(false);
+                return;
+              }
+              if (ambientLightSensorObj.illuminance <= 2.0 && isPhoneTiltedToEar) {
+                setProximityCurtain(true, 'ambient_light');
+              } else if (ambientLightSensorObj.illuminance > 5.0) {
+                setProximityCurtain(false, 'ambient_light');
+              }
+            });
+            ambientLightSensorObj.addEventListener('error', (err) => {
+              console.log('AmbientLightSensor notice:', err);
+            });
+          }
+          ambientLightSensorObj.start();
+        } catch (err) {}
+      }
+
+      // 3. DeviceOrientation Event (Detects vertical ear-holding phone posture)
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', handleDeviceOrientationProximity, true);
+      }
+
+      // 4. Ear/Cheek Touch Guard (Captures touches on upper bezel/speaker area during vertical posture)
+      document.addEventListener('touchstart', handleCallEarTouchGuard, { capture: true, passive: false });
+    }
+
+    function stopProximityEarDetection() {
+      isProximityListening = false;
+      setProximityCurtain(false, 'call_stopped');
+
+      if (proximitySensorObj) {
+        try { proximitySensorObj.stop(); } catch (e) {}
+      }
+      if (ambientLightSensorObj) {
+        try { ambientLightSensorObj.stop(); } catch (e) {}
+      }
+      if (window.DeviceOrientationEvent) {
+        window.removeEventListener('deviceorientation', handleDeviceOrientationProximity, true);
+      }
+      document.removeEventListener('touchstart', handleCallEarTouchGuard, true);
+      isPhoneTiltedToEar = false;
+    }
+
+    function handleDeviceOrientationProximity(event) {
+      if (!isProximityListening || isSpeakerActive) {
+        isPhoneTiltedToEar = false;
+        return;
+      }
+      const beta = event.beta;   // [-180, 180] front-to-back tilt
+      const gamma = event.gamma; // [-90, 90] left-to-right tilt
+
+      if (beta !== null) {
+        // Phone held upright near ear: beta between 55deg and 125deg
+        const isUpright = Math.abs(beta) >= 55 && Math.abs(beta) <= 125;
+        const isHeadAligned = Math.abs(gamma || 0) <= 50;
+
+        isPhoneTiltedToEar = isUpright && isHeadAligned;
+
+        // If user pulls phone away from ear (e.g. holds flat or beta < 40), turn screen back on!
+        if (Math.abs(beta) < 40 && isProximityCurtainActive) {
+          setProximityCurtain(false, 'tilt_away');
+        }
+      }
+    }
+
+    function handleCallEarTouchGuard(event) {
+      if (!isProximityListening || isSpeakerActive) return;
+      // If phone is in vertical posture against ear and face/ear touches screen
+      if (isPhoneTiltedToEar) {
+        const touch = event.touches[0];
+        if (touch) {
+          // Touch on upper 35% of viewport (near handset speaker) or multi-touch cheek contact
+          if (touch.clientY < window.innerHeight * 0.35 || event.touches.length > 1) {
+            event.preventDefault();
+            event.stopPropagation();
+            setProximityCurtain(true, 'ear_touch_guard');
+          }
+        }
+      }
+    }
+
+    function setProximityCurtain(active, reason = '') {
+      // If loudspeaker is active, NEVER turn off screen!
+      if (isSpeakerActive && active) {
+        active = false;
+      }
+
+      isProximityCurtainActive = active;
+      const curtain = document.getElementById('waProximityCurtain');
+      if (!curtain) return;
+
+      if (active) {
+        curtain.style.display = 'block';
+        curtain.classList.add('active');
+        document.body.classList.add('proximity-blackout');
+      } else {
+        curtain.style.display = 'none';
+        curtain.classList.remove('active');
+        document.body.classList.remove('proximity-blackout');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProximityEarDetection);
+    } else {
+      initProximityEarDetection();
     }
 
     // 7. HANGUP & CLEANUP
@@ -11403,6 +11613,7 @@
 
       isSpeakerActive = false;
       updateSpeakerButtonUi();
+      stopProximityEarDetection();
 
       // RESTORE BACKGROUND KEEPALIVE AUDIO NOW THAT CALL HAS FINISHED
       try {
