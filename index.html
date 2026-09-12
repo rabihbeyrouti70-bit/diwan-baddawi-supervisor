@@ -3719,12 +3719,15 @@
           </span>
         </div>
 
-        <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
-          <button type="button" id="btnToggleCallMute" class="btn" onclick="toggleCallMute()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;">
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+          <button type="button" id="btnToggleCallMute" class="btn" onclick="toggleCallMute()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer;">
             🎙️ كتم الصوت
           </button>
-          <button type="button" class="btn" onclick="hangupCurrentCall('user_ended')" style="background: #ef4444; color: white; border: none; border-radius: 999px; padding: 12px 28px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 15px rgba(239,68,68,0.5); cursor: pointer;">
-            🔴 إنهاء المكالمة
+          <button type="button" id="btnToggleSpeaker" class="btn" onclick="toggleCallSpeaker()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer;" title="الصوت حالياً على سماعة الأذن الداخلية (اضغط للتحويل للمكبر الخارجي)">
+            📱 سماعة الأذن
+          </button>
+          <button type="button" class="btn" onclick="hangupCurrentCall('user_ended')" style="background: #ef4444; color: white; border: none; border-radius: 999px; padding: 11px 22px; font-size: 13.5px; font-weight: 800; box-shadow: 0 4px 15px rgba(239,68,68,0.5); cursor: pointer;">
+            🔴 إنهاء
           </button>
         </div>
       </div>
@@ -8549,7 +8552,7 @@
       }
     }
 
-    function startBackgroundKeepAlive() {
+    function startBackgroundKeepAlive(quiet = false) {
       try {
         initBackgroundKeepAliveAudio();
 
@@ -8577,7 +8580,9 @@
                 });
                 navigator.mediaSession.playbackState = 'playing';
               }
-              showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً ويرن حتى لو طُفئت شاشة الهاتف');
+              if (!quiet) {
+                showToast('⚡ تم تفعيل وضع الخلفية: سيبقى التطبيق متصلاً ويرن حتى لو طُفئت شاشة الهاتف');
+              }
             }).catch(err => {
               console.warn('Background audio start notice (will resume on gesture):', err);
               isBackgroundKeepAliveActive = true;
@@ -9991,8 +9996,8 @@
     function unlockAudioOnUserGesture() {
       try {
         initBackgroundKeepAliveAudio();
-        // If background keep-alive is active, keep the silent carrier playing (NOT the ringtone!)
-        if (isBackgroundKeepAliveActive && bgAudioElement && bgAudioElement.paused) {
+        // If background keep-alive is active and NO call is currently active, keep the silent carrier playing
+        if (isBackgroundKeepAliveActive && bgAudioElement && bgAudioElement.paused && !activeCallId && !isCallEstablished) {
           if (!pendingIncomingCallObj || activeCallRole !== 'callee') {
             bgAudioElement.src = getSilentWavUri();
           }
@@ -10097,8 +10102,8 @@
           bgAudioElement.pause();
           bgAudioElement.currentTime = 0;
           bgAudioElement.src = getSilentWavUri();
-          if (isBackgroundKeepAliveActive) {
-            bgAudioElement.volume = 0.0001; // Back to silent background carrier mode
+          if (isBackgroundKeepAliveActive && !activeCallId && !isCallEstablished) {
+            bgAudioElement.volume = 0.0001; // Back to silent background carrier mode only when no call is active
             const p = bgAudioElement.play();
             if (p !== undefined) p.catch(() => {});
           }
@@ -10196,6 +10201,14 @@
 
         const b = (typeof getBranchById === 'function') ? getBranchById(targetSup.branchId) : null;
         const bName = b ? b.nameAr : targetSup.branchId;
+
+        // Stop background keepalive audio during call so WebRTC has exclusive audio session
+        if (bgAudioElement) {
+          try {
+            bgAudioElement.pause();
+            bgAudioElement.currentTime = 0;
+          } catch (e) {}
+        }
 
         // Immediately Open Outgoing Call Modal for Instant Visual Feedback!
         document.getElementById('outgoingCalleeName').innerText = targetSup.name;
@@ -10506,8 +10519,14 @@
       // 1. Immediately flag as established so removal of incoming_calls node won't self-kill!
       isCallEstablished = true;
 
-      // 2. Stop ringtone immediately!
+      // 2. Stop ringtone immediately & pause background carrier during speech
       stopAudioRingtone();
+      if (bgAudioElement) {
+        try {
+          bgAudioElement.pause();
+          bgAudioElement.currentTime = 0;
+        } catch (e) {}
+      }
 
       const callId = activeCallId;
 
@@ -10661,6 +10680,9 @@
         updateCallDurationDisplay();
       }, 1000);
 
+      // Route audio to earpiece by default (not external loudspeaker)
+      applyCallAudioOutput(false);
+
       // Attempt to immediately play remote audio in case browser suspended it
       const remoteAudio = document.getElementById('remoteAudioElement');
       if (remoteAudio && remoteAudio.srcObject) {
@@ -10694,6 +10716,85 @@
           btn.style.background = 'rgba(255,255,255,0.15)';
           btn.style.borderColor = 'rgba(255,255,255,0.3)';
         }
+      }
+    }
+
+    // 7. TOGGLE SPEAKER / EARPIECE AUDIO ROUTING
+    let isSpeakerActive = false; // Default: FALSE (Default to Earpiece / Handset, NOT external speakerphone!)
+
+    async function applyCallAudioOutput(useSpeaker) {
+      isSpeakerActive = !!useSpeaker;
+      updateSpeakerButtonUi();
+
+      const remoteAudio = document.getElementById('remoteAudioElement');
+      if (!remoteAudio) return;
+
+      // 1. Hardware sink routing via setSinkId if supported (Chromium, modern Safari/WebKit, Android)
+      if (typeof remoteAudio.setSinkId === 'function') {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+          if (audioOutputs.length > 0) {
+            let targetDevice = null;
+            if (useSpeaker) {
+              targetDevice = audioOutputs.find(d => 
+                d.label.toLowerCase().includes('speaker') || 
+                d.label.toLowerCase().includes('مكبر') ||
+                d.label.toLowerCase().includes('loudspeaker')
+              ) || audioOutputs.find(d => d.deviceId === 'default') || audioOutputs[0];
+            } else {
+              targetDevice = audioOutputs.find(d => 
+                d.label.toLowerCase().includes('earpiece') || 
+                d.label.toLowerCase().includes('receiver') || 
+                d.label.toLowerCase().includes('handset') ||
+                d.label.toLowerCase().includes('سماعة الأذن') ||
+                d.label.toLowerCase().includes('internal') ||
+                d.label.toLowerCase().includes('phone')
+              );
+              if (!targetDevice) {
+                targetDevice = audioOutputs.find(d => 
+                  !d.label.toLowerCase().includes('speaker') && 
+                  !d.label.toLowerCase().includes('مكبر')
+                ) || audioOutputs[0];
+              }
+            }
+
+            if (targetDevice && targetDevice.deviceId) {
+              console.log(`🔊 [AudioRouting] Setting sink: ${targetDevice.label || targetDevice.deviceId} (useSpeaker=${useSpeaker})`);
+              await remoteAudio.setSinkId(targetDevice.deviceId);
+            }
+          }
+        } catch (err) {
+          console.warn('Audio output sink routing notice:', err);
+        }
+      }
+
+      // 2. Volume balancing: on earpiece, gentle private level; on speaker, full acoustic level
+      try {
+        remoteAudio.volume = useSpeaker ? 1.0 : 0.45;
+      } catch (e) {}
+    }
+
+    function toggleCallSpeaker() {
+      applyCallAudioOutput(!isSpeakerActive);
+    }
+
+    function updateSpeakerButtonUi() {
+      const btn = document.getElementById('btnToggleSpeaker');
+      if (!btn) return;
+      if (isSpeakerActive) {
+        btn.innerHTML = '🔊 مكبر الصوت: مفعّل';
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#059669';
+        btn.style.color = '#ffffff';
+        btn.title = 'الصوت على مكبر الصوت الخارجي (اضغط للتحويل لسماعة الأذن)';
+      } else {
+        btn.innerHTML = '📱 سماعة الأذن';
+        btn.style.background = 'rgba(255,255,255,0.15)';
+        btn.style.borderColor = 'rgba(255,255,255,0.3)';
+        btn.style.color = '#ffffff';
+        btn.title = 'الصوت على سماعة الأذن الداخلية (اضغط للتحويل للمكبر الخارجي)';
       }
     }
 
@@ -10800,6 +10901,20 @@
         muteBtn.innerHTML = '🎙️ كتم الصوت';
         muteBtn.style.background = 'rgba(255,255,255,0.15)';
         muteBtn.style.borderColor = 'rgba(255,255,255,0.3)';
+      }
+
+      isSpeakerActive = false;
+      updateSpeakerButtonUi();
+
+      // RESTORE BACKGROUND KEEPALIVE AUDIO NOW THAT CALL HAS FINISHED
+      try {
+        const isKeepAliveDesired = isBackgroundKeepAliveActive || (localStorage.getItem('diwan_bg_keepalive') === 'true');
+        if (isKeepAliveDesired && typeof startBackgroundKeepAlive === 'function') {
+          console.log('⚡ [KeepAlive] Call ended: Restoring background keepalive audio channel...');
+          startBackgroundKeepAlive(true); // Quiet restore without extra toast
+        }
+      } catch (e) {
+        console.warn('Error restoring background keepalive after call:', e);
       }
     }
 
