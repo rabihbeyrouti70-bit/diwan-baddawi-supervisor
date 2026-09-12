@@ -3607,6 +3607,7 @@
       
       <!-- Hidden Audio element for remote voice stream -->
       <audio id="remoteAudioElement" autoplay playsinline style="display: none;"></audio>
+      <audio id="ringtoneAudioElement" loop preload="auto" style="display: none;"></audio>
 
       <!-- VIEW 1: OUTGOING CALL (جاري الاتصال) -->
       <div id="callViewOutgoing" style="display: none;">
@@ -5324,6 +5325,17 @@
       if (currentVal && filtered.some(s => s.id === currentVal)) {
         select.value = currentVal;
       }
+      if (!select.dataset.callListenerBound) {
+        select.dataset.callListenerBound = 'true';
+        select.addEventListener('change', (e) => {
+          if (e.target.value && !document.body.classList.contains('auth-passed')) {
+            currentUserId = e.target.value;
+            if (typeof listenForIncomingVoiceCalls === 'function') {
+              listenForIncomingVoiceCalls();
+            }
+          }
+        });
+      }
     }
 
     // SHA-256 Pure JS fallback implementation
@@ -5528,6 +5540,9 @@
           failedAttempts = 0;
           currentSupervisor = matchedUser.name;
           currentUserId = matchedUser.id;
+          if (typeof listenForIncomingVoiceCalls === 'function') {
+            listenForIncomingVoiceCalls();
+          }
           // Absolute role hard-locking
           if (matchedUser.id === 'admin' || (matchedUser.name && (matchedUser.name.includes('علي عبد العال') || matchedUser.name.includes('المدير العام')))) {
             currentUserRole = 'admin';
@@ -5811,6 +5826,9 @@
       }
       if (typeof markPresenceOffline === 'function') {
         markPresenceOffline();
+      }
+      if (typeof stopListeningForIncomingVoiceCalls === 'function') {
+        stopListeningForIncomingVoiceCalls();
       }
 
       const dateInput = document.getElementById('shiftDateInput');
@@ -9418,7 +9436,7 @@
     // Modal UI & Dropdown management
     
     /* ============================================================
-       WEBRTC LIVE IN-APP AUDIO CALLING ENGINE (V5.0)
+       WEBRTC LIVE IN-APP AUDIO CALLING ENGINE (V5.0) - DIRECT P2P & LOUD RING
        ============================================================ */
     const RTC_CALL_CONFIG = {
       iceServers: [
@@ -9441,21 +9459,50 @@
     let callRingtoneInterval = null;
     let outgoingCallTimeoutTimer = null;
     let activeCallFirebaseRef = null;
+    let activeIncomingCallsRef = null;
+    let activeIncomingFallbackRef = null;
+    let outgoingTargetSupId = null;
 
-    // Synthesized Web Audio Ringtone & Chimes
+    // Global gesture audio unlocker
+    function unlockAudioOnUserGesture() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          if (!callRingtoneContext) callRingtoneContext = new AudioCtx();
+          if (callRingtoneContext.state === 'suspended') {
+            callRingtoneContext.resume().catch(() => {});
+          }
+        }
+      } catch (e) {}
+    }
+    document.addEventListener('touchstart', unlockAudioOnUserGesture, { passive: true });
+    document.addEventListener('click', unlockAudioOnUserGesture, { passive: true });
+
+    // Synthesized Web Audio Ringtone & Vibration
     function startAudioRingtone(type = 'incoming') {
       try {
         stopAudioRingtone();
+
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        callRingtoneContext = new AudioContextClass();
+        if (AudioContextClass) {
+          if (!callRingtoneContext) {
+            callRingtoneContext = new AudioContextClass();
+          }
+          if (callRingtoneContext.state === 'suspended') {
+            callRingtoneContext.resume().catch(() => {});
+          }
+        }
 
         const playTone = () => {
           if (!callRingtoneContext || callRingtoneContext.state === 'closed') return;
+          if (callRingtoneContext.state === 'suspended') {
+            callRingtoneContext.resume().catch(() => {});
+          }
+
           const now = callRingtoneContext.currentTime;
 
           if (type === 'incoming') {
-            // US/Euro dual frequency ringtone: 440Hz + 480Hz
+            // Loud dual-tone telephone bell: 440Hz + 480Hz
             const osc1 = callRingtoneContext.createOscillator();
             const osc2 = callRingtoneContext.createOscillator();
             const gain = callRingtoneContext.createGain();
@@ -9463,8 +9510,8 @@
             osc1.type = 'sine'; osc1.frequency.setValueAtTime(440, now);
             osc2.type = 'sine'; osc2.frequency.setValueAtTime(480, now);
 
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.setValueAtTime(0.25, now + 1.2);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.setValueAtTime(0.4, now + 1.2);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
 
             osc1.connect(gain); osc2.connect(gain);
@@ -9473,16 +9520,17 @@
             osc1.start(now); osc1.stop(now + 1.25);
             osc2.start(now); osc2.stop(now + 1.25);
 
+            // Strong mechanical phone vibration
             if ('vibrate' in navigator) {
-              try { navigator.vibrate([400, 200, 400, 200, 800]); } catch (e) {}
+              try { navigator.vibrate([800, 300, 800, 300, 1200]); } catch (e) {}
             }
           } else {
-            // Outgoing Ringback: gentle low tone
+            // Outgoing Ringback tone (caller ear feedback)
             const osc = callRingtoneContext.createOscillator();
             const gain = callRingtoneContext.createGain();
             osc.type = 'sine'; osc.frequency.setValueAtTime(440, now);
-            gain.gain.setValueAtTime(0.06, now);
-            gain.gain.setValueAtTime(0.06, now + 1.0);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.setValueAtTime(0.08, now + 1.0);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 1.05);
 
             osc.connect(gain);
@@ -9503,10 +9551,6 @@
         clearInterval(callRingtoneInterval);
         callRingtoneInterval = null;
       }
-      if (callRingtoneContext) {
-        try { callRingtoneContext.close(); } catch (e) {}
-        callRingtoneContext = null;
-      }
       if ('vibrate' in navigator) {
         try { navigator.vibrate(0); } catch (e) {}
       }
@@ -9521,121 +9565,15 @@
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.exponentialRampToValueAtTime(300, now + 0.35);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.frequency.setValueAtTime(480, now);
+        osc.frequency.setValueAtTime(320, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + 0.35);
       } catch (e) {}
-    }
-
-    // DIRECT CALL DIRECTORY MODAL CONTROLLERS
-    function openDirectCallModal() {
-      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
-        alert("عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع فقط للتواصل مع مسؤولي الصالة (الاتصال من الأعلى للأدنى فقط).");
-        return;
-      }
-      document.body.classList.add('modal-open');
-      renderDirectCallList();
-      const modal = document.getElementById('directCallModal');
-      if (modal) modal.classList.add('open');
-    }
-
-    function closeDirectCallModal() {
-      const modal = document.getElementById('directCallModal');
-      if (modal) modal.classList.remove('open');
-      if (!document.querySelector('.modal-overlay.open')) {
-        document.body.classList.remove('modal-open');
-      }
-    }
-
-    function renderDirectCallList() {
-      const container = document.getElementById('directCallListContainer');
-      if (!container) return;
-
-      const supervisors = getSupervisorsList();
-      let targetList = [];
-
-      if (currentUserRole === 'admin') {
-        // General Manager (Top Authority): Can call branch managers and floor supervisors (excludes self and other admin accounts)
-        targetList = supervisors.filter(s => s.id !== currentUserId && s.id !== 'admin' && s.role !== 'admin');
-      } else if (currentUserRole === 'branch_manager') {
-        // Branch Manager (Branch Authority): Can ONLY call floor supervisors in their own branch (strictly not GM, not other branch managers)
-        targetList = supervisors.filter(s => s.branchId === currentBranchId && s.id !== currentUserId && s.role !== 'admin' && s.id !== 'admin' && s.role !== 'branch_manager');
-      } else {
-        // Floor Supervisor: Cannot initiate calls (strictly top-down)
-        targetList = [];
-      }
-
-      if (targetList.length === 0) {
-        const b = getBranchById(currentBranchId);
-        const emptyMsg = (currentUserRole === 'branch_manager')
-          ? `لا يوجد مسؤولو صالة مسجلون في فرع (${b ? b.nameAr : ''}) للاتصال بهم.`
-          : (currentUserRole === 'admin'
-              ? 'لا يوجد مسؤولو صالة أو مدراء فروع مسجلون في المنظومة للاتصال بهم.'
-              : 'عذراً، خاصية الاتصال الصوتي مخصصة للإدارة ومديري الفروع فقط (من الأعلى للأدنى).');
-        container.innerHTML = `
-          <div style="text-align: center; padding: 24px; color: var(--text-muted);">
-            <span style="font-size: 32px; display: block; margin-bottom: 8px;">👥</span>
-            <span>${emptyMsg}</span>
-          </div>
-        `;
-        return;
-      }
-
-      // Sort: Online first, then offline
-      targetList.sort((a, b) => {
-        const aOnline = isUserReallyOnline(a.id) ? 1 : 0;
-        const bOnline = isUserReallyOnline(b.id) ? 1 : 0;
-        return bOnline - aOnline;
-      });
-
-      let html = '';
-      targetList.forEach(s => {
-        const isOnline = isUserReallyOnline(s.id);
-        const b = getBranchById(s.branchId);
-        const branchName = b ? b.nameAr : (s.branchId || 'المركز الرئيسي');
-        const roleLabel = (s.role === 'admin' || s.id === 'admin') ? '👑 المدير العام' : ((s.role === 'branch_manager') ? '🏢 مدير فرع' : '👤 مسؤول صالة');
-        const pres = livePresenceCache[s.id];
-        const dev = deviceActivationsCache[s.id];
-        const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
-        const statusText = formatLivePresenceTime(lastSeen, isOnline);
-
-        html += `
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: ${isOnline ? '#f0fdf4' : '#f8fafc'}; border: 1.5px solid ${isOnline ? '#86efac' : '#e2e8f0'}; border-radius: 10px; gap: 10px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 42px; height: 42px; border-radius: 50%; background: ${isOnline ? '#10b981' : '#cbd5e1'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0; box-shadow: ${isOnline ? '0 0 10px rgba(16,185,129,0.4)' : 'none'};">
-                ${isOnline ? '📞' : '👤'}
-              </div>
-              <div>
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
-                  <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${roleLabel}</span>
-                  <span style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11.5px;">
-                  ${isOnline 
-                    ? `<span style="color: #16a34a; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;"><span class="pulse-dot" style="width: 7px; height: 7px; background: #16a34a; border-radius: 50%;"></span> متصل لحظياً الآن (جاهز للمحادثة)</span>`
-                    : `<span style="color: #64748b;">⚪ ${escapeHtml(statusText)}</span>`
-                  }
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <button type="button" onclick="closeDirectCallModal(); initiateVoiceCall('${escapeHtml(s.id)}');" style="background: ${isOnline ? '#10b981' : '#059669'}; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 6px rgba(16,185,129,0.3); transition: all 0.2s;">
-                <span>📞</span>
-                <span>${isOnline ? 'اتصال مباشر الآن' : 'بدء الاتصال'}</span>
-              </button>
-            </div>
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
     }
 
     // 1. INITIATE OUTGOING CALL (CALLER)
@@ -9701,6 +9639,7 @@
       const callId = 'call_' + Date.now() + '_' + currentUserId + '_' + targetSupervisorId;
       activeCallId = callId;
       activeCallRole = 'caller';
+      outgoingTargetSupId = targetSupervisorId;
       isCallMuted = false;
 
       // Setup WebRTC PeerConnection
@@ -9752,13 +9691,28 @@
         offer: { type: offer.type, sdp: offer.sdp }
       };
 
+      // 1. Write session to calls/{callId}
       activeCallFirebaseRef = firebaseDb.ref(`calls/${callId}`);
       await activeCallFirebaseRef.set(callData);
       activeCallFirebaseRef.child('status').onDisconnect().set('ended');
 
+      // 2. Write direct point-to-point bell to incoming_calls/{targetSupervisorId}
+      const directBellRef = firebaseDb.ref(`incoming_calls/${targetSupervisorId}`);
+      await directBellRef.set({
+        callId: callId,
+        callerId: currentUserId,
+        callerName: currentSupervisor,
+        callerRole: currentUserRole,
+        callerBranch: currentBranchId,
+        status: 'ringing',
+        createdAt: Date.now(),
+        offer: { type: offer.type, sdp: offer.sdp }
+      });
+      directBellRef.onDisconnect().remove();
+
       // Update UI for Outgoing Call
       document.getElementById('outgoingCalleeName').innerText = targetSup.name;
-      document.getElementById('outgoingCalleeBranch').innerText = `📍 ${bName}`;
+      document.getElementById('outgoingCalleeBranch').innerText = bName ? `📍 فرع ${bName}` : '';
       document.getElementById('outgoingStatusText').innerText = 'جارٍ الاتصال ورنين الهاتف... 🔔';
 
       document.getElementById('callViewOutgoing').style.display = 'block';
@@ -9789,6 +9743,11 @@
               }
             });
 
+            // Clean up direct incoming bell
+            if (outgoingTargetSupId && firebaseDb) {
+              firebaseDb.ref(`incoming_calls/${outgoingTargetSupId}`).remove().catch(() => {});
+            }
+
             // Transition to Active Call View
             transitionToActiveCallUi(val.calleeName, bName);
           }
@@ -9815,61 +9774,122 @@
     }
 
     // 2. LISTEN FOR INCOMING CALLS (CALLEE)
+    function stopListeningForIncomingVoiceCalls() {
+      if (activeIncomingCallsRef) {
+        activeIncomingCallsRef.off();
+        activeIncomingCallsRef = null;
+      }
+      if (activeIncomingFallbackRef) {
+        activeIncomingFallbackRef.off();
+        activeIncomingFallbackRef = null;
+      }
+    }
+
     function listenForIncomingVoiceCalls() {
       if (!firebaseDb || !currentUserId) return;
 
-      const callsRef = firebaseDb.ref('calls');
-      callsRef.orderByChild('calleeId').equalTo(currentUserId).limitToLast(1).on('child_added', (snapshot) => {
+      stopListeningForIncomingVoiceCalls();
+
+      console.log('📡 [Calls Engine] Listening for incoming voice calls for user:', currentUserId);
+
+      // Primary Channel: Direct Point-to-Point Bell incoming_calls/{currentUserId}
+      activeIncomingCallsRef = firebaseDb.ref(`incoming_calls/${currentUserId}`);
+      activeIncomingCallsRef.on('value', (snapshot) => {
         const callData = snapshot.val();
-        if (!callData || callData.status !== 'ringing') return;
-
-        // Ignore old stale calls (> 50s old)
-        if (Date.now() - (callData.createdAt || 0) > 50000) return;
-
-        // If already in a call, mark as busy
-        if (activeCallId && activeCallId !== callData.id) {
-          firebaseDb.ref(`calls/${callData.id}/status`).set('busy').catch(() => {});
-          return;
-        }
-
-        pendingIncomingCallObj = callData;
-        activeCallId = callData.id;
-        activeCallRole = 'callee';
-
-        // Listen for caller cancelling
-        activeCallFirebaseRef = firebaseDb.ref(`calls/${callData.id}`);
-        activeCallFirebaseRef.on('value', (snap) => {
-          const v = snap.val();
-          if (v && (v.status === 'cancelled' || v.status === 'ended' || v.status === 'timeout_no_answer')) {
+        if (!callData) {
+          // Caller removed the bell (hung up, cancelled, or timed out)
+          if (pendingIncomingCallObj && activeCallRole === 'callee') {
             stopAudioRingtone();
             closeCallModal();
             showToast('تم إلغاء المكالمة من قِبل المتصل.');
             cleanupCallState();
           }
-        });
+          return;
+        }
 
-        // Show Incoming Call UI
-        const roleText = callData.callerRole === 'admin' ? '👑 المدير العام' : (callData.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
-        const b = getBranchById(callData.callerBranch);
-        const bName = b ? b.nameAr : callData.callerBranch;
+        if (callData.status !== 'ringing') return;
 
-        document.getElementById('incomingCallerName').innerText = callData.callerName || 'الإدارة';
-        document.getElementById('incomingCallerRole').innerText = `${roleText} • ${bName}`;
+        // Ignore calls older than 45 seconds
+        if (Date.now() - (callData.createdAt || 0) > 45000) return;
 
-        document.getElementById('callViewOutgoing').style.display = 'none';
-        document.getElementById('callViewIncoming').style.display = 'block';
-        document.getElementById('callViewActive').style.display = 'none';
-        document.getElementById('inAppCallModal').classList.add('open');
-        document.body.classList.add('modal-open');
+        // If already in call, mark busy
+        if (activeCallId && activeCallId !== callData.callId) {
+          firebaseDb.ref(`calls/${callData.callId}/status`).set('busy').catch(() => {});
+          return;
+        }
 
-        startAudioRingtone('incoming');
+        handleIncomingCallEvent(callData);
       });
+
+      // Secondary Fallback Channel: calls table
+      activeIncomingFallbackRef = firebaseDb.ref('calls').orderByChild('calleeId').equalTo(currentUserId).limitToLast(1);
+      activeIncomingFallbackRef.on('child_added', (snapshot) => {
+        const callData = snapshot.val();
+        if (!callData || callData.status !== 'ringing') return;
+        if (Date.now() - (callData.createdAt || 0) > 45000) return;
+        if (activeCallId) return;
+        handleIncomingCallEvent(callData);
+      });
+    }
+
+    function handleIncomingCallEvent(callData) {
+      const thisCallId = callData.callId || callData.id;
+      if (activeCallId === thisCallId) return; // Already handling
+
+      pendingIncomingCallObj = callData;
+      activeCallId = thisCallId;
+      activeCallRole = 'callee';
+
+      // Listen for caller cancelling
+      activeCallFirebaseRef = firebaseDb.ref(`calls/${thisCallId}`);
+      activeCallFirebaseRef.on('value', (snap) => {
+        const v = snap.val();
+        if (v && (v.status === 'cancelled' || v.status === 'ended' || v.status === 'timeout_no_answer')) {
+          stopAudioRingtone();
+          closeCallModal();
+          showToast('تم إلغاء المكالمة من قِبل المتصل.');
+          cleanupCallState();
+        }
+      });
+
+      // Show Incoming Call UI
+      const roleText = callData.callerRole === 'admin' ? '👑 المدير العام' : (callData.callerRole === 'branch_manager' ? '🏢 مدير الفرع' : 'مشرف');
+      const b = getBranchById(callData.callerBranch);
+      const bName = b ? b.nameAr : callData.callerBranch;
+
+      const nameEl = document.getElementById('incomingCallerName');
+      const roleEl = document.getElementById('incomingCallerRole');
+      if (nameEl) nameEl.innerText = callData.callerName || 'الإدارة';
+      if (roleEl) roleEl.innerText = `${roleText} • ${bName}`;
+
+      document.getElementById('callViewOutgoing').style.display = 'none';
+      document.getElementById('callViewIncoming').style.display = 'block';
+      document.getElementById('callViewActive').style.display = 'none';
+      document.getElementById('inAppCallModal').classList.add('open');
+      document.body.classList.add('modal-open');
+
+      // Start ringing sound & vibration
+      startAudioRingtone('incoming');
+
+      // System notification if permission granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('📞 مكالمة صوتية واردة الآن!', {
+            body: `من: ${callData.callerName || 'الإدارة'} (${roleText})`,
+            icon: 'diwan.PNG',
+            tag: 'call_' + thisCallId,
+            requireInteraction: true
+          });
+        } catch (e) {}
+      }
     }
 
     // 3. ACCEPT INCOMING CALL
     async function acceptIncomingCall() {
       if (!pendingIncomingCallObj || !activeCallId) return;
       stopAudioRingtone();
+
+      const callId = activeCallId;
 
       try {
         activeCallLocalStream = await navigator.mediaDevices.getUserMedia({
@@ -9880,13 +9900,18 @@
           }
         });
       } catch (err) {
-        console.error('Mic access error:', err);
-        alert('يرجى إعطاء صلاحية الميكروفون للموقع لقبول المكالمة.');
-        rejectIncomingCall();
+        console.error('Callee Mic access error:', err);
+        alert('يرجى إعطاء صلاحية الميكروفون للموقع من إعدادات المتصفح للرد على المكالمة.');
+        hangupCurrentCall('callee_mic_denied');
         return;
       }
 
-      isCallMuted = false;
+      // Mark as accepted
+      if (firebaseDb) {
+        firebaseDb.ref(`calls/${callId}/status`).set('accepted').catch(() => {});
+        firebaseDb.ref(`incoming_calls/${currentUserId}`).remove().catch(() => {});
+      }
+
       activePeerConnection = new RTCPeerConnection(RTC_CALL_CONFIG);
       activeCallLocalStream.getTracks().forEach(track => {
         activePeerConnection.addTrack(track, activeCallLocalStream);
@@ -9914,19 +9939,29 @@
         }
       };
 
-      // Set Remote Description (Offer)
-      await activePeerConnection.setRemoteDescription(new RTCSessionDescription(pendingIncomingCallObj.offer));
+      // Fetch caller offer if not present on pending object
+      let offer = pendingIncomingCallObj.offer;
+      if (!offer && firebaseDb) {
+        const snap = await firebaseDb.ref(`calls/${callId}/offer`).once('value');
+        offer = snap.val();
+      }
 
-      // Create Answer
+      if (!offer) {
+        showToast('تعذر ربط المكالمة (بيانات الاتصال غير متوفرة).');
+        hangupCurrentCall('no_offer');
+        return;
+      }
+
+      await activePeerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await activePeerConnection.createAnswer();
       await activePeerConnection.setLocalDescription(answer);
 
       // Save Answer to Firebase
-      await activeCallFirebaseRef.update({
-        status: 'accepted',
-        answeredAt: Date.now(),
-        answer: { type: answer.type, sdp: answer.sdp }
+      await firebaseDb.ref(`calls/${callId}/answer`).set({
+        type: answer.type,
+        sdp: answer.sdp
       });
+
       activeCallFirebaseRef.child('status').onDisconnect().set('ended');
 
       // Listen for Caller ICE Candidates
@@ -9948,6 +9983,9 @@
       stopAudioRingtone();
       if (activeCallFirebaseRef) {
         activeCallFirebaseRef.update({ status: 'rejected' }).catch(() => {});
+      }
+      if (currentUserId && firebaseDb) {
+        firebaseDb.ref(`incoming_calls/${currentUserId}`).remove().catch(() => {});
       }
       closeCallModal();
       cleanupCallState();
@@ -10020,6 +10058,15 @@
         activeCallFirebaseRef.off();
       }
 
+      if (firebaseDb) {
+        if (outgoingTargetSupId) {
+          firebaseDb.ref(`incoming_calls/${outgoingTargetSupId}`).remove().catch(() => {});
+        }
+        if (currentUserId) {
+          firebaseDb.ref(`incoming_calls/${currentUserId}`).remove().catch(() => {});
+        }
+      }
+
       if (callSecondsCount > 0) {
         playCallEndedSound();
         showToast(`📞 انتهت المكالمة (المدة: ${durationStr})`);
@@ -10041,6 +10088,7 @@
         callTimerInterval = null;
       }
       callSecondsCount = 0;
+      updateCallDurationDisplay();
 
       if (activeCallLocalStream) {
         activeCallLocalStream.getTracks().forEach(t => t.stop());
@@ -10060,6 +10108,7 @@
 
       activeCallId = null;
       activeCallRole = null;
+      outgoingTargetSupId = null;
       pendingIncomingCallObj = null;
       activeCallFirebaseRef = null;
       isCallMuted = false;
