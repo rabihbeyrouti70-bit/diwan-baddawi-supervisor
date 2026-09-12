@@ -6593,11 +6593,14 @@ activePeerConnection.onconnectionstatechange = () => {
         };
 
         // 1. Write session to calls/{callId}
+        console.log('📡 [Calls Engine] Step 1: Writing calls node to Firebase...');
         activeCallFirebaseRef = firebaseDb.ref(`calls/${callId}`);
         await activeCallFirebaseRef.set(callData);
         activeCallFirebaseRef.child('status').onDisconnect().set('ended');
+        console.log('📡 [Calls Engine] Step 1 complete: calls node written.');
 
         // 2. Write direct point-to-point bell to incoming_calls/{targetSupervisorId}
+        console.log('📡 [Calls Engine] Step 2: Writing incoming_calls node to Firebase...');
         const directBellRef = firebaseDb.ref(`incoming_calls/${targetSupervisorId}`);
         await directBellRef.set({
           callId: callId,
@@ -6610,15 +6613,20 @@ activePeerConnection.onconnectionstatechange = () => {
           offer: { type: offer.type, sdp: offer.sdp }
         });
         directBellRef.onDisconnect().remove();
+        console.log('📡 [Calls Engine] Step 2 complete: incoming_calls node written.');
 
-        // 3. Dispatch instant high-priority FCM push to supervisor device (wakes up phone in background/locked screen)
+        // 3. Dispatch instant high-priority FCM push to supervisor device
+        console.log('📡 [Calls Engine] Step 3: Dispatching FCM push...');
         if (typeof dispatchCallFcmPush === 'function') {
           dispatchCallFcmPush(targetSupervisorId, callData, targetSup.branchId);
         }
 
         // Update status text and start outgoing ringback tone
-        document.getElementById('outgoingStatusText').innerText = 'جارٍ الاتصال ورنين الهاتف... 🔔';
+        console.log('📡 [Calls Engine] Step 4: Updating UI status text to ringing & starting audio tone...');
+        const outStatus = document.getElementById('outgoingStatusText');
+        if (outStatus) outStatus.innerText = 'جارٍ الاتصال ورنين الهاتف... 🔔';
         startAudioRingtone('outgoing');
+        console.log('📡 [Calls Engine] Step 4 complete: Outgoing call in ringing state!');
 
         // Listen for Answer / Status Changes
         activeCallFirebaseRef.on('value', async (snapshot) => {
