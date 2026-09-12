@@ -2654,6 +2654,9 @@
             🖨️ <span class="btn-full-text">طباعة</span>
           </button>
 
+          <button id="btnHeaderCall" class="btn btn-outline-white btn-sm" onclick="openDirectCallModal()" style="display: none; background: #10b981; border-color: #059669; color: white; font-weight: 800;" title="إجراء مكالمة صوتية مباشرة عبر التطبيق">
+            📞 <span class="btn-full-text">اتصال صوتي</span><span class="btn-mobile-text" style="display: none;">اتصال</span>
+          </button>
           <button id="btnHeaderDirectives" class="btn btn-outline-white btn-sm" onclick="openAdminDirectiveModal()" style="display: none; color: #d97706; border-color: #f59e0b;" title="التوجيهات والملاحظات الإدارية">📢 التوجيهات</button>
           <button class="btn btn-outline-white btn-sm" onclick="lockApp()" title="قفل الجلسة (خروج)">🔒 قفل</button>
         </div>
@@ -2722,6 +2725,11 @@
           <span class="btn-text">إدارة مهام وأقسام الفروع</span>
           <span class="btn-sub">تخصيص وتسمية مهام كل فرع (أكثر / أقل من 10)</span>
         </button>
+        <button type="button" class="admin-grid-btn btn-call" onclick="openDirectCallModal()" style="border-color: #10b981; background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);">
+          <span class="btn-icon" style="background: #10b981; color: white;">📞</span>
+          <span class="btn-text" style="color: #065f46;">المكالمات الصوتية المباشرة</span>
+          <span class="btn-sub">اتصال هاتفي مباشر بمشرفي الصالة والمدراء</span>
+        </button>
         <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
           <span class="btn-icon">📢</span>
           <span class="btn-text">التوجيهات والرسائل الإدارية</span>
@@ -2760,6 +2768,11 @@
           <span class="btn-text">مهام وأقسام فرعك</span>
           <span class="btn-sub">إضافة وتسمية وإلغاء مهام فرعك</span>
         </button>
+        <button type="button" class="admin-grid-btn btn-call" onclick="openDirectCallModal()" style="border-color: #10b981; background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);">
+          <span class="btn-icon" style="background: #10b981; color: white;">📞</span>
+          <span class="btn-text" style="color: #065f46;">اتصال صوتي بمشرفي الفرع</span>
+          <span class="btn-sub">مكالمة هاتفية فورية مع مسؤولي صالة فرعك عبر التطبيق</span>
+        </button>
         <button type="button" class="admin-grid-btn" onclick="openAdminDirectiveModal()" style="border-color: #f59e0b;">
           <span class="btn-icon">📢</span>
           <span class="btn-text">توجيه لمشرفي الفرع</span>
@@ -2776,9 +2789,14 @@
           <strong id="livePresenceStripTitle" style="font-size: 13.5px; color: #0f172a;">🟢 المشرفون النشطون لحظياً (الرصد المباشر):</strong>
           <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
         </div>
-        <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
-          👥 إدارة وتفاصيل المشرفين
-        </button>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="openDirectCallModal()" style="font-size: 11.5px; padding: 3px 12px; background: #10b981; border-color: #059669; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 4px rgba(16,185,129,0.3);" title="إجراء مكالمة هاتفية صوتية عبر التطبيق">
+            📞 مكالمة صوتية
+          </button>
+          <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
+            👥 إدارة المشرفين
+          </button>
+        </div>
       </div>
       <div id="managerLivePresenceList" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
         <span style="font-size: 12px; color: var(--text-muted);">جارٍ رصد تواجد المشرفين لحظياً...</span>
@@ -2801,9 +2819,14 @@
                 <span id="activeBranchDisplay" style="font-size: 11px; color: var(--text-muted); display: block;">فرع النويري</span>
               </div>
             </div>
-            <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
-              🔒 خروج / تبديل
-            </button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" id="btnShiftCardCall" class="btn btn-sm" onclick="openDirectCallModal()" style="display: inline-flex; align-items: center; gap: 4px; background: #10b981; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" title="إجراء مكالمة صوتية مباشرة">
+                📞 اتصال صوتي
+              </button>
+              <button type="button" class="btn-switch-user" onclick="lockApp()" title="تبديل المشرف وإدخال رمز PIN">
+                🔒 خروج / تبديل
+              </button>
+            </div>
           </div>
         </div>
 
@@ -3564,6 +3587,33 @@
   </div>
 
   
+  <!-- MODAL: DIRECT VOICE CALL DIRECTORY -->
+  <div class="modal-overlay" id="directCallModal" role="dialog" aria-modal="true" aria-labelledby="directCallModalTitle">
+    <div class="modal-card" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #065f46 0%, #047857 100%);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 26px;">📞</span>
+          <div>
+            <h3 class="modal-title" id="directCallModalTitle" style="color: white; margin: 0; font-size: 16px;">دليل المكالمات الصوتية المباشرة</h3>
+            <span style="font-size: 11.5px; color: #a7f3d0;">اتصال هاتفي مباشر وفوري عبر تطبيق ديوان ماركت</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeDirectCallModal()" aria-label="إغلاق النافذة" style="color: white;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; overflow-y: auto; flex: 1;">
+        <p id="directCallModalDesc" style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+          اختر الشخص الذي تود الاتصال به فوراً. ستفتح المكالمة مباشرة بين الجهازين بصوت عالي النقاء ودون الحاجة لأرقام هواتف.
+        </p>
+        <div id="directCallListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline-white btn-sm" onclick="closeDirectCallModal()" style="color: #475569; border-color: #cbd5e1;">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <!-- LIVE IN-APP WEBRTC CALL OVERLAY MODAL -->
   <div class="modal-overlay" id="inAppCallModal" role="dialog" aria-modal="true" aria-labelledby="callModalTitle" style="z-index: 10000; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px);">
     <div class="modal-card" style="max-width: 420px; text-align: center; border-radius: 20px; padding: 28px 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1.5px solid rgba(255,255,255,0.15); background: linear-gradient(145deg, #1e293b, #0f172a); color: white;">
@@ -5532,6 +5582,8 @@
             if (btnBranches) btnBranches.style.display = 'inline-flex';
             if (btnHq) btnHq.style.display = 'inline-flex';
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
+            const btnCallHead = document.getElementById('btnHeaderCall');
+            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
             if (adminSwitcher) {
               adminSwitcher.style.display = 'flex';
               populateHeaderBranchSelect();
@@ -5548,6 +5600,8 @@
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
             if (btnDirHead) btnDirHead.style.display = 'inline-flex';
+            const btnCallHead = document.getElementById('btnHeaderCall');
+            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) {
@@ -5563,6 +5617,8 @@
             if (btnBranches) btnBranches.style.display = 'none';
             if (btnHq) btnHq.style.display = 'none';
             if (btnDirHead) btnDirHead.style.display = 'none';
+            const btnCallHead = document.getElementById('btnHeaderCall');
+            if (btnCallHead) btnCallHead.style.display = 'inline-flex';
             if (adminSwitcher) adminSwitcher.style.display = 'none';
             if (execPanel) execPanel.style.display = 'none';
             if (bmPanel) bmPanel.style.display = 'none';
@@ -5759,6 +5815,8 @@
       if (btnBranches) btnBranches.style.display = 'none';
       if (btnHq) btnHq.style.display = 'none';
       if (btnDirHead) btnDirHead.style.display = 'none';
+      const btnCallHead = document.getElementById('btnHeaderCall');
+      if (btnCallHead) btnCallHead.style.display = 'none';
       if (adminSwitcher) adminSwitcher.style.display = 'none';
       const execPanel = document.getElementById('adminExecutivePanel');
       const bmPanel = document.getElementById('branchManagerPanel');
@@ -8128,8 +8186,13 @@
           : '⚪ لا يوجد مشرفون متصلون لحظياً الآن في كافة الفروع';
         html += `
           <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 11.5px; color: #64748b; display: inline-flex; align-items: center; gap: 6px;">
-            <span>${emptyText}</span>
-            ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>${emptyText}</span>
+              ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
+            </div>
+            <button type="button" onclick="openDirectCallModal()" style="background: #10b981; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 3px rgba(16,185,129,0.3);">
+              📞 فتح قائمة الاتصال
+            </button>
           </div>
         `;
       }
@@ -8584,7 +8647,12 @@
                 ${liveBadge}
               </div>
             </div>
-            <div style="display: flex; gap: 6px;">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              ${s.id !== currentUserId ? `
+                <button type="button" class="btn btn-sm" style="padding: 4px 10px; font-size: 12px; font-weight: 800; background: ${isOnline ? '#10b981' : '#059669'}; color: white; border: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 3px rgba(16,185,129,0.3);" onclick="event.stopPropagation(); closeSupervisorsModal(); initiateVoiceCall('${escapeHtml(s.id)}')">
+                  📞 اتصال
+                </button>
+              ` : ''}
               ${canEdit ? `
                 <button type="button" class="btn btn-outline-white btn-sm" style="padding: 4px 8px; font-size: 12px;" onclick="openEditSupervisorForm('${escapeHtml(s.id)}')">
                   ✏️ تعديل
@@ -9486,6 +9554,102 @@
       } catch (e) {}
     }
 
+    // DIRECT CALL DIRECTORY MODAL CONTROLLERS
+    function openDirectCallModal() {
+      document.body.classList.add('modal-open');
+      renderDirectCallList();
+      const modal = document.getElementById('directCallModal');
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeDirectCallModal() {
+      const modal = document.getElementById('directCallModal');
+      if (modal) modal.classList.remove('open');
+      if (!document.querySelector('.modal-overlay.open')) {
+        document.body.classList.remove('modal-open');
+      }
+    }
+
+    function renderDirectCallList() {
+      const container = document.getElementById('directCallListContainer');
+      if (!container) return;
+
+      const supervisors = getSupervisorsList();
+      let targetList = [];
+
+      if (currentUserRole === 'admin') {
+        // General Manager: can call anyone except self
+        targetList = supervisors.filter(s => s.id !== currentUserId && s.id !== 'admin');
+      } else if (currentUserRole === 'branch_manager') {
+        // Branch Manager: can call floor supervisors in their branch, plus the General Manager
+        targetList = supervisors.filter(s => s.id !== currentUserId && (s.branchId === currentBranchId || s.role === 'admin' || s.id === 'admin'));
+      } else {
+        // Floor Supervisor: can call their branch manager and the General Manager
+        targetList = supervisors.filter(s => s.id !== currentUserId && (s.role === 'admin' || s.id === 'admin' || (s.role === 'branch_manager' && s.branchId === currentBranchId)));
+      }
+
+      if (targetList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+            <span style="font-size: 32px; display: block; margin-bottom: 8px;">👥</span>
+            <span>لا يوجد جهات اتصال مسجلة متاحة للاتصال حالياً.</span>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort: Online first, then offline
+      targetList.sort((a, b) => {
+        const aOnline = isUserReallyOnline(a.id) ? 1 : 0;
+        const bOnline = isUserReallyOnline(b.id) ? 1 : 0;
+        return bOnline - aOnline;
+      });
+
+      let html = '';
+      targetList.forEach(s => {
+        const isOnline = isUserReallyOnline(s.id);
+        const b = getBranchById(s.branchId);
+        const branchName = b ? b.nameAr : (s.branchId || 'المركز الرئيسي');
+        const roleLabel = (s.role === 'admin' || s.id === 'admin') ? '👑 المدير العام' : ((s.role === 'branch_manager') ? '🏢 مدير فرع' : '👤 مسؤول صالة');
+        const pres = livePresenceCache[s.id];
+        const dev = deviceActivationsCache[s.id];
+        const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
+        const statusText = formatLivePresenceTime(lastSeen, isOnline);
+
+        html += `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: ${isOnline ? '#f0fdf4' : '#f8fafc'}; border: 1.5px solid ${isOnline ? '#86efac' : '#e2e8f0'}; border-radius: 10px; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 42px; height: 42px; border-radius: 50%; background: ${isOnline ? '#10b981' : '#cbd5e1'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0; box-shadow: ${isOnline ? '0 0 10px rgba(16,185,129,0.4)' : 'none'};">
+                ${isOnline ? '📞' : '👤'}
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <strong style="font-size: 14px; color: var(--secondary);">${escapeHtml(s.name)}</strong>
+                  <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${roleLabel}</span>
+                  <span style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11.5px;">
+                  ${isOnline 
+                    ? `<span style="color: #16a34a; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;"><span class="pulse-dot" style="width: 7px; height: 7px; background: #16a34a; border-radius: 50%;"></span> متصل لحظياً الآن (جاهز للمحادثة)</span>`
+                    : `<span style="color: #64748b;">⚪ ${escapeHtml(statusText)}</span>`
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button type="button" onclick="closeDirectCallModal(); initiateVoiceCall('${escapeHtml(s.id)}');" style="background: ${isOnline ? '#10b981' : '#059669'}; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 6px rgba(16,185,129,0.3); transition: all 0.2s;">
+                <span>📞</span>
+                <span>${isOnline ? 'اتصال مباشر الآن' : 'بدء الاتصال'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
     // 1. INITIATE OUTGOING CALL (CALLER)
     async function initiateVoiceCall(targetSupervisorId) {
       if (!currentUserId) {
@@ -9509,8 +9673,8 @@
       }
 
       if (!isUserReallyOnline(targetSupervisorId)) {
-        showToast(`⚠️ المشرف "${targetSup.name}" غير متصل لحظياً الآن.`);
-        return;
+        const proceed = confirm(`المشرف "${targetSup.name}" غير متصل لحظياً بالشاشة الآن (قد يكون التطبيق يعمل في الخلفية أو مغلقاً).\n\nهل ترغب في إرسال رنين الاتصال ومحاولة الاتصال به على أي حال؟`);
+        if (!proceed) return;
       }
 
       try {
