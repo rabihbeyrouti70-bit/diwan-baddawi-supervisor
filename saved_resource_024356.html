@@ -1951,15 +1951,9 @@
       }
       #managerLivePresenceList {
         display: flex !important;
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        scrollbar-width: none !important;
+        flex-wrap: wrap !important;
         gap: 6px !important;
         padding-bottom: 2px !important;
-      }
-      #managerLivePresenceList::-webkit-scrollbar {
-        display: none !important;
       }
 
       /* 5. ADMIN & BRANCH MANAGER PANELS ON MOBILE */
@@ -2685,22 +2679,7 @@
       <!-- Populated dynamically via realtime Firebase listener -->
     </div>
 
-    <!-- REALTIME SUPERVISORS PRESENCE RADAR (FOR MANAGERS) -->
-    <div id="managerLivePresenceStrip" class="no-print" style="display: none; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="pulse-dot" style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,0.25);"></span>
-          <strong style="font-size: 13.5px; color: #0f172a;">رادار المزامنة الحَيّة لتواجد المشرفين (Live Presence):</strong>
-          <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
-        </div>
-        <button type="button" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
-          👥 إدارة وتفاصيل المشرفين
-        </button>
-      </div>
-      <div id="managerLivePresenceList" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-        <span style="font-size: 12px; color: var(--text-muted);">جارٍ رصد تواجد المشرفين...</span>
-      </div>
-    </div>
+    
 
     <!-- GENERAL MANAGER CENTRAL CONTROL PANEL -->
     <div id="adminExecutivePanel" class="admin-executive-card no-print" style="display: none;">
@@ -2721,7 +2700,7 @@
         <button type="button" class="admin-grid-btn btn-hq" onclick="openHqOverviewModal()">
           <span class="btn-icon">🏢</span>
           <span class="btn-text">ملخص الفروع المركزية</span>
-          <span class="btn-sub">متابعة حية وشاملة لكافة الفروع</span>
+          <span class="btn-sub">متابعة لحظية وشاملة لكافة الفروع</span>
         </button>
         <button type="button" class="admin-grid-btn btn-sups" onclick="openSupervisorsModal()">
           <span class="btn-icon">👥</span>
@@ -2776,6 +2755,23 @@
           <span class="btn-text">توجيه لمشرفي الفرع</span>
           <span class="btn-sub">إرسال ملاحظة (نصية / صوتية)</span>
         </button>
+      </div>
+    </div>
+
+    <!-- REALTIME ACTIVE SUPERVISORS STRIP (المشرفون النشطون لحظياً) -->
+    <div id="managerLivePresenceStrip" class="no-print" style="display: none; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="pulse-dot" style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,0.25);"></span>
+          <strong style="font-size: 13.5px; color: #0f172a;">🟢 المشرفون النشطون لحظياً (الرصد المباشر):</strong>
+          <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
+        </div>
+        <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
+          👥 إدارة وتفاصيل المشرفين
+        </button>
+      </div>
+      <div id="managerLivePresenceList" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <span style="font-size: 12px; color: var(--text-muted);">جارٍ رصد تواجد المشرفين لحظياً...</span>
       </div>
     </div>
 
@@ -4945,6 +4941,9 @@
           loadStateForCurrentShift();
           if (firebaseDb) listenToFirebaseShift();
           renderAll();
+          if (typeof updateManagerLivePresenceStrip === 'function') {
+            updateManagerLivePresenceStrip();
+          }
 
           const b = getBranchById(currentBranchId);
           showToast("مرحباً بك: " + currentSupervisor + " 👋 - تم فتح " + getShiftName(currentBranchId, autoShift) + " تلقائياً");
@@ -7110,7 +7109,7 @@
     }
 
     /* ============================================================
-       FIREBASE REALTIME LIVE PRESENCE & HEARTBEAT ENGINE (المزامنة الحية)
+       FIREBASE REALTIME LIVE PRESENCE & HEARTBEAT ENGINE (المزامنة اللحظية)
        ============================================================ */
     let deviceActivationsCache = {};
     let livePresenceCache = {};
@@ -7135,7 +7134,7 @@
 
     function formatLivePresenceTime(lastSeen, online) {
       if (online) {
-        return 'متصل حَيّاً الآن 🟢';
+        return 'متصل لحظياً الآن 🟢';
       }
       if (!lastSeen) {
         return 'غير متصل ⚪';
@@ -7306,34 +7305,43 @@
       }
     }
 
+    let isOfflinePresenceListExpanded = false;
+    window.toggleOfflinePresenceList = function() {
+      isOfflinePresenceListExpanded = !isOfflinePresenceListExpanded;
+      updateManagerLivePresenceStrip();
+    };
+
     function updateManagerLivePresenceStrip() {
       const strip = document.getElementById('managerLivePresenceStrip');
       const listContainer = document.getElementById('managerLivePresenceList');
       const countBadge = document.getElementById('livePresenceOnlineCountBadge');
+      const btnManage = document.getElementById('btnLivePresenceManageSups');
       if (!strip || !listContainer) return;
 
-      if (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager') {
+      // Only show when logged in
+      if (!document.body.classList.contains('auth-passed')) {
         strip.style.display = 'none';
         return;
       }
       strip.style.display = 'block';
 
+      // Only show management button to admin and branch manager
+      if (btnManage) {
+        btnManage.style.display = (currentUserRole === 'admin' || currentUserRole === 'branch_manager') ? 'inline-flex' : 'none';
+      }
+
       let list = getSupervisorsList();
+      // For branch manager, filter supervisors belonging to this branch or all
       if (currentUserRole === 'branch_manager') {
-        list = list.filter(s => s.branchId === currentBranchId && s.id !== 'admin' && s.role !== 'admin');
+        list = list.filter(s => (s.branchId === currentBranchId || s.branchId === 'all') && s.id !== 'admin');
       }
 
-      const onlineSupervisors = list.filter(s => isUserReallyOnline(s.id));
-      if (countBadge) {
-        countBadge.innerText = `${onlineSupervisors.length} متصل الآن من ${list.length}`;
-      }
+      // Group supervisors: Online first, then just-closed (<60s), then offline
+      const onlineList = [];
+      const justClosedList = [];
+      const offlineList = [];
 
-      if (list.length === 0) {
-        listContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">لا يوجد مشرفون مسجلون.</span>';
-        return;
-      }
-
-      listContainer.innerHTML = list.map(s => {
+      list.forEach(s => {
         const isOnline = isUserReallyOnline(s.id);
         const pres = livePresenceCache[s.id];
         const dev = deviceActivationsCache[s.id];
@@ -7342,31 +7350,102 @@
         const platStr = (pres && pres.platform) || (dev && dev.platform) || '';
         const branchName = s.branchId === 'all' ? 'جميع الفروع' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
 
+        const item = { supervisor: s, isOnline, statusText, platStr, branchName, lastSeen };
         if (isOnline) {
+          onlineList.push(item);
+        } else if (statusText.includes('أغلق التطبيق للتو')) {
+          justClosedList.push(item);
+        } else {
+          offlineList.push(item);
+        }
+      });
+
+      // Update badge
+      if (countBadge) {
+        if (onlineList.length > 0) {
+          countBadge.innerText = `${onlineList.length} متصل لحظياً الآن`;
+          countBadge.style.background = '#dcfce7';
+          countBadge.style.color = '#166534';
+          countBadge.style.borderColor = '#bbf7d0';
+        } else {
+          countBadge.innerText = 'لا يوجد متصلون حالياً';
+          countBadge.style.background = '#f1f5f9';
+          countBadge.style.color = '#64748b';
+          countBadge.style.borderColor = '#cbd5e1';
+        }
+      }
+
+      if (list.length === 0) {
+        listContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">لا يوجد مشرفون مسجلون.</span>';
+        return;
+      }
+
+      let html = '';
+
+      // 1. ONLINE SUPERVISORS (النشطون لحظياً) - FRONT AND CENTER
+      if (onlineList.length > 0) {
+        html += onlineList.map(item => {
+          const s = item.supervisor;
           return `
-            <div style="background: #ecfdf5; border: 1.5px solid #6ee7b7; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(16,185,129,0.15);">
+            <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 4px rgba(16,185,129,0.2);">
               <span class="pulse-dot" style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
               <strong style="font-size: 12px; color: #065f46;">${escapeHtml(s.name)}</strong>
-              <span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(branchName)}</span>
-              ${platStr ? `<span style="font-size: 10.5px; color: #047857;">• ${escapeHtml(platStr)}</span>` : ''}
-              <span style="font-size: 10.5px; font-weight: 800; color: #059669;">[متصل الآن]</span>
+              <span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(item.branchName)}</span>
+              ${item.platStr ? `<span style="font-size: 10.5px; color: #047857;">• ${escapeHtml(item.platStr)}</span>` : ''}
+              <span style="font-size: 10.5px; font-weight: 800; color: #059669;">[متصل لحظياً]</span>
             </div>
           `;
-        } else {
-          const isJustClosed = statusText.includes('أغلق التطبيق للتو');
-          const borderClr = isJustClosed ? '#fca5a5' : '#e2e8f0';
-          const bgClr = isJustClosed ? '#fef2f2' : '#f8fafc';
-          const textClr = isJustClosed ? '#b91c1c' : '#64748b';
+        }).join('');
+      } else {
+        html += `
+          <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 11.5px; color: #64748b; display: inline-flex; align-items: center; gap: 6px;">
+            <span>⚪ لا يوجد مشرفون متصلون لحظياً الآن</span>
+            ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
+          </div>
+        `;
+      }
 
+      // 2. RECENTLY DISCONNECTED (< 60s)
+      if (justClosedList.length > 0) {
+        html += justClosedList.map(item => {
+          const s = item.supervisor;
           return `
-            <div style="background: ${bgClr}; border: 1px solid ${borderClr}; border-radius: 999px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; opacity: ${isJustClosed ? '1' : '0.85'};">
-              <span style="width: 6.5px; height: 6.5px; background: ${isJustClosed ? '#ef4444' : '#94a3b8'}; border-radius: 50%;"></span>
-              <span style="font-size: 11.5px; font-weight: 600; color: ${textClr};">${escapeHtml(s.name)}</span>
-              <span style="font-size: 10.5px; color: ${textClr};">(${escapeHtml(statusText)})</span>
+            <div style="background: #fef2f2; border: 1.5px solid #f87171; border-radius: 999px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(239,68,68,0.15);">
+              <span style="width: 7px; height: 7px; background: #ef4444; border-radius: 50%;"></span>
+              <span style="font-size: 11.5px; font-weight: 700; color: #b91c1c;">${escapeHtml(s.name)}</span>
+              <span style="font-size: 10px; color: #dc2626; background: #fee2e2; padding: 1px 5px; border-radius: 4px;">أغلق التطبيق للتو 🔴</span>
             </div>
           `;
+        }).join('');
+      }
+
+      // 3. OFFLINE SUPERVISORS (COLLAPSIBLE TO PREVENT SCREEN CLUTTER)
+      if (offlineList.length > 0) {
+        const toggleBtnText = isOfflinePresenceListExpanded
+          ? `⚪ إخفاء غير المتصلين (${offlineList.length}) ▴`
+          : `⚪ غير متصلين حالياً (${offlineList.length}) ▾`;
+
+        html += `
+          <button type="button" onclick="toggleOfflinePresenceList()" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 10px; font-size: 11px; color: #64748b; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s ease;">
+            ${toggleBtnText}
+          </button>
+        `;
+
+        if (isOfflinePresenceListExpanded) {
+          html += offlineList.map(item => {
+            const s = item.supervisor;
+            return `
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 999px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; opacity: 0.85;">
+                <span style="width: 6.5px; height: 6.5px; background: #94a3b8; border-radius: 50%;"></span>
+                <span style="font-size: 11px; font-weight: 600; color: #64748b;">${escapeHtml(s.name)}</span>
+                <span style="font-size: 10px; color: #94a3b8;">(${escapeHtml(item.statusText)})</span>
+              </div>
+            `;
+          }).join('');
         }
-      }).join('');
+      }
+
+      listContainer.innerHTML = html;
     }
 
     function handlePresenceStateChange(newPresenceMap) {
@@ -7390,7 +7469,7 @@
           } else if (!wasOnline && isNowOnline) {
             const branchName = s.branchId === 'all' ? 'جميع الفروع' : (getBranchById(s.branchId) ? getBranchById(s.branchId).nameAr : s.branchId);
             const plat = (newPresenceMap[s.id] && newPresenceMap[s.id].platform) || '';
-            showPresenceAlertToast(`تنبيه: المشرف "${s.name}" (${branchName}) متصل الآن حَيّاً ${plat ? `• ${plat}` : ''}`, 'online');
+            showPresenceAlertToast(`تنبيه: المشرف "${s.name}" (${branchName}) متصل الآن لحظياً ${plat ? `• ${plat}` : ''}`, 'online');
           }
         });
       }
@@ -7536,7 +7615,7 @@
               navigator.mediaSession.metadata = new MediaMetadata({
                 title: 'ديوان ماركت - وضع العمل المستمر ⚡',
                 artist: currentSupervisor || 'مشرف الصالة',
-                album: 'المزامنة الحية والتوجيهات',
+                album: 'المزامنة اللحظية والتوجيهات',
                 artwork: [
                   { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
                 ]
@@ -7590,7 +7669,7 @@
               badge.style.background = '#ecfdf5';
               badge.style.color = '#047857';
               badge.style.border = '1px solid #a7f3d0';
-              text.innerHTML = 'مزامنة حَيّة نشطة 🟢';
+              text.innerHTML = 'مزامنة لحظية نشطة 🟢';
             } else {
               badge.style.background = '#fef2f2';
               badge.style.color = '#b91c1c';
@@ -7698,8 +7777,8 @@
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="pulse-dot" style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,0.3);"></span>
             <span style="font-size: 13px; font-weight: 800; color: #166534;">
-              رصد المزامنة الحَيّة (Live Presence):
-              <strong style="color: #059669; font-size: 14px;">${onlineCount}</strong> متصلون الآن حَيّاً من أصل <strong>${totalCount}</strong>
+              رصد المزامنة اللحظية (Live Presence):
+              <strong style="color: #059669; font-size: 14px;">${onlineCount}</strong> متصلون الآن لحظياً من أصل <strong>${totalCount}</strong>
             </span>
           </div>
           <div style="font-size: 11.5px; color: #166534; font-weight: 700; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -7734,7 +7813,7 @@
           liveBadge = `
             <span style="background: #ecfdf5; color: #047857; border: 1.5px solid #6ee7b7; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(16,185,129,0.3);">
               <span class="pulse-dot" style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
-              🟢 متصل حَيّاً الآن ${platStr ? `(${escapeHtml(platStr)})` : ''}
+              🟢 متصل لحظياً الآن ${platStr ? `(${escapeHtml(platStr)})` : ''}
               ${isPushActive ? '<span style="background: #a7f3d0; color: #065f46; font-size: 10px; padding: 1px 6px; border-radius: 4px;">🔔 الإشعارات نشطة</span>' : ''}
             </span>
           `;
@@ -8669,7 +8748,7 @@
 
       const getDevIcon = (id) => {
         const isOnline = isUserReallyOnline(id);
-        if (isOnline) return '🟢 [متصل حَيّاً الآن] ';
+        if (isOnline) return '🟢 [متصل لحظياً الآن] ';
         const pres = livePresenceCache[id];
         const dev = deviceActivationsCache[id];
         const lastSeen = pres ? pres.lastSeen : (dev ? (dev.lastActive || dev.updatedAt) : null);
