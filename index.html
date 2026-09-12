@@ -2773,7 +2773,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="pulse-dot" style="width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,0.25);"></span>
-          <strong style="font-size: 13.5px; color: #0f172a;">🟢 المشرفون النشطون لحظياً (الرصد المباشر):</strong>
+          <strong id="livePresenceStripTitle" style="font-size: 13.5px; color: #0f172a;">🟢 المشرفون النشطون لحظياً (الرصد المباشر):</strong>
           <span id="livePresenceOnlineCountBadge" style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid #bbf7d0;">0 متصلون الآن</span>
         </div>
         <button type="button" id="btnLivePresenceManageSups" class="btn btn-outline-white btn-sm" onclick="openSupervisorsModal()" style="font-size: 11.5px; padding: 3px 10px; color: #2563eb; border-color: #bfdbfe;">
@@ -7934,24 +7934,36 @@
       const listContainer = document.getElementById('managerLivePresenceList');
       const countBadge = document.getElementById('livePresenceOnlineCountBadge');
       const btnManage = document.getElementById('btnLivePresenceManageSups');
+      const titleEl = document.getElementById('livePresenceStripTitle');
       if (!strip || !listContainer) return;
 
-      // Only show when logged in
-      if (!document.body.classList.contains('auth-passed')) {
+      // Only show to General Manager and Branch Manager (never to floor supervisors)
+      if (!document.body.classList.contains('auth-passed') || (currentUserRole !== 'admin' && currentUserRole !== 'branch_manager')) {
         strip.style.display = 'none';
         return;
       }
       strip.style.display = 'block';
 
-      // Only show management button to admin and branch manager
       if (btnManage) {
-        btnManage.style.display = (currentUserRole === 'admin' || currentUserRole === 'branch_manager') ? 'inline-flex' : 'none';
+        btnManage.style.display = 'inline-flex';
       }
 
       let list = getSupervisorsList();
-      // For branch manager, filter supervisors belonging to this branch or all
+      const b = getBranchById(currentBranchId);
+      const bName = b ? b.nameAr : currentBranchId;
+
       if (currentUserRole === 'branch_manager') {
-        list = list.filter(s => (s.branchId === currentBranchId || s.branchId === 'all') && s.id !== 'admin');
+        // Each Branch Manager ONLY sees supervisors belonging strictly to his own branch:
+        list = list.filter(s => s.branchId === currentBranchId && s.id !== currentUserId && s.id !== 'admin' && s.role !== 'admin');
+        if (titleEl) {
+          titleEl.innerHTML = `🟢 مشرفو ${escapeHtml(bName)} النشطون لحظياً (الرصد المباشر):`;
+        }
+      } else {
+        // General Manager sees all supervisors across all branches
+        list = list.filter(s => s.id !== 'admin');
+        if (titleEl) {
+          titleEl.innerHTML = '🟢 المشرفون النشطون لحظياً لكافة الفروع (الرصد المباشر):';
+        }
       }
 
       // Group supervisors: Online first, then just-closed (<60s), then offline
@@ -7981,12 +7993,16 @@
       // Update badge
       if (countBadge) {
         if (onlineList.length > 0) {
-          countBadge.innerText = `${onlineList.length} متصل لحظياً الآن`;
+          if (currentUserRole === 'branch_manager') {
+            countBadge.innerText = `${onlineList.length} متصل الآن من مشرفي فرعك`;
+          } else {
+            countBadge.innerText = `${onlineList.length} متصل لحظياً الآن`;
+          }
           countBadge.style.background = '#dcfce7';
           countBadge.style.color = '#166534';
           countBadge.style.borderColor = '#bbf7d0';
         } else {
-          countBadge.innerText = 'لا يوجد متصلون حالياً';
+          countBadge.innerText = (currentUserRole === 'branch_manager') ? 'لا يوجد متصلون من فرعك' : 'لا يوجد متصلون حالياً';
           countBadge.style.background = '#f1f5f9';
           countBadge.style.color = '#64748b';
           countBadge.style.borderColor = '#cbd5e1';
@@ -7994,7 +8010,10 @@
       }
 
       if (list.length === 0) {
-        listContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">لا يوجد مشرفون مسجلون.</span>';
+        const noSupsMsg = (currentUserRole === 'branch_manager')
+          ? `لا يوجد مسؤولو صالة مسجلون لـ (${escapeHtml(bName)}) بعد.`
+          : 'لا يوجد مشرفون مسجلون في المنظومة.';
+        listContainer.innerHTML = `<span style="font-size: 12px; color: var(--text-muted);">${noSupsMsg}</span>`;
         return;
       }
 
@@ -8008,16 +8027,19 @@
             <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 999px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 4px rgba(16,185,129,0.2);">
               <span class="pulse-dot" style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
               <strong style="font-size: 12px; color: #065f46;">${escapeHtml(s.name)}</strong>
-              <span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(item.branchName)}</span>
+              ${currentUserRole === 'admin' ? `<span style="font-size: 10.5px; color: #047857; background: #d1fae5; padding: 1px 6px; border-radius: 4px;">📍 ${escapeHtml(item.branchName)}</span>` : ''}
               ${item.platStr ? `<span style="font-size: 10.5px; color: #047857;">• ${escapeHtml(item.platStr)}</span>` : ''}
               <span style="font-size: 10.5px; font-weight: 800; color: #059669;">[متصل لحظياً]</span>
             </div>
           `;
         }).join('');
       } else {
+        const emptyText = (currentUserRole === 'branch_manager')
+          ? `⚪ لا يوجد مشرفون متصلون لحظياً الآن في ${escapeHtml(bName)}`
+          : '⚪ لا يوجد مشرفون متصلون لحظياً الآن في كافة الفروع';
         html += `
           <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 11.5px; color: #64748b; display: inline-flex; align-items: center; gap: 6px;">
-            <span>⚪ لا يوجد مشرفون متصلون لحظياً الآن</span>
+            <span>${emptyText}</span>
             ${offlineList.length > 0 && offlineList[0].lastSeen ? `<span style="font-size: 10.5px; color: #94a3b8;">(آخر تواجد: ${escapeHtml(offlineList[0].supervisor.name)} - ${escapeHtml(offlineList[0].statusText)})</span>` : ''}
           </div>
         `;
