@@ -8446,32 +8446,41 @@
             // Harmonized acoustic executive telephone bell (440Hz + 480Hz + soft chime harmonics)
             const tone1 = Math.sin(2 * Math.PI * 440 * ringT);
             const tone2 = Math.sin(2 * Math.PI * 480 * ringT);
-            const harm1 = 0.22 * Math.sin(2 * Math.PI * 880 * ringT);
-            const harm2 = 0.22 * Math.sin(2 * Math.PI * 960 * ringT);
-            const raw = (0.39 * tone1 + 0.39 * tone2 + harm1 + harm2);
+            const harm1 = 0.20 * Math.sin(2 * Math.PI * 880 * ringT);
+            const harm2 = 0.20 * Math.sin(2 * Math.PI * 960 * ringT);
+            const raw = (0.40 * tone1 + 0.40 * tone2 + harm1 + harm2);
 
-            // Smooth bell envelope (15ms attack, 20ms decay) prevents click/harshness
+            // Smooth raised-cosine envelope (20ms attack, 25ms decay) prevents click/harshness
             let env = 1.0;
-            if (ringT < 0.015) env = ringT / 0.015;
-            else if (ringT > burstLen - 0.02) env = (burstLen - ringT) / 0.02;
+            if (ringT < 0.02) {
+              env = 0.5 * (1 - Math.cos(Math.PI * ringT / 0.02));
+            } else if (ringT > burstLen - 0.025) {
+              env = 0.5 * (1 + Math.cos(Math.PI * (ringT - (burstLen - 0.025)) / 0.025));
+            }
 
-            sampleVal = raw * env * 28000; // Strong clear 16-bit amplitude
+            sampleVal = raw * env * 24000; // Strong clear 16-bit amplitude without digital clipping
           }
         } else {
-          // Outgoing Ringback tone (نغمة توووت... توووت... الطبيعية الناعمة للمتصل):
-          // Ring: 0.00s to 1.45s
-          // Silence: 1.45s to 4.00s
-          if (t < 1.45) {
-            const tone1 = Math.sin(2 * Math.PI * 440 * t);
-            const tone2 = Math.sin(2 * Math.PI * 480 * t);
-            const raw = (0.5 * tone1 + 0.5 * tone2);
+          // Standard ITU-T E.180 / Lebanese Mobile Network Ringback Tone (Pure 425Hz Sine Wave)
+          // 100% clean, warm, velvety, zero distortion, zero fluttering, zero harsh harmonics
+          // Tone: 0.00s to 1.15s (1.15s duration)
+          // Silence: 1.15s to 4.00s (2.85s duration)
+          const toneDuration = 1.15;
+          if (t < toneDuration) {
+            const freq = 425; // Official ITU-T standard telecom ringing frequency
+            const raw = Math.sin(2 * Math.PI * freq * t);
 
-            // Very smooth warm envelope (70ms fade-in, 90ms fade-out)
+            // Raised-Cosine (Hann) window envelope: 90ms fade-in, 110ms fade-out eliminates all click/pop artifacts
             let env = 1.0;
-            if (t < 0.07) env = t / 0.07;
-            else if (t > 1.36) env = (1.45 - t) / 0.09;
+            const rampIn = 0.09;
+            const rampOut = 0.11;
+            if (t < rampIn) {
+              env = 0.5 * (1 - Math.cos(Math.PI * t / rampIn));
+            } else if (t > toneDuration - rampOut) {
+              env = 0.5 * (1 + Math.cos(Math.PI * (t - (toneDuration - rampOut)) / rampOut));
+            }
 
-            sampleVal = raw * env * 11000; // Soft comfortable listening volume
+            sampleVal = raw * env * 8500; // Soft, comfortable, distortion-free amplitude (-11.7 dBFS)
           }
         }
 
@@ -8484,35 +8493,6 @@
       if (isIncoming) cachedIncomingRingWavUri = uri;
       else cachedOutgoingRingWavUri = uri;
       return uri;
-    }
-
-    let cachedSilentWavUri = null;
-    function getSilentWavUri() {
-      if (cachedSilentWavUri) return cachedSilentWavUri;
-      try {
-        const sampleRate = 8000;
-        const numSamples = 800; // 0.1 second of pure silence
-        const buffer = new ArrayBuffer(44 + numSamples * 2);
-        const view = new DataView(buffer);
-        view.setUint32(0, 0x52494646, false); // "RIFF"
-        view.setUint32(4, 36 + numSamples * 2, true);
-        view.setUint32(8, 0x57415645, false); // "WAVE"
-        view.setUint32(12, 0x666d7420, false); // "fmt "
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true); // PCM
-        view.setUint16(22, 1, true); // Mono
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        view.setUint32(36, 0x64617461, false); // "data"
-        view.setUint32(40, numSamples * 2, true);
-        const blob = new Blob([buffer], { type: 'audio/wav' });
-        cachedSilentWavUri = URL.createObjectURL(blob);
-      } catch (e) {
-        cachedSilentWavUri = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
-      }
-      return cachedSilentWavUri;
     }
 
     function initBackgroundKeepAliveAudio() {
